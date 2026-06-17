@@ -6,6 +6,7 @@ import { setStoredTenantKey, getStoredTenantKey } from "@/lib/tenant-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,8 +20,11 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const create = useServerFn(createTenant);
-  const [key, setKey] = useState(() => (typeof window !== "undefined" ? getStoredTenantKey() ?? "" : ""));
+  const [key, setKey] = useState(() =>
+    typeof window !== "undefined" ? getStoredTenantKey() ?? "" : "",
+  );
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
 
@@ -46,20 +50,18 @@ function Index() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md space-y-6">
+        <div className="flex justify-end">
+          <LanguageSwitcher />
+        </div>
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Room Board</h1>
-          <p className="text-sm text-muted-foreground">
-            Live time-based entries on display screens, no accounts needed.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("app.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("app.tagline")}</p>
         </div>
 
         {newKey ? (
           <Card className="p-6 space-y-4">
-            <h2 className="text-lg font-semibold">Your tenant key</h2>
-            <p className="text-sm text-muted-foreground">
-              Save this somewhere safe. Anyone with the key can manage entries and rooms. It will not
-              be shown again.
-            </p>
+            <h2 className="text-lg font-semibold">{t("home.keyTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("home.keyBlurb")}</p>
             <div className="font-mono text-sm break-all rounded-md border bg-muted px-3 py-2">
               {newKey}
             </div>
@@ -69,40 +71,40 @@ function Index() {
                 className="flex-1"
                 onClick={() => void navigator.clipboard?.writeText(newKey)}
               >
-                Copy
+                {t("home.copy")}
               </Button>
               <Button
                 className="flex-1"
-                onClick={() => navigate({ to: "/tenant/$tenantKey", params: { tenantKey: newKey } })}
+                onClick={() =>
+                  navigate({ to: "/tenant/$tenantKey", params: { tenantKey: newKey } })
+                }
               >
-                Continue
+                {t("home.continue")}
               </Button>
             </div>
           </Card>
         ) : (
           <>
             <Card className="p-6 space-y-4">
-              <h2 className="text-lg font-semibold">Open existing tenant</h2>
+              <h2 className="text-lg font-semibold">{t("home.openTitle")}</h2>
               <form onSubmit={handleEnter} className="space-y-3">
                 <Input
-                  placeholder="Enter your tenant key"
+                  placeholder={t("home.openPlaceholder")}
                   value={key}
                   onChange={(e) => setKey(e.target.value)}
                   autoComplete="off"
                 />
                 <Button type="submit" className="w-full" disabled={!key.trim()}>
-                  Open
+                  {t("home.open")}
                 </Button>
               </form>
             </Card>
 
             <Card className="p-6 space-y-4">
-              <h2 className="text-lg font-semibold">Create new tenant</h2>
-              <p className="text-sm text-muted-foreground">
-                Generates a random key. Share it with anyone who should administer this org.
-              </p>
+              <h2 className="text-lg font-semibold">{t("home.createTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("home.createBlurb")}</p>
               <Button onClick={handleCreate} disabled={creating} className="w-full">
-                {creating ? "Creating…" : "Create tenant"}
+                {creating ? t("home.creating") : t("home.create")}
               </Button>
             </Card>
           </>
@@ -110,7 +112,7 @@ function Index() {
 
         <div className="text-center text-xs text-muted-foreground">
           <Link to="/" className="underline-offset-2 hover:underline">
-            Home
+            {t("nav.home")}
           </Link>
         </div>
       </div>

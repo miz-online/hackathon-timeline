@@ -7,51 +7,52 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
         const { tenantKey, roomId } = params;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-        // Validate tenant + room
         const { data: tenant, error: tErr } = await supabaseAdmin
           .from("tenants")
-          .select("id, name, past_grace_minutes")
+          .select("id, name, past_grace_minutes, template")
           .eq("key", tenantKey)
           .maybeSingle();
-        if (tErr || !tenant) {
-          return new Response("Not found", { status: 404 });
-        }
+        if (tErr || !tenant) return new Response("Not found", { status: 404 });
+
         const { data: room, error: rErr } = await supabaseAdmin
           .from("rooms")
-          .select("id, name, tag, template")
+          .select("id, name")
           .eq("id", roomId)
           .eq("tenant_id", tenant.id)
           .maybeSingle();
-        if (rErr || !room) {
-          return new Response("Not found", { status: 404 });
-        }
+        if (rErr || !room) return new Response("Not found", { status: 404 });
 
         const tenantId = tenant.id;
+        const roomDbId = room.id;
         const encoder = new TextEncoder();
 
         const buildSnapshot = async () => {
           const { data: tNow } = await supabaseAdmin
             .from("tenants")
-            .select("name, past_grace_minutes")
+            .select("name, past_grace_minutes, template")
             .eq("id", tenantId)
             .maybeSingle();
           const { data: rNow } = await supabaseAdmin
             .from("rooms")
-            .select("id, name, tag, template")
-            .eq("id", room.id)
+            .select("id, name")
+            .eq("id", roomDbId)
             .maybeSingle();
           if (!tNow || !rNow) return null;
           const { data: entries } = await supabaseAdmin
             .from("entries")
-            .select("id, time, description, tags")
+            .select("id, time, title, description, tags")
             .eq("tenant_id", tenantId);
           const cutoff = Date.now() - tNow.past_grace_minutes * 60 * 1000;
           const visible = (entries ?? [])
             .filter((e) => new Date(e.time).getTime() >= cutoff)
-            .filter((e) => e.tags.length === 0 || e.tags.includes(rNow.tag))
+            .filter((e) => e.tags.length === 0 || e.tags.includes(rNow.name))
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
           return {
-            tenant: { name: tNow.name, past_grace_minutes: tNow.past_grace_minutes },
+            tenant: {
+              name: tNow.name,
+              past_grace_minutes: tNow.past_grace_minutes,
+              template: tNow.template,
+            },
             room: rNow,
             entries: visible,
           };
@@ -89,7 +90,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             };
 
             const channel = supabaseAdmin
-              .channel(`room-${room.id}-${Math.random().toString(36).slice(2)}`)
+              .channel(`room-${roomDbId}-${Math.random().toString(36).slice(2)}`)
               .on(
                 "postgres_changes",
                 { event: "*", schema: "public", table: "entries", filter: `tenant_id=eq.${tenantId}` },

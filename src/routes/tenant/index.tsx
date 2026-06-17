@@ -4,6 +4,7 @@ import { setStoredTenantKey, getStoredTenantKey } from "@/lib/tenant-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/tenant/")({
   component: TenantGate,
@@ -11,35 +12,38 @@ export const Route = createFileRoute("/tenant/")({
 
 function TenantGate() {
   const navigate = useNavigate();
-  const [key, setKey] = useState(() => (typeof window !== "undefined" ? getStoredTenantKey() ?? "" : ""));
+  const { t } = useI18n();
+  const [key, setKey] = useState(() =>
+    typeof window !== "undefined" ? getStoredTenantKey() ?? "" : "",
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md p-6 space-y-4">
-        <h1 className="text-xl font-semibold">Enter tenant key</h1>
+        <h1 className="text-xl font-semibold">{t("tenant.gate.title")}</h1>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const t = key.trim();
-            if (!t) return;
-            setStoredTenantKey(t);
-            navigate({ to: "/tenant/$tenantKey", params: { tenantKey: t } });
+            const trimmed = key.trim();
+            if (!trimmed) return;
+            setStoredTenantKey(trimmed);
+            navigate({ to: "/tenant/$tenantKey", params: { tenantKey: trimmed } });
           }}
           className="space-y-3"
         >
           <Input
-            placeholder="Tenant key"
+            placeholder={t("tenant.gate.placeholder")}
             value={key}
             onChange={(e) => setKey(e.target.value)}
             autoComplete="off"
           />
           <Button type="submit" className="w-full" disabled={!key.trim()}>
-            Open
+            {t("home.open")}
           </Button>
         </form>
         <div className="text-center text-xs text-muted-foreground">
           <Link to="/" className="hover:underline">
-            Back
+            {t("nav.back")}
           </Link>
         </div>
       </Card>
