@@ -22,14 +22,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
 });
 
+type EntryRow = { id: string; time: string; title: string; description: string; tags: string[] };
+type RoomRow = { id: string; name: string };
+
 function AdminPage() {
   const { tenantKey } = Route.useParams();
   const qc = useQueryClient();
+  const { t } = useI18n();
 
   const getTenantFn = useServerFn(getTenant);
   const listEntriesFn = useServerFn(listEntries);
@@ -51,18 +56,16 @@ function AdminPage() {
   });
 
   if (tenantQ.isLoading) {
-    return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
+    return <div className="p-8 text-sm text-muted-foreground">{t("admin.loading")}</div>;
   }
   if (tenantQ.error) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <Card className="p-6 max-w-md space-y-3 text-center">
-          <h2 className="text-lg font-semibold">Unknown tenant key</h2>
-          <p className="text-sm text-muted-foreground">
-            The key in the URL doesn’t match any tenant.
-          </p>
+          <h2 className="text-lg font-semibold">{t("admin.unknown")}</h2>
+          <p className="text-sm text-muted-foreground">{t("admin.unknownBlurb")}</p>
           <Link to="/" className="text-sm underline">
-            Back to start
+            {t("admin.backStart")}
           </Link>
         </Card>
       </div>
@@ -82,18 +85,21 @@ function AdminPage() {
       <header className="border-b bg-card">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Admin</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              {t("admin.label")}
+            </div>
             <h1 className="text-xl font-semibold">{tenant.name}</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <LanguageSwitcher />
             <Link to="/tenant/$tenantKey/rooms" params={{ tenantKey }}>
               <Button variant="outline" size="sm">
-                Rooms
+                {t("nav.rooms")}
               </Button>
             </Link>
             <Link to="/">
               <Button variant="ghost" size="sm">
-                Exit
+                {t("nav.exit")}
               </Button>
             </Link>
           </div>
@@ -103,15 +109,16 @@ function AdminPage() {
       <main className="max-w-5xl mx-auto px-4 py-6">
         <Tabs defaultValue="entries">
           <TabsList>
-            <TabsTrigger value="entries">Entries</TabsTrigger>
-            <TabsTrigger value="rooms">Rooms</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="entries">{t("admin.tabs.entries")}</TabsTrigger>
+            <TabsTrigger value="rooms">{t("admin.tabs.rooms")}</TabsTrigger>
+            <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="entries" className="space-y-4 pt-4">
             <EntriesPanel
               tenantKey={tenantKey}
               entries={entriesQ.data ?? []}
+              rooms={roomsQ.data ?? []}
               onChange={invalidate}
             />
           </TabsContent>
@@ -129,6 +136,7 @@ function AdminPage() {
               tenantKey={tenantKey}
               name={tenant.name}
               graceMinutes={tenant.past_grace_minutes}
+              template={tenant.template}
               onChange={invalidate}
             />
           </TabsContent>
@@ -140,8 +148,6 @@ function AdminPage() {
 
 // --------------- Entries ---------------
 
-type EntryRow = { id: string; time: string; description: string; tags: string[] };
-
 function toLocalInput(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => n.toString().padStart(2, "0");
@@ -151,12 +157,15 @@ function toLocalInput(iso: string) {
 function EntriesPanel({
   tenantKey,
   entries,
+  rooms,
   onChange,
 }: {
   tenantKey: string;
   entries: EntryRow[];
+  rooms: RoomRow[];
   onChange: () => void;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const upsertFn = useServerFn(upsertEntry);
@@ -165,7 +174,7 @@ function EntriesPanel({
   const delMut = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
     onSuccess: () => {
-      toast.success("Entry deleted");
+      toast.success(t("entries.deleted"));
       onChange();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -174,7 +183,7 @@ function EntriesPanel({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">Time entries</h2>
+        <h2 className="text-lg font-medium">{t("entries.title")}</h2>
         <Button
           size="sm"
           onClick={() => {
@@ -182,17 +191,18 @@ function EntriesPanel({
             setShowForm(true);
           }}
         >
-          New entry
+          {t("entries.new")}
         </Button>
       </div>
 
       {showForm ? (
         <EntryForm
           initial={editing}
+          rooms={rooms}
           onCancel={() => setShowForm(false)}
           onSubmit={async (entry) => {
             await upsertFn({ data: { key: tenantKey, entry } });
-            toast.success(editing ? "Entry updated" : "Entry created");
+            toast.success(editing ? t("entries.updated") : t("entries.created"));
             setShowForm(false);
             onChange();
           }}
@@ -202,7 +212,7 @@ function EntriesPanel({
       <div className="space-y-2">
         {entries.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">
-            No entries yet.
+            {t("entries.empty")}
           </Card>
         ) : (
           entries.map((e) => (
@@ -215,13 +225,24 @@ function EntriesPanel({
                       timeStyle: "short",
                     })}
                   </span>
-                  {e.tags.map((t) => (
-                    <Badge key={t} variant="secondary">
-                      {t}
-                    </Badge>
-                  ))}
+                  {e.tags.length === 0 ? (
+                    <span className="text-xs italic text-muted-foreground">
+                      {t("entries.allRooms")}
+                    </span>
+                  ) : (
+                    e.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))
+                  )}
                 </div>
-                <div className="text-sm whitespace-pre-wrap break-words">{e.description}</div>
+                <div className="font-medium">{e.title}</div>
+                {e.description ? (
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                    {e.description}
+                  </div>
+                ) : null}
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button
@@ -232,16 +253,16 @@ function EntriesPanel({
                     setShowForm(true);
                   }}
                 >
-                  Edit
+                  {t("entries.edit")}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    if (confirm("Delete this entry?")) delMut.mutate(e.id);
+                    if (confirm(t("entries.confirmDelete"))) delMut.mutate(e.id);
                   }}
                 >
-                  Delete
+                  {t("entries.delete")}
                 </Button>
               </div>
             </Card>
@@ -254,59 +275,112 @@ function EntriesPanel({
 
 function EntryForm({
   initial,
+  rooms,
   onSubmit,
   onCancel,
 }: {
   initial: EntryRow | null;
-  onSubmit: (entry: { id?: string; time: string; description: string; tags: string[] }) => Promise<void>;
+  rooms: RoomRow[];
+  onSubmit: (entry: {
+    id?: string;
+    time: string;
+    title: string;
+    description: string;
+    tags: string[];
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [time, setTime] = useState(initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()));
+  const { t } = useI18n();
+  const [time, setTime] = useState(
+    initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
+  );
+  const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(", "));
+  const [selectedRooms, setSelectedRooms] = useState<string[]>(initial?.tags ?? []);
   const [saving, setSaving] = useState(false);
+
+  const toggleRoom = (name: string) => {
+    setSelectedRooms((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
+  };
 
   return (
     <Card className="p-4 space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <Label>Time</Label>
+          <Label>{t("entries.form.time")}</Label>
           <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label>Tags (comma separated, leave empty for all rooms)</Label>
+          <Label>{t("entries.form.title")}</Label>
           <Input
-            value={tagsText}
-            onChange={(e) => setTagsText(e.target.value)}
-            placeholder="lobby, stage"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t("entries.form.titlePh")}
           />
         </div>
       </div>
       <div className="space-y-1">
-        <Label>Description (first line = title, rest = detail)</Label>
+        <Label>{t("entries.form.description")}</Label>
         <Textarea
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Begrüßung der Teilnehmer:innen"
+          placeholder={t("entries.form.descriptionPh")}
         />
+      </div>
+      <div className="space-y-2">
+        <Label>{t("entries.form.rooms")}</Label>
+        <div className="flex flex-wrap gap-2">
+          {rooms.length === 0 ? (
+            <span className="text-xs italic text-muted-foreground">
+              {t("entries.allRooms")}
+            </span>
+          ) : (
+            rooms.map((r) => {
+              const active = selectedRooms.includes(r.name);
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => toggleRoom(r.name)}
+                  className={
+                    "px-3 py-1 rounded-full border text-sm transition " +
+                    (active
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-input hover:bg-accent")
+                  }
+                >
+                  {r.name}
+                </button>
+              );
+            })
+          )}
+          {rooms.length > 0 && selectedRooms.length === 0 ? (
+            <span className="px-3 py-1 rounded-full border border-dashed text-xs italic text-muted-foreground">
+              {t("entries.allRooms")}
+            </span>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
-          Cancel
+          {t("entries.cancel")}
         </Button>
         <Button
-          disabled={saving || !description.trim() || !time}
+          disabled={saving || !title.trim() || !time}
           onClick={async () => {
             setSaving(true);
             try {
-              const tags = tagsText
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean);
+              // Drop any selected room names that no longer exist
+              const validNames = new Set(rooms.map((r) => r.name));
+              const tags = selectedRooms.filter((n) => validNames.has(n));
               await onSubmit({
                 id: initial?.id,
                 time: new Date(time).toISOString(),
+                title: title.trim(),
                 description: description.trim(),
                 tags,
               });
@@ -317,7 +391,7 @@ function EntryForm({
             }
           }}
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
     </Card>
@@ -325,8 +399,6 @@ function EntryForm({
 }
 
 // --------------- Rooms ---------------
-
-type RoomRow = { id: string; name: string; tag: string; template: string };
 
 function RoomsPanel({
   tenantKey,
@@ -337,6 +409,7 @@ function RoomsPanel({
   rooms: RoomRow[];
   onChange: () => void;
 }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState<RoomRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const upsertFn = useServerFn(upsertRoom);
@@ -345,7 +418,7 @@ function RoomsPanel({
   const delMut = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
     onSuccess: () => {
-      toast.success("Room deleted");
+      toast.success(t("rooms.deleted"));
       onChange();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -354,7 +427,7 @@ function RoomsPanel({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">Rooms</h2>
+        <h2 className="text-lg font-medium">{t("rooms.title")}</h2>
         <Button
           size="sm"
           onClick={() => {
@@ -362,7 +435,7 @@ function RoomsPanel({
             setShowForm(true);
           }}
         >
-          New room
+          {t("rooms.new")}
         </Button>
       </div>
 
@@ -372,7 +445,7 @@ function RoomsPanel({
           onCancel={() => setShowForm(false)}
           onSubmit={async (room) => {
             await upsertFn({ data: { key: tenantKey, room } });
-            toast.success(editing ? "Room updated" : "Room created");
+            toast.success(editing ? t("rooms.updated") : t("rooms.created"));
             setShowForm(false);
             onChange();
           }}
@@ -382,20 +455,12 @@ function RoomsPanel({
       <div className="grid gap-2 sm:grid-cols-2">
         {rooms.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center sm:col-span-2">
-            No rooms yet.
+            {t("rooms.empty")}
           </Card>
         ) : (
           rooms.map((r) => (
             <Card key={r.id} className="p-4 space-y-2">
-              <div className="flex justify-between items-start gap-2">
-                <div className="min-w-0">
-                  <div className="font-semibold truncate">{r.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    tag: <span className="font-mono">{r.tag}</span> · template:{" "}
-                    <span className="font-mono">{r.template}</span>
-                  </div>
-                </div>
-              </div>
+              <div className="font-semibold truncate">{r.name}</div>
               <div className="flex gap-2 flex-wrap">
                 <Link
                   to="/tenant/$tenantKey/room/$roomId"
@@ -403,7 +468,7 @@ function RoomsPanel({
                   target="_blank"
                 >
                   <Button size="sm" variant="default">
-                    Open display
+                    {t("rooms.openDisplay")}
                   </Button>
                 </Link>
                 <Button
@@ -414,16 +479,16 @@ function RoomsPanel({
                     setShowForm(true);
                   }}
                 >
-                  Edit
+                  {t("rooms.edit")}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    if (confirm("Delete this room?")) delMut.mutate(r.id);
+                    if (confirm(t("rooms.confirmDelete"))) delMut.mutate(r.id);
                   }}
                 >
-                  Delete
+                  {t("rooms.delete")}
                 </Button>
               </div>
             </Card>
@@ -440,53 +505,34 @@ function RoomForm({
   onCancel,
 }: {
   initial: RoomRow | null;
-  onSubmit: (room: { id?: string; name: string; tag: string; template: string }) => Promise<void>;
+  onSubmit: (room: { id?: string; name: string }) => Promise<void>;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
-  const [tag, setTag] = useState(initial?.tag ?? "");
-  const [template, setTemplate] = useState(initial?.template ?? "zeitplan");
   const [saving, setSaving] = useState(false);
 
   return (
     <Card className="p-4 space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="space-y-1">
-          <Label>Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Main Stage" />
-        </div>
-        <div className="space-y-1">
-          <Label>Tag</Label>
-          <Input
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            placeholder="stage"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label>Template</Label>
-          <Input
-            value={template}
-            onChange={(e) => setTemplate(e.target.value)}
-            placeholder="zeitplan"
-          />
-        </div>
+      <div className="space-y-1">
+        <Label>{t("rooms.form.name")}</Label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("rooms.form.namePh")}
+        />
+        <p className="text-xs text-muted-foreground">{t("rooms.form.nameHint")}</p>
       </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
-          Cancel
+          {t("entries.cancel")}
         </Button>
         <Button
-          disabled={saving || !name.trim() || !tag.trim()}
+          disabled={saving || !name.trim()}
           onClick={async () => {
             setSaving(true);
             try {
-              await onSubmit({
-                id: initial?.id,
-                name: name.trim(),
-                tag: tag.trim(),
-                template: template.trim() || "zeitplan",
-              });
+              await onSubmit({ id: initial?.id, name: name.trim() });
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
@@ -494,7 +540,7 @@ function RoomForm({
             }
           }}
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
     </Card>
@@ -507,16 +553,20 @@ function SettingsPanel({
   tenantKey,
   name,
   graceMinutes,
+  template,
   onChange,
 }: {
   tenantKey: string;
   name: string;
   graceMinutes: number;
+  template: string;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
+  const { t, lang, setLang } = useI18n();
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
+  const [tpl, setTpl] = useState(template);
   const [saving, setSaving] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
   const regenFn = useServerFn(regenerateKey);
@@ -525,11 +575,11 @@ function SettingsPanel({
     <Card className="p-4 space-y-5 max-w-xl">
       <div className="space-y-3">
         <div className="space-y-1">
-          <Label>Organization name</Label>
+          <Label>{t("settings.name")}</Label>
           <Input value={n} onChange={(e) => setN(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label>Past entry grace (minutes)</Label>
+          <Label>{t("settings.grace")}</Label>
           <Input
             type="number"
             min={0}
@@ -537,17 +587,42 @@ function SettingsPanel({
             value={g}
             onChange={(e) => setG(Number(e.target.value))}
           />
-          <p className="text-xs text-muted-foreground">
-            Entries disappear from displays after this many minutes past their time.
-          </p>
+        </div>
+        <div className="space-y-1">
+          <Label>{t("settings.template")}</Label>
+          <select
+            value={tpl}
+            onChange={(e) => setTpl(e.target.value)}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label>{t("settings.language")}</Label>
+          <select
+            value={lang}
+            onChange={(e) => setLang(e.target.value as "en" | "de")}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+          </select>
         </div>
         <Button
           disabled={saving}
           onClick={async () => {
             setSaving(true);
             try {
-              await updateFn({ data: { key: tenantKey, name: n, past_grace_minutes: g } });
-              toast.success("Settings saved");
+              await updateFn({
+                data: {
+                  key: tenantKey,
+                  name: n,
+                  past_grace_minutes: g,
+                  template: tpl,
+                },
+              });
+              toast.success(t("settings.saved"));
               onChange();
             } catch (e) {
               toast.error((e as Error).message);
@@ -556,12 +631,12 @@ function SettingsPanel({
             }
           }}
         >
-          {saving ? "Saving…" : "Save settings"}
+          {saving ? t("entries.saving") : t("settings.save")}
         </Button>
       </div>
 
       <div className="border-t pt-4 space-y-2">
-        <div className="font-medium">Tenant key</div>
+        <div className="font-medium">{t("settings.keyTitle")}</div>
         <div className="font-mono text-xs break-all rounded-md border bg-muted px-3 py-2">
           {tenantKey}
         </div>
@@ -571,25 +646,20 @@ function SettingsPanel({
             size="sm"
             onClick={() => void navigator.clipboard?.writeText(tenantKey)}
           >
-            Copy
+            {t("home.copy")}
           </Button>
           <Button
             variant="destructive"
             size="sm"
             onClick={async () => {
-              if (
-                !confirm(
-                  "Regenerate the tenant key? The old key will stop working immediately. Make sure to save the new one.",
-                )
-              )
-                return;
+              if (!confirm(t("settings.regenerateConfirm"))) return;
               const res = await regenFn({ data: { key: tenantKey } });
               setStoredTenantKey(res.key);
-              alert(`New key:\n\n${res.key}\n\nSave it now. It will not be shown again.`);
+              toast.success(t("settings.regenerated"));
               navigate({ to: "/tenant/$tenantKey", params: { tenantKey: res.key } });
             }}
           >
-            Regenerate key
+            {t("settings.regenerate")}
           </Button>
         </div>
       </div>
