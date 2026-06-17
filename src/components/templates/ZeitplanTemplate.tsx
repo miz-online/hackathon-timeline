@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
+import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
+import { useI18n } from "@/lib/i18n";
 
-type Entry = { id: string; time: string; description: string; tags: string[] };
+type Entry = { id: string; time: string; title: string; description: string; tags: string[] };
 
 function formatTime(iso: string) {
   const d = new Date(iso);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function parseTitle(description: string): { title: string; detail?: string } {
-  // Support "Title\nDetail" or "Title | Detail" or just title
-  const nl = description.indexOf("\n");
-  if (nl > -1) {
-    return { title: description.slice(0, nl).trim(), detail: description.slice(nl + 1).trim() };
-  }
-  return { title: description };
 }
 
 export function ZeitplanTemplate({
@@ -25,6 +18,7 @@ export function ZeitplanTemplate({
   roomName: string;
   entries: Entry[];
 }) {
+  const { t } = useI18n();
   const [clock, setClock] = useState("");
   useEffect(() => {
     const tick = () =>
@@ -96,77 +90,89 @@ export function ZeitplanTemplate({
               padding: "80px 0",
             }}
           >
-            Keine Einträge
+            {t("display.empty")}
           </div>
         ) : (
-          entries.map((e) => {
-            const { title, detail } = parseTitle(e.description);
-            return (
+          entries.map((e) => (
+            <div
+              key={e.id}
+              style={{
+                display: "flex",
+                alignItems: "stretch",
+                border: `2px solid ${RED}`,
+                borderRadius: 9999,
+                overflow: "hidden",
+                background: "#fff",
+                minHeight: "clamp(64px, 7vw, 96px)",
+              }}
+            >
               <div
-                key={e.id}
                 style={{
+                  backgroundColor: RED,
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: "clamp(20px, 2.4vw, 32px)",
+                  padding: "0 clamp(20px, 2.2vw, 36px)",
                   display: "flex",
-                  alignItems: "stretch",
-                  border: `2px solid ${RED}`,
-                  borderRadius: 9999,
-                  overflow: "hidden",
-                  background: "#fff",
-                  minHeight: "clamp(64px, 7vw, 96px)",
+                  alignItems: "center",
+                  minWidth: "clamp(110px, 12vw, 180px)",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {formatTime(e.time)}
+              </div>
+              <div
+                style={{
+                  flex: 1,
+                  padding: "clamp(12px, 1.4vw, 20px) clamp(20px, 2.2vw, 36px)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  gap: 4,
                 }}
               >
                 <div
                   style={{
-                    backgroundColor: RED,
-                    color: "#fff",
                     fontWeight: 700,
-                    fontSize: "clamp(20px, 2.4vw, 32px)",
-                    padding: "0 clamp(20px, 2.2vw, 36px)",
-                    display: "flex",
-                    alignItems: "center",
-                    minWidth: "clamp(110px, 12vw, 180px)",
-                    fontVariantNumeric: "tabular-nums",
+                    fontSize: "clamp(18px, 2vw, 28px)",
+                    color: "#1f2937",
+                    lineHeight: 1.2,
                   }}
                 >
-                  {formatTime(e.time)}
+                  {e.title}
                 </div>
-                <div
-                  style={{
-                    flex: 1,
-                    padding: "clamp(12px, 1.4vw, 20px) clamp(20px, 2.2vw, 36px)",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
+                {e.description ? (
                   <div
                     style={{
-                      fontWeight: 700,
-                      fontSize: "clamp(18px, 2vw, 28px)",
-                      color: "#1f2937",
-                      lineHeight: 1.2,
+                      fontStyle: "italic",
+                      color: "#6b7280",
+                      fontSize: "clamp(14px, 1.3vw, 18px)",
+                      lineHeight: 1.35,
+                      whiteSpace: "pre-wrap",
                     }}
                   >
-                    {title}
+                    {e.description}
                   </div>
-                  {detail ? (
-                    <div
-                      style={{
-                        fontStyle: "italic",
-                        color: "#6b7280",
-                        fontSize: "clamp(14px, 1.3vw, 18px)",
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {detail}
-                    </div>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
-            );
-          })
+            </div>
+          ))
         )}
       </main>
+
+      <footer
+        style={{
+          display: "flex",
+          justifyContent: "flex-start",
+          paddingTop: 8,
+        }}
+      >
+        <img
+          src={logoAsset.url}
+          alt="PIT Hackathon"
+          style={{ height: "clamp(48px, 6vw, 88px)", width: "auto" }}
+        />
+      </footer>
     </div>
   );
 }

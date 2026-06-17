@@ -9,7 +9,6 @@ async function getAdmin() {
 }
 
 function generateKey(): string {
-  // 24-char base32-ish key
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
@@ -18,11 +17,13 @@ function generateKey(): string {
   return out;
 }
 
-async function resolveTenantId(key: string): Promise<{ id: string; name: string; past_grace_minutes: number }> {
+async function resolveTenant(
+  key: string,
+): Promise<{ id: string; name: string; past_grace_minutes: number; template: string }> {
   const supabase = await getAdmin();
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, past_grace_minutes")
+    .select("id, name, past_grace_minutes, template")
     .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -32,13 +33,13 @@ async function resolveTenantId(key: string): Promise<{ id: string; name: string;
 
 function filterVisible<T extends { time: string; tags: string[] }>(
   entries: T[],
-  roomTag: string,
+  roomName: string,
   graceMinutes: number,
 ): T[] {
   const cutoff = Date.now() - graceMinutes * 60 * 1000;
   return entries
     .filter((e) => new Date(e.time).getTime() >= cutoff)
-    .filter((e) => e.tags.length === 0 || e.tags.includes(roomTag))
+    .filter((e) => e.tags.length === 0 || e.tags.includes(roomName))
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
 
@@ -61,27 +62,34 @@ export const createTenant = createServerFn({ method: "POST" }).handler(async () 
 
 export const getTenant = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
-  .handler(async ({ data }) => {
-    const t = await resolveTenantId(data.key);
-    return t;
-  });
+  .handler(async ({ data }) => resolveTenant(data.key));
 
 export const updateTenantSettings = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; name: string; past_grace_minutes: number }) =>
+  .inputValidator((d: {
+    key: string;
+    name: string;
+    past_grace_minutes: number;
+    template: string;
+  }) =>
     z
       .object({
         key: z.string().min(1),
         name: z.string().min(1).max(120),
         past_grace_minutes: z.number().int().min(0).max(24 * 60),
+        template: z.string().min(1).max(40),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenantId(data.key);
+    const { id } = await resolveTenant(data.key);
     const { error } = await supabase
       .from("tenants")
-      .update({ name: data.name, past_grace_minutes: data.past_grace_minutes })
+      .update({
+        name: data.name,
+        past_grace_minutes: data.past_grace_minutes,
+        template: data.template,
+      })
       .eq("id", id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -91,7 +99,7 @@ export const regenerateKey = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenantId(data.key);
+    const { id } = await resolveTenant(data.key);
     for (let attempt = 0; attempt < 5; attempt++) {
       const newKey = generateKey();
       const { error } = await supabase.from("tenants").update({ key: newKey }).eq("id", id);
@@ -107,10 +115,10 @@ export const listEntries = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenantId(data.key);
+    const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, description, tags")
+      .select("id, time, title, description, tags")
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
@@ -120,8 +128,9 @@ export const listEntries = createServerFn({ method: "GET" })
 const entryInput = z.object({
   id: z.string().uuid().optional(),
   time: z.string().min(1),
-  description: z.string().min(1).max(2000),
-  tags: z.array(z.string().min(1).max(40)).max(20).default([]),
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).default(""),
+  tags: z.array(z.string().min(1).max(120)).max(50).default([]),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
@@ -130,12 +139,12 @@ export const upsertEntry = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenantId(data.key);
+    const { id: tenantId } = await resolveTenant(data.key);
     const e = data.entry;
     if (e.id) {
       const { error } = await supabase
         .from("entries")
-        .update({ time: e.time, description: e.description, tags: e.tags })
+        .update({ time: e.time, title: e.title, description: e.description, tags: e.tags })
         .eq("id", e.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -143,7 +152,13 @@ export const upsertEntry = createServerFn({ method: "POST" })
     } else {
       const { data: row, error } = await supabase
         .from("entries")
-        .insert({ tenant_id: tenantId, time: e.time, description: e.description, tags: e.tags })
+        .insert({
+          tenant_id: tenantId,
+          time: e.time,
+          title: e.title,
+          description: e.description,
+          tags: e.tags,
+        })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
@@ -157,7 +172,7 @@ export const deleteEntry = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenantId(data.key);
+    const { id: tenantId } = await resolveTenant(data.key);
     const { error } = await supabase
       .from("entries")
       .delete()
@@ -173,10 +188,10 @@ export const listRooms = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenantId(data.key);
+    const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("rooms")
-      .select("id, name, tag, template")
+      .select("id, name")
       .eq("tenant_id", id)
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -186,8 +201,6 @@ export const listRooms = createServerFn({ method: "GET" })
 const roomInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(120),
-  tag: z.string().min(1).max(40),
-  template: z.string().min(1).max(40).default("zeitplan"),
 });
 
 export const upsertRoom = createServerFn({ method: "POST" })
@@ -196,12 +209,12 @@ export const upsertRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenantId(data.key);
+    const { id: tenantId } = await resolveTenant(data.key);
     const r = data.room;
     if (r.id) {
       const { error } = await supabase
         .from("rooms")
-        .update({ name: r.name, tag: r.tag, template: r.template })
+        .update({ name: r.name })
         .eq("id", r.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -209,7 +222,7 @@ export const upsertRoom = createServerFn({ method: "POST" })
     } else {
       const { data: row, error } = await supabase
         .from("rooms")
-        .insert({ tenant_id: tenantId, name: r.name, tag: r.tag, template: r.template })
+        .insert({ tenant_id: tenantId, name: r.name })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
@@ -223,7 +236,7 @@ export const deleteRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenantId(data.key);
+    const { id: tenantId } = await resolveTenant(data.key);
     const { error } = await supabase
       .from("rooms")
       .delete()
@@ -236,9 +249,9 @@ export const deleteRoom = createServerFn({ method: "POST" })
 // ---------- snapshot for displays ----------
 
 export type RoomSnapshot = {
-  tenant: { name: string; past_grace_minutes: number };
-  room: { id: string; name: string; tag: string; template: string };
-  entries: { id: string; time: string; description: string; tags: string[] }[];
+  tenant: { name: string; past_grace_minutes: number; template: string };
+  room: { id: string; name: string };
+  entries: { id: string; time: string; title: string; description: string; tags: string[] }[];
 };
 
 export const getRoomSnapshot = createServerFn({ method: "GET" })
@@ -247,10 +260,10 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<RoomSnapshot> => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenantId(data.key);
+    const tenant = await resolveTenant(data.key);
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
-      .select("id, name, tag, template")
+      .select("id, name")
       .eq("id", data.roomId)
       .eq("tenant_id", tenant.id)
       .maybeSingle();
@@ -258,12 +271,16 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     if (!room) throw new Error("Unknown room");
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
-      .select("id, time, description, tags")
+      .select("id, time, title, description, tags")
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
     return {
-      tenant: { name: tenant.name, past_grace_minutes: tenant.past_grace_minutes },
+      tenant: {
+        name: tenant.name,
+        past_grace_minutes: tenant.past_grace_minutes,
+        template: tenant.template,
+      },
       room,
-      entries: filterVisible(entries ?? [], room.tag, tenant.past_grace_minutes),
+      entries: filterVisible(entries ?? [], room.name, tenant.past_grace_minutes),
     };
   });
