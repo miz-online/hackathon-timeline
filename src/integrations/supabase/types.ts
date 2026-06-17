@@ -22,6 +22,7 @@ export type Database = {
           tags: string[]
           tenant_id: string
           time: string
+          title: string
           updated_at: string
         }
         Insert: {
@@ -31,6 +32,7 @@ export type Database = {
           tags?: string[]
           tenant_id: string
           time: string
+          title?: string
           updated_at?: string
         }
         Update: {
@@ -40,6 +42,7 @@ export type Database = {
           tags?: string[]
           tenant_id?: string
           time?: string
+          title?: string
           updated_at?: string
         }
         Relationships: [
@@ -57,24 +60,18 @@ export type Database = {
           created_at: string
           id: string
           name: string
-          tag: string
-          template: string
           tenant_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
-          tag: string
-          template?: string
           tenant_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
-          tag?: string
-          template?: string
           tenant_id?: string
         }
         Relationships: [
@@ -94,6 +91,7 @@ export type Database = {
           key: string
           name: string
           past_grace_minutes: number
+          template: string
         }
         Insert: {
           created_at?: string
@@ -101,6 +99,7 @@ export type Database = {
           key: string
           name?: string
           past_grace_minutes?: number
+          template?: string
         }
         Update: {
           created_at?: string
@@ -108,6 +107,7 @@ export type Database = {
           key?: string
           name?: string
           past_grace_minutes?: number
+          template?: string
         }
         Relationships: []
       }
