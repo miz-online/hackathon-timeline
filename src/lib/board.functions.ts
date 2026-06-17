@@ -1,0 +1,269 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+// ---------- helpers ----------
+
+async function getAdmin() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+function generateKey(): string {
+  // 24-char base32-ish key
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
+async function resolveTenantId(key: string): Promise<{ id: string; name: string; past_grace_minutes: number }> {
+  const supabase = await getAdmin();
+  const { data, error } = await supabase
+    .from("tenants")
+    .select("id, name, past_grace_minutes")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Unknown tenant key");
+  return data;
+}
+
+function filterVisible<T extends { time: string; tags: string[] }>(
+  entries: T[],
+  roomTag: string,
+  graceMinutes: number,
+): T[] {
+  const cutoff = Date.now() - graceMinutes * 60 * 1000;
+  return entries
+    .filter((e) => new Date(e.time).getTime() >= cutoff)
+    .filter((e) => e.tags.length === 0 || e.tags.includes(roomTag))
+    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+}
+
+// ---------- tenant ----------
+
+export const createTenant = createServerFn({ method: "POST" }).handler(async () => {
+  const supabase = await getAdmin();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const key = generateKey();
+    const { data, error } = await supabase
+      .from("tenants")
+      .insert({ key })
+      .select("key")
+      .single();
+    if (!error && data) return { key: data.key };
+    if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+  }
+  throw new Error("Could not generate unique tenant key");
+});
+
+export const getTenant = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const t = await resolveTenantId(data.key);
+    return t;
+  });
+
+export const updateTenantSettings = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; name: string; past_grace_minutes: number }) =>
+    z
+      .object({
+        key: z.string().min(1),
+        name: z.string().min(1).max(120),
+        past_grace_minutes: z.number().int().min(0).max(24 * 60),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenantId(data.key);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ name: data.name, past_grace_minutes: data.past_grace_minutes })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const regenerateKey = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenantId(data.key);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const newKey = generateKey();
+      const { error } = await supabase.from("tenants").update({ key: newKey }).eq("id", id);
+      if (!error) return { key: newKey };
+      if (!error.message.includes("duplicate")) throw new Error(error.message);
+    }
+    throw new Error("Could not generate unique key");
+  });
+
+// ---------- entries ----------
+
+export const listEntries = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenantId(data.key);
+    const { data: rows, error } = await supabase
+      .from("entries")
+      .select("id, time, description, tags")
+      .eq("tenant_id", id)
+      .order("time", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+const entryInput = z.object({
+  id: z.string().uuid().optional(),
+  time: z.string().min(1),
+  description: z.string().min(1).max(2000),
+  tags: z.array(z.string().min(1).max(40)).max(20).default([]),
+});
+
+export const upsertEntry = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; entry: z.infer<typeof entryInput> }) =>
+    z.object({ key: z.string().min(1), entry: entryInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenantId(data.key);
+    const e = data.entry;
+    if (e.id) {
+      const { error } = await supabase
+        .from("entries")
+        .update({ time: e.time, description: e.description, tags: e.tags })
+        .eq("id", e.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: e.id };
+    } else {
+      const { data: row, error } = await supabase
+        .from("entries")
+        .insert({ tenant_id: tenantId, time: e.time, description: e.description, tags: e.tags })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      return { id: row.id };
+    }
+  });
+
+export const deleteEntry = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenantId(data.key);
+    const { error } = await supabase
+      .from("entries")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- rooms ----------
+
+export const listRooms = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenantId(data.key);
+    const { data: rows, error } = await supabase
+      .from("rooms")
+      .select("id, name, tag, template")
+      .eq("tenant_id", id)
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+const roomInput = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  tag: z.string().min(1).max(40),
+  template: z.string().min(1).max(40).default("zeitplan"),
+});
+
+export const upsertRoom = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; room: z.infer<typeof roomInput> }) =>
+    z.object({ key: z.string().min(1), room: roomInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenantId(data.key);
+    const r = data.room;
+    if (r.id) {
+      const { error } = await supabase
+        .from("rooms")
+        .update({ name: r.name, tag: r.tag, template: r.template })
+        .eq("id", r.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: r.id };
+    } else {
+      const { data: row, error } = await supabase
+        .from("rooms")
+        .insert({ tenant_id: tenantId, name: r.name, tag: r.tag, template: r.template })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      return { id: row.id };
+    }
+  });
+
+export const deleteRoom = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenantId(data.key);
+    const { error } = await supabase
+      .from("rooms")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- snapshot for displays ----------
+
+export type RoomSnapshot = {
+  tenant: { name: string; past_grace_minutes: number };
+  room: { id: string; name: string; tag: string; template: string };
+  entries: { id: string; time: string; description: string; tags: string[] }[];
+};
+
+export const getRoomSnapshot = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string; roomId: string }) =>
+    z.object({ key: z.string().min(1), roomId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }): Promise<RoomSnapshot> => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenantId(data.key);
+    const { data: room, error: roomErr } = await supabase
+      .from("rooms")
+      .select("id, name, tag, template")
+      .eq("id", data.roomId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    if (roomErr) throw new Error(roomErr.message);
+    if (!room) throw new Error("Unknown room");
+    const { data: entries, error: entriesErr } = await supabase
+      .from("entries")
+      .select("id, time, description, tags")
+      .eq("tenant_id", tenant.id);
+    if (entriesErr) throw new Error(entriesErr.message);
+    return {
+      tenant: { name: tenant.name, past_grace_minutes: tenant.past_grace_minutes },
+      room,
+      entries: filterVisible(entries ?? [], room.tag, tenant.past_grace_minutes),
+    };
+  });
