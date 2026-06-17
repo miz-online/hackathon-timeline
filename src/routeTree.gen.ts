@@ -10,33 +10,104 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TenantIndexRouteImport } from './routes/tenant/index'
+import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenantKey/index'
+import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
+import { Route as TenantTenantKeyRoomRoomIdRouteImport } from './routes/tenant/$tenantKey/room/$roomId'
+import { Route as ApiPublicStreamTenantKeyRoomIdRouteImport } from './routes/api/public/stream.$tenantKey.$roomId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TenantIndexRoute = TenantIndexRouteImport.update({
+  id: '/tenant/',
+  path: '/tenant/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TenantTenantKeyIndexRoute = TenantTenantKeyIndexRouteImport.update({
+  id: '/tenant/$tenantKey/',
+  path: '/tenant/$tenantKey/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TenantTenantKeyRoomsRoute = TenantTenantKeyRoomsRouteImport.update({
+  id: '/tenant/$tenantKey/rooms',
+  path: '/tenant/$tenantKey/rooms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TenantTenantKeyRoomRoomIdRoute =
+  TenantTenantKeyRoomRoomIdRouteImport.update({
+    id: '/tenant/$tenantKey/room/$roomId',
+    path: '/tenant/$tenantKey/room/$roomId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicStreamTenantKeyRoomIdRoute =
+  ApiPublicStreamTenantKeyRoomIdRouteImport.update({
+    id: '/api/public/stream/$tenantKey/$roomId',
+    path: '/api/public/stream/$tenantKey/$roomId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/tenant/': typeof TenantIndexRoute
+  '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
+  '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
+  '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
+  '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/tenant': typeof TenantIndexRoute
+  '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
+  '/tenant/$tenantKey': typeof TenantTenantKeyIndexRoute
+  '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
+  '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/tenant/': typeof TenantIndexRoute
+  '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
+  '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
+  '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
+  '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/tenant/'
+    | '/tenant/$tenantKey/rooms'
+    | '/tenant/$tenantKey/'
+    | '/tenant/$tenantKey/room/$roomId'
+    | '/api/public/stream/$tenantKey/$roomId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/tenant'
+    | '/tenant/$tenantKey/rooms'
+    | '/tenant/$tenantKey'
+    | '/tenant/$tenantKey/room/$roomId'
+    | '/api/public/stream/$tenantKey/$roomId'
+  id:
+    | '__root__'
+    | '/'
+    | '/tenant/'
+    | '/tenant/$tenantKey/rooms'
+    | '/tenant/$tenantKey/'
+    | '/tenant/$tenantKey/room/$roomId'
+    | '/api/public/stream/$tenantKey/$roomId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  TenantIndexRoute: typeof TenantIndexRoute
+  TenantTenantKeyRoomsRoute: typeof TenantTenantKeyRoomsRoute
+  TenantTenantKeyIndexRoute: typeof TenantTenantKeyIndexRoute
+  TenantTenantKeyRoomRoomIdRoute: typeof TenantTenantKeyRoomRoomIdRoute
+  ApiPublicStreamTenantKeyRoomIdRoute: typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +119,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tenant/': {
+      id: '/tenant/'
+      path: '/tenant'
+      fullPath: '/tenant/'
+      preLoaderRoute: typeof TenantIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tenant/$tenantKey/': {
+      id: '/tenant/$tenantKey/'
+      path: '/tenant/$tenantKey'
+      fullPath: '/tenant/$tenantKey/'
+      preLoaderRoute: typeof TenantTenantKeyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tenant/$tenantKey/rooms': {
+      id: '/tenant/$tenantKey/rooms'
+      path: '/tenant/$tenantKey/rooms'
+      fullPath: '/tenant/$tenantKey/rooms'
+      preLoaderRoute: typeof TenantTenantKeyRoomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tenant/$tenantKey/room/$roomId': {
+      id: '/tenant/$tenantKey/room/$roomId'
+      path: '/tenant/$tenantKey/room/$roomId'
+      fullPath: '/tenant/$tenantKey/room/$roomId'
+      preLoaderRoute: typeof TenantTenantKeyRoomRoomIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/stream/$tenantKey/$roomId': {
+      id: '/api/public/stream/$tenantKey/$roomId'
+      path: '/api/public/stream/$tenantKey/$roomId'
+      fullPath: '/api/public/stream/$tenantKey/$roomId'
+      preLoaderRoute: typeof ApiPublicStreamTenantKeyRoomIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  TenantIndexRoute: TenantIndexRoute,
+  TenantTenantKeyRoomsRoute: TenantTenantKeyRoomsRoute,
+  TenantTenantKeyIndexRoute: TenantTenantKeyIndexRoute,
+  TenantTenantKeyRoomRoomIdRoute: TenantTenantKeyRoomRoomIdRoute,
+  ApiPublicStreamTenantKeyRoomIdRoute: ApiPublicStreamTenantKeyRoomIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
