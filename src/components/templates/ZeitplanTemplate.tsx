@@ -37,21 +37,41 @@ export function ZeitplanTemplate({
     <>
       <style>{`
         @keyframes zp-glow {
-          0%, 100% {
+          0% {
             box-shadow: 0 0 0 0 rgba(192,50,43,0.55), 0 0 12px 2px rgba(192,50,43,0.35) inset;
             border-color: #C0322B;
+            transform: rotate(0deg) scale(1);
           }
           50% {
-            box-shadow: 0 0 18px 6px rgba(192,50,43,0.75), 0 0 22px 4px rgba(255,90,80,0.55) inset;
+            box-shadow: 0 0 28px 10px rgba(192,50,43,0.75), 0 0 22px 4px rgba(255,90,80,0.55) inset;
             border-color: #ff5a50;
+            transform: rotate(6deg) scale(1.02);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(192,50,43,0.55), 0 0 12px 2px rgba(192,50,43,0.35) inset;
+            border-color: #C0322B;
+            transform: rotate(0deg) scale(1);
           }
         }
         @keyframes zp-glow-bg {
-          0%, 100% { background-color: #C0322B; box-shadow: 0 0 0 0 rgba(192,50,43,0); }
-          50% { background-color: #d94840; box-shadow: 0 0 18px 4px rgba(255,90,80,0.8); }
+          0% {
+            background-color: #C0322B;
+            box-shadow: 0 0 0 0 rgba(192,50,43,0);
+            transform: scale(1);
+          }
+          50% {
+            background-color: #d94840;
+            box-shadow: 0 0 18px 6px rgba(255,90,80,0.8);
+            transform: scale(1.03);
+          }
+          100% {
+            background-color: #C0322B;
+            box-shadow: 0 0 0 0 rgba(192,50,43,0);
+            transform: scale(1);
+          }
         }
-        .zp-glow { animation: zp-glow 1.6s ease-in-out infinite; }
-        .zp-glow-bg { animation: zp-glow-bg 1.6s ease-in-out infinite; }
+        .zp-glow { animation: zp-glow 8s ease-in-out infinite; transform-origin: center; }
+        .zp-glow-bg { animation: zp-glow-bg 8s ease-in-out infinite; transform-origin: center; }
       `}</style>
       <div
         style={{
