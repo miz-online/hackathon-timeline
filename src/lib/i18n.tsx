@@ -179,6 +179,7 @@ const de: Dict = {
   "display.empty": "Keine Einträge",
   "display.connecting": "Verbindung…",
   "display.reconnecting": "Neu verbinden…",
+  "display.inMinutes": "in {minutes} min",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };
