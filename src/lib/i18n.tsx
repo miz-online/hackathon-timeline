@@ -215,7 +215,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (typeof document !== "undefined") document.documentElement.lang = lang;
   }, [lang]);
 
-  const t = (key: string) => DICTS[lang][key] ?? DICTS.en[key] ?? key;
+  const t = (key: string, params?: Record<string, string | number>) => {
+    let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+      }
+    }
+    return s;
+  };
   return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>;
 }
 
