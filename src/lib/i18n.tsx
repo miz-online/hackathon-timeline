@@ -90,6 +90,7 @@ const en: Dict = {
   "display.empty": "No entries",
   "display.connecting": "Connecting…",
   "display.reconnecting": "Reconnecting…",
+  "display.inMinutes": "in {minutes} m",
 };
 
 const de: Dict = {
@@ -178,11 +179,16 @@ const de: Dict = {
   "display.empty": "Keine Einträge",
   "display.connecting": "Verbindung…",
   "display.reconnecting": "Neu verbinden…",
+  "display.inMinutes": "in {minutes} min",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };
 
-type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (key: string) => string };
+type Ctx = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+};
 const I18nContext = createContext<Ctx | null>(null);
 
 const STORAGE_KEY = "rb.lang";
@@ -209,7 +215,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (typeof document !== "undefined") document.documentElement.lang = lang;
   }, [lang]);
 
-  const t = (key: string) => DICTS[lang][key] ?? DICTS.en[key] ?? key;
+  const t = (key: string, params?: Record<string, string | number>) => {
+    let s = DICTS[lang][key] ?? DICTS.en[key] ?? key;
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
+      }
+    }
+    return s;
+  };
   return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>;
 }
 
