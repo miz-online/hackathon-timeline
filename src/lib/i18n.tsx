@@ -184,7 +184,11 @@ const de: Dict = {
 
 const DICTS: Record<Lang, Dict> = { en, de };
 
-type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (key: string) => string };
+type Ctx = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+};
 const I18nContext = createContext<Ctx | null>(null);
 
 const STORAGE_KEY = "rb.lang";
