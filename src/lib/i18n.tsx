@@ -90,7 +90,8 @@ const en: Dict = {
   "display.empty": "No entries",
   "display.connecting": "Connecting…",
   "display.reconnecting": "Reconnecting…",
-  "display.inMinutes": "in {minutes} m",
+  "display.inMinutes": "in {minutes} min",
+  "display.now": "NOW",
 };
 
 const de: Dict = {
