@@ -141,7 +141,7 @@ export function ZeitplanTemplate({
               {t("display.empty")}
             </div>
           ) : (
-            <AnimatePresence initial={false}>
+            <AnimatePresence initial={false} mode="popLayout">
               {entries.map((e) => {
                 const entryMs = new Date(e.time).getTime();
                 const diffMin = Math.round((entryMs - now) / 60000);
