@@ -36,19 +36,14 @@ export function ZeitplanTemplate({
   return (
     <>
       <style>{`
-        @keyframes zp-glow {
-          0% {
-            box-shadow: 0 0 0 0 rgba(192,50,43,0.55), 0 0 12px 2px rgba(192,50,43,0.35) inset;
-            border-color: #C0322B;
-          }
-          50% {
-            box-shadow: 0 0 28px 10px rgba(192,50,43,0.75), 0 0 22px 4px rgba(255,90,80,0.55) inset;
-            border-color: #ff5a50;
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(192,50,43,0.55), 0 0 12px 2px rgba(192,50,43,0.35) inset;
-            border-color: #C0322B;
-          }
+        @property --gradient-angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+        @keyframes zp-rotate-border {
+          0% { --gradient-angle: 0deg; }
+          100% { --gradient-angle: 360deg; }
         }
         @keyframes zp-glow-bg {
           0% {
@@ -64,7 +59,22 @@ export function ZeitplanTemplate({
             box-shadow: 0 0 0 0 rgba(192,50,43,0);
           }
         }
-        .zp-glow { animation: zp-glow 10s ease-in-out infinite; }
+        .zp-glow {
+          border: 4px solid transparent !important;
+          background: linear-gradient(white, white) padding-box,
+            conic-gradient(
+              from var(--gradient-angle),
+              transparent,
+              rgba(255,90,80,0.3) 5%,
+              rgba(255,70,60,0.9) 12%,
+              #C0322B 16%,
+              rgba(255,70,60,0.9) 20%,
+              rgba(255,90,80,0.3) 28%,
+              transparent 33%
+            ) border-box;
+          border-radius: 9999px;
+          animation: zp-rotate-border 4s linear infinite;
+        }
         .zp-glow-bg { animation: zp-glow-bg 10s ease-in-out infinite; }
       `}</style>
       <div
@@ -160,10 +170,10 @@ export function ZeitplanTemplate({
                     style={{
                       display: "flex",
                       alignItems: "stretch",
-                      border: `2px solid ${RED}`,
+                      border: inGrace ? "4px solid transparent" : `2px solid ${RED}`,
                       borderRadius: 9999,
                       overflow: "hidden",
-                      background: "#fff",
+                      background: inGrace ? undefined : "#fff",
                       minHeight: "clamp(56px, 6.2vw, 84px)",
                     }}
                   >
