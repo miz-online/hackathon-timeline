@@ -181,6 +181,7 @@ const de: Dict = {
   "display.connecting": "Verbindung…",
   "display.reconnecting": "Neu verbinden…",
   "display.inMinutes": "in {minutes} min",
+  "display.now": "JETZT",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };
