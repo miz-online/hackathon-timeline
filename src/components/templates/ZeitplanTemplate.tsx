@@ -171,10 +171,10 @@ export function ZeitplanTemplate({
                     style={{
                       display: "flex",
                       alignItems: "stretch",
-                      border: `2px solid ${RED}`,
+                      border: inGrace ? "4px solid transparent" : `2px solid ${RED}`,
                       borderRadius: 9999,
                       overflow: "hidden",
-                      background: "#fff",
+                      background: inGrace ? undefined : "#fff",
                       minHeight: "clamp(56px, 6.2vw, 84px)",
                     }}
                   >
