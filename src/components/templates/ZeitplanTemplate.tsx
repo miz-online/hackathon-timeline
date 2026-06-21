@@ -60,31 +60,21 @@ export function ZeitplanTemplate({
           }
         }
         .zp-glow {
-          position: relative;
-          overflow: visible !important;
-          border: 2px solid #C0322B !important;
-          background: #ffffff;
+          border: 4px solid transparent !important;
+          background: linear-gradient(white, white) padding-box,
+            conic-gradient(
+              from var(--gradient-angle),
+              transparent,
+              rgba(255,90,80,0.3) 5%,
+              rgba(255,70,60,0.9) 12%,
+              #C0322B 16%,
+              rgba(255,70,60,0.9) 20%,
+              rgba(255,90,80,0.3) 28%,
+              transparent 33%
+            ) border-box;
           border-radius: 9999px;
-        }
-        .zp-glow::before {
-          content: "";
-          position: absolute;
-          inset: -4px;
-          border-radius: 9999px;
-          border: 4px solid transparent;
-          background: conic-gradient(
-            from var(--gradient-angle),
-            transparent,
-            rgba(255,90,80,0.3) 5%,
-            rgba(255,70,60,0.9) 12%,
-            #C0322B 16%,
-            rgba(255,70,60,0.9) 20%,
-            rgba(255,90,80,0.3) 28%,
-            transparent 33%
-          ) border-box;
-          z-index: -1;
+          outline: 2px solid #C0322B;
           animation: zp-rotate-border 4s linear infinite;
-          pointer-events: none;
         }
         .zp-glow-bg { animation: zp-glow-bg 10s ease-in-out infinite; }
       `}</style>
