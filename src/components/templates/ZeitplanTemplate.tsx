@@ -73,6 +73,7 @@ export function ZeitplanTemplate({
               transparent 33%
             ) border-box;
           border-radius: 9999px;
+          outline: 2px solid #C0322B;
           animation: zp-rotate-border 4s linear infinite;
         }
         .zp-glow-bg { animation: zp-glow-bg 10s ease-in-out infinite; }
