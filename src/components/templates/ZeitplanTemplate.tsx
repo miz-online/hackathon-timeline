@@ -59,6 +59,19 @@ export function ZeitplanTemplate({
             box-shadow: 0 0 0 0 rgba(192,50,43,0);
           }
         }
+        .zp-root {
+          --title-size: clamp(16px, 1.8vw, 25px);
+          --desc-size: clamp(13px, 1.15vw, 16px);
+          --entry-v-pad: clamp(10px, 1.2vw, 18px);
+          --entry-gap: 4px;
+          --entry-min-h: calc(2 * var(--entry-v-pad) + var(--entry-gap) + var(--title-size) * 1.2 + var(--desc-size) * 1.35);
+          --entry-radius: calc(var(--entry-min-h) / 2);
+          --time-width: clamp(120px, 12vw, 170px);
+        }
+        .zp-entry {
+          min-height: var(--entry-min-h);
+          border-radius: var(--entry-radius);
+        }
         .zp-glow {
           border: 4px solid transparent !important;
           background: linear-gradient(white, white) padding-box,
@@ -72,7 +85,7 @@ export function ZeitplanTemplate({
               rgba(255,90,80,0.3) 28%,
               transparent 33%
             ) border-box;
-          border-radius: 9999px;
+          border-radius: var(--entry-radius) !important;
           outline: 2px solid #C0322B;
           animation: zp-rotate-border 4s linear infinite;
         }
