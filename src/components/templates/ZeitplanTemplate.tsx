@@ -201,7 +201,8 @@ export function ZeitplanTemplate({
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        minWidth: "clamp(100px, 11vw, 160px)",
+                        width: "var(--time-width)",
+                        flexShrink: 0,
                         fontVariantNumeric: "tabular-nums",
                         lineHeight: 1.1,
                       }}
