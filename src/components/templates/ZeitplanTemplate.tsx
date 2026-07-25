@@ -92,6 +92,7 @@ export function ZeitplanTemplate({
         .zp-glow-bg { animation: zp-glow-bg 10s ease-in-out infinite; }
       `}</style>
       <div
+        className="zp-root"
         style={{
           minHeight: "100vh",
           backgroundColor: "#ffffff",
