@@ -181,15 +181,13 @@ export function ZeitplanTemplate({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 16, transition: { duration: 0.6, ease: "easeInOut" } }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
-                    className={inGrace ? "zp-glow" : ""}
+                    className={`zp-entry ${inGrace ? "zp-glow" : ""}`}
                     style={{
                       display: "flex",
                       alignItems: "stretch",
                       border: inGrace ? "4px solid transparent" : `2px solid ${RED}`,
-                      borderRadius: 9999,
                       overflow: "hidden",
                       background: inGrace ? undefined : "#fff",
-                      minHeight: "clamp(56px, 6.2vw, 84px)",
                     }}
                   >
                     <div
