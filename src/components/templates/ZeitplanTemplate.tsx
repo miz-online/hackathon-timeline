@@ -65,7 +65,7 @@ export function ZeitplanTemplate({
           --entry-v-pad: clamp(10px, 1.2vw, 18px);
           --entry-gap: 4px;
           --entry-min-h: calc(2 * var(--entry-v-pad) + var(--entry-gap) + var(--title-size) * 1.2 + var(--desc-size) * 1.35);
-          --entry-radius: calc(var(--entry-min-h) / 2);
+          --entry-radius: calc((var(--entry-min-h) + 8px) / 2);
           --time-width: clamp(120px, 12vw, 170px);
         }
         .zp-entry {
