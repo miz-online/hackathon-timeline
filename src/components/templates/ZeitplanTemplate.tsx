@@ -239,7 +239,7 @@ export function ZeitplanTemplate({
                         padding: "clamp(10px, 1.2vw, 18px) clamp(16px, 2vw, 32px)",
                         display: "flex",
                         flexDirection: "column",
-                        justifyContent: "center",
+                        justifyContent: "flex-start",
                         gap: 4,
                       }}
                     >
