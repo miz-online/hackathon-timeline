@@ -34,8 +34,20 @@ export function ZeitplanTemplate({
 
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
   const RED = "#C0322B";
-  // shared animation timeline so every glowing entry animates in sync
-  const syncDelay = `-${((now - ANIM_EPOCH) / 1000) % 10}s`;
+
+  // shared animation timeline so every glowing entry animates in sync,
+  // computed once per entry when it first mounts
+  const delayCache = useRef(new Map<string, { border: string; bg: string }>());
+  const getDelays = (id: string) => {
+    const cache = delayCache.current;
+    let d = cache.get(id);
+    if (!d) {
+      const elapsed = (Date.now() - ANIM_EPOCH) / 1000;
+      d = { border: `-${elapsed % 4}s`, bg: `-${elapsed % 10}s` };
+      cache.set(id, d);
+    }
+    return d;
+  };
 
   return (
     <>
