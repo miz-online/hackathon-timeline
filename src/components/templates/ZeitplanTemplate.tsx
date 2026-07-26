@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
 import { useI18n } from "@/lib/i18n";
