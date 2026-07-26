@@ -17,43 +17,113 @@ function RoomDisplay() {
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [, setTick] = useState(0);
   const [status, setStatus] = useState<"connecting" | "live" | "reconnecting">("connecting");
+  const [failed, setFailed] = useState(false);
   const reconnectAttempts = useRef(0);
 
   useEffect(() => {
     let es: EventSource | null = null;
     let cancelled = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let watchdog: ReturnType<typeof setTimeout> | null = null;
 
-    const connect = () => {
-      if (cancelled) return;
-      setStatus(reconnectAttempts.current === 0 ? "connecting" : "reconnecting");
-      es = new EventSource(`/api/public/stream/${tenantKey}/${roomId}`);
-
-      es.addEventListener("snapshot", (e) => {
-        setSnapshot(JSON.parse((e as MessageEvent).data));
-        setStatus("live");
-        reconnectAttempts.current = 0;
-      });
-      es.addEventListener("update", (e) => {
-        setSnapshot(JSON.parse((e as MessageEvent).data));
-      });
-      es.onerror = () => {
-        if (es) {
-          es.close();
-          es = null;
+    const loadSnapshot = async () => {
+      try {
+        const res = await fetch(
+          `/api/public/snapshot/${tenantKey}/${roomId}?ts=${Date.now()}`,
+          { cache: "no-store" },
+        );
+        if (!res.ok) {
+          if (res.status === 404) setFailed(true);
+          return false;
         }
-        if (cancelled) return;
-        reconnectAttempts.current += 1;
-        const delay = Math.min(30_000, 1000 * 2 ** Math.min(reconnectAttempts.current, 5));
-        reconnectTimer = setTimeout(connect, delay);
-      };
+        const json = (await res.json()) as RoomSnapshot;
+        if (cancelled) return false;
+        setSnapshot(json);
+        setFailed(false);
+        return true;
+      } catch {
+        return false;
+      }
     };
 
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      reconnectAttempts.current += 1;
+      setStatus("reconnecting");
+      const delay = Math.min(15_000, 1000 * 2 ** Math.min(reconnectAttempts.current, 4));
+      reconnectTimer = setTimeout(connect, delay);
+    };
+
+    const dropStream = () => {
+      if (watchdog) {
+        clearTimeout(watchdog);
+        watchdog = null;
+      }
+      if (es) {
+        es.close();
+        es = null;
+      }
+    };
+
+    function connect() {
+      if (cancelled) return;
+      setStatus(reconnectAttempts.current === 0 ? "connecting" : "reconnecting");
+      void loadSnapshot();
+      try {
+        es = new EventSource(`/api/public/stream/${tenantKey}/${roomId}`);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      // If the stream never delivers a snapshot, treat it as dead and retry.
+      watchdog = setTimeout(() => {
+        dropStream();
+        scheduleReconnect();
+      }, 15_000);
+
+      const onData = (e: Event) => {
+        if (watchdog) {
+          clearTimeout(watchdog);
+          watchdog = null;
+        }
+        try {
+          setSnapshot(JSON.parse((e as MessageEvent).data));
+          setFailed(false);
+        } catch {
+          /* ignore malformed frame */
+        }
+        setStatus("live");
+        reconnectAttempts.current = 0;
+      };
+
+      es.addEventListener("snapshot", onData);
+      es.addEventListener("update", onData);
+      es.onerror = () => {
+        dropStream();
+        if (cancelled) return;
+        scheduleReconnect();
+      };
+    }
+
     connect();
+
+    // Fallback polling: always keeps the screen fresh even if SSE is blocked.
+    const poll = setInterval(() => {
+      void loadSnapshot();
+    }, 20_000);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadSnapshot();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
+      clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (es) es.close();
+      dropStream();
     };
   }, [tenantKey, roomId]);
 
@@ -61,6 +131,7 @@ function RoomDisplay() {
     const id = setInterval(() => setTick((x) => x + 1), 1000);
     return () => clearInterval(id);
   }, []);
+
 
   if (!snapshot) {
     return (
@@ -74,7 +145,12 @@ function RoomDisplay() {
           color: "#6b7280",
         }}
       >
-        {status === "reconnecting" ? t("display.reconnecting") : t("display.connecting")}
+        {failed
+          ? "Room not found for this tenant key"
+          : status === "reconnecting"
+            ? t("display.reconnecting")
+            : t("display.connecting")}
+
       </div>
     );
   }
