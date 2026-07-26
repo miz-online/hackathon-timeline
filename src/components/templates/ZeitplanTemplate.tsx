@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
 import { useI18n } from "@/lib/i18n";
 
 type Entry = { id: string; time: string; title: string; description: string; tags: string[] };
+
+const ANIM_EPOCH = Date.now();
 
 function pad(n: number) {
   return n.toString().padStart(2, "0");
@@ -32,6 +34,20 @@ export function ZeitplanTemplate({
 
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
   const RED = "#C0322B";
+
+  // shared animation timeline so every glowing entry animates in sync,
+  // computed once per entry when it first mounts
+  const delayCache = useRef(new Map<string, { border: string; bg: string }>());
+  const getDelays = (id: string) => {
+    const cache = delayCache.current;
+    let d = cache.get(id);
+    if (!d) {
+      const elapsed = (Date.now() - ANIM_EPOCH) / 1000;
+      d = { border: `-${elapsed % 4}s`, bg: `-${elapsed % 10}s` };
+      cache.set(id, d);
+    }
+    return d;
+  };
 
   return (
     <>
@@ -62,15 +78,22 @@ export function ZeitplanTemplate({
         .zp-root {
           --title-size: clamp(16px, 1.8vw, 25px);
           --desc-size: clamp(13px, 1.15vw, 16px);
+          --time-size: clamp(18px, 2.1vw, 28px);
           --entry-v-pad: clamp(10px, 1.2vw, 18px);
           --entry-gap: 4px;
+          --list-gap: clamp(12px, 1.4vw, 20px);
           --entry-min-h: calc(2 * var(--entry-v-pad) + var(--entry-gap) + var(--title-size) * 1.2 + var(--desc-size) * 1.35);
           --entry-radius: calc((var(--entry-min-h) + 8px) / 2);
           --time-width: clamp(120px, 12vw, 170px);
+          --time-pad-top: calc((var(--entry-min-h) - var(--time-size) * 1.1) / 2);
         }
         .zp-entry {
           min-height: var(--entry-min-h);
           border-radius: var(--entry-radius);
+        }
+        .zp-time {
+          padding-top: var(--time-pad-top);
+          padding-bottom: var(--time-pad-top);
         }
         .zp-glow {
           border: 4px solid transparent !important;
@@ -94,7 +117,9 @@ export function ZeitplanTemplate({
       <div
         className="zp-root"
         style={{
-          minHeight: "100vh",
+          height: "100vh",
+          overflow: "hidden",
+          position: "relative",
           backgroundColor: "#ffffff",
           fontFamily:
             'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
@@ -150,8 +175,10 @@ export function ZeitplanTemplate({
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "clamp(12px, 1.4vw, 20px)",
+            gap: "var(--list-gap)",
             flex: 1,
+            minHeight: 0,
+            overflow: "hidden",
           }}
         >
           {entries.length === 0 ? (
@@ -169,9 +196,10 @@ export function ZeitplanTemplate({
             <AnimatePresence initial={false} mode="popLayout">
               {entries.map((e) => {
                 const entryMs = new Date(e.time).getTime();
-                const diffMin = Math.round((entryMs - now) / 60000);
+                const diffMin = Math.ceil((entryMs - now) / 60000);
                 const inGrace = entryMs <= now;
                 const showRelative = !inGrace && diffMin < 15;
+                const delays = getDelays(e.id);
 
                 return (
                   <motion.div
@@ -185,37 +213,40 @@ export function ZeitplanTemplate({
                     style={{
                       display: "flex",
                       alignItems: "stretch",
+                      flexShrink: 0,
                       border: inGrace ? "4px solid transparent" : `2px solid ${RED}`,
                       overflow: "hidden",
                       background: inGrace ? undefined : "#fff",
+                      animationDelay: inGrace ? delays.border : undefined,
                     }}
                   >
                     <div
-                      className={inGrace ? "zp-glow-bg" : ""}
+                      className={`zp-time ${inGrace ? "zp-glow-bg" : ""}`}
                       style={{
                         backgroundColor: RED,
                         color: "#fff",
                         fontWeight: 700,
-                        padding: "0 clamp(16px, 2vw, 32px)",
+                        paddingLeft: "clamp(16px, 2vw, 32px)",
+                        paddingRight: "clamp(16px, 2vw, 32px)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        justifyContent: "center",
+                        justifyContent: "flex-start",
                         width: "var(--time-width)",
                         flexShrink: 0,
                         fontVariantNumeric: "tabular-nums",
                         lineHeight: 1.1,
+                        animationDelay: inGrace ? delays.bg : undefined,
                       }}
                     >
                       {inGrace ? (
-                        <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
-                          {t("display.now")}
-                        </div>
+                        <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
                       ) : showRelative ? (
                         <>
                           <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700 }}>
-                            {t("display.inMinutes", { minutes: Math.max(0, diffMin) })}
+                            {t("display.inMinutes", { minutes: Math.max(1, diffMin) })}
                           </div>
+
                           <div
                             style={{
                               fontSize: "clamp(12px, 1.2vw, 16px)",
@@ -239,7 +270,7 @@ export function ZeitplanTemplate({
                         padding: "clamp(10px, 1.2vw, 18px) clamp(16px, 2vw, 32px)",
                         display: "flex",
                         flexDirection: "column",
-                        justifyContent: "flex-start",
+                        justifyContent: "center",
                         gap: 4,
                       }}
                     >
@@ -274,7 +305,28 @@ export function ZeitplanTemplate({
           )}
         </main>
 
-        <footer style={{ display: "flex", justifyContent: "flex-start" }}>
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "var(--list-gap)",
+            background: "linear-gradient(to bottom, rgba(255,255,255,0), #ffffff)",
+            pointerEvents: "none",
+          }}
+        />
+        <footer
+          style={{
+            position: "absolute",
+            left: "clamp(12px, 1.8vw, 28px)",
+            bottom: "clamp(12px, 1.8vw, 28px)",
+            display: "flex",
+            justifyContent: "flex-start",
+            pointerEvents: "none",
+          }}
+        >
           <img
             src={logoAsset.url}
             alt="PIT Hackathon"
