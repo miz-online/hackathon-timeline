@@ -163,8 +163,10 @@ export function ZeitplanTemplate({
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "clamp(12px, 1.4vw, 20px)",
+            gap: "var(--list-gap)",
             flex: 1,
+            minHeight: 0,
+            overflow: "hidden",
           }}
         >
           {entries.length === 0 ? (
