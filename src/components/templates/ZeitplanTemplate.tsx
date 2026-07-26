@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n";
 
 type Entry = { id: string; time: string; title: string; description: string; tags: string[] };
 
+const ANIM_EPOCH = Date.now();
+
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
@@ -32,6 +34,8 @@ export function ZeitplanTemplate({
 
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
   const RED = "#C0322B";
+  // shared animation timeline so every glowing entry animates in sync
+  const syncDelay = `-${((now - ANIM_EPOCH) / 1000) % 10}s`;
 
   return (
     <>
