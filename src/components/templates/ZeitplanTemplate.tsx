@@ -293,7 +293,28 @@ export function ZeitplanTemplate({
           )}
         </main>
 
-        <footer style={{ display: "flex", justifyContent: "flex-start" }}>
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "var(--list-gap)",
+            background: "linear-gradient(to bottom, rgba(255,255,255,0), #ffffff)",
+            pointerEvents: "none",
+          }}
+        />
+        <footer
+          style={{
+            position: "absolute",
+            left: "clamp(12px, 1.8vw, 28px)",
+            bottom: "clamp(12px, 1.8vw, 28px)",
+            display: "flex",
+            justifyContent: "flex-start",
+            pointerEvents: "none",
+          }}
+        >
           <img
             src={logoAsset.url}
             alt="PIT Hackathon"
