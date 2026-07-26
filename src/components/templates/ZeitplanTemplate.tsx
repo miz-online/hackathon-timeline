@@ -66,15 +66,22 @@ export function ZeitplanTemplate({
         .zp-root {
           --title-size: clamp(16px, 1.8vw, 25px);
           --desc-size: clamp(13px, 1.15vw, 16px);
+          --time-size: clamp(18px, 2.1vw, 28px);
           --entry-v-pad: clamp(10px, 1.2vw, 18px);
           --entry-gap: 4px;
+          --list-gap: clamp(12px, 1.4vw, 20px);
           --entry-min-h: calc(2 * var(--entry-v-pad) + var(--entry-gap) + var(--title-size) * 1.2 + var(--desc-size) * 1.35);
           --entry-radius: calc((var(--entry-min-h) + 8px) / 2);
           --time-width: clamp(120px, 12vw, 170px);
+          --time-pad-top: calc((var(--entry-min-h) - var(--time-size) * 1.1) / 2);
         }
         .zp-entry {
           min-height: var(--entry-min-h);
           border-radius: var(--entry-radius);
+        }
+        .zp-time {
+          padding-top: var(--time-pad-top);
+          padding-bottom: var(--time-pad-top);
         }
         .zp-glow {
           border: 4px solid transparent !important;
