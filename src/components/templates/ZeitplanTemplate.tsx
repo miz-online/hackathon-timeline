@@ -184,9 +184,10 @@ export function ZeitplanTemplate({
             <AnimatePresence initial={false} mode="popLayout">
               {entries.map((e) => {
                 const entryMs = new Date(e.time).getTime();
-                const diffMin = Math.round((entryMs - now) / 60000);
+                const diffMin = Math.ceil((entryMs - now) / 60000);
                 const inGrace = entryMs <= now;
                 const showRelative = !inGrace && diffMin < 15;
+                const delays = getDelays(e.id);
 
                 return (
                   <motion.div
@@ -200,37 +201,40 @@ export function ZeitplanTemplate({
                     style={{
                       display: "flex",
                       alignItems: "stretch",
+                      flexShrink: 0,
                       border: inGrace ? "4px solid transparent" : `2px solid ${RED}`,
                       overflow: "hidden",
                       background: inGrace ? undefined : "#fff",
+                      animationDelay: inGrace ? delays.border : undefined,
                     }}
                   >
                     <div
-                      className={inGrace ? "zp-glow-bg" : ""}
+                      className={`zp-time ${inGrace ? "zp-glow-bg" : ""}`}
                       style={{
                         backgroundColor: RED,
                         color: "#fff",
                         fontWeight: 700,
-                        padding: "0 clamp(16px, 2vw, 32px)",
+                        paddingLeft: "clamp(16px, 2vw, 32px)",
+                        paddingRight: "clamp(16px, 2vw, 32px)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        justifyContent: "center",
+                        justifyContent: "flex-start",
                         width: "var(--time-width)",
                         flexShrink: 0,
                         fontVariantNumeric: "tabular-nums",
                         lineHeight: 1.1,
+                        animationDelay: inGrace ? delays.bg : undefined,
                       }}
                     >
                       {inGrace ? (
-                        <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
-                          {t("display.now")}
-                        </div>
+                        <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
                       ) : showRelative ? (
                         <>
                           <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700 }}>
-                            {t("display.inMinutes", { minutes: Math.max(0, diffMin) })}
+                            {t("display.inMinutes", { minutes: Math.max(1, diffMin) })}
                           </div>
+
                           <div
                             style={{
                               fontSize: "clamp(12px, 1.2vw, 16px)",
