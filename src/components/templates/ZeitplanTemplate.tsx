@@ -105,7 +105,9 @@ export function ZeitplanTemplate({
       <div
         className="zp-root"
         style={{
-          minHeight: "100vh",
+          height: "100vh",
+          overflow: "hidden",
+          position: "relative",
           backgroundColor: "#ffffff",
           fontFamily:
             'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
