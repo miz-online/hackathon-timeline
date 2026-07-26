@@ -145,7 +145,12 @@ function RoomDisplay() {
           color: "#6b7280",
         }}
       >
-        {status === "reconnecting" ? t("display.reconnecting") : t("display.connecting")}
+        {failed
+          ? "Room not found for this tenant key"
+          : status === "reconnecting"
+            ? t("display.reconnecting")
+            : t("display.connecting")}
+
       </div>
     );
   }
