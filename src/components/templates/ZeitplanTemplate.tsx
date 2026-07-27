@@ -100,13 +100,13 @@ export function ZeitplanTemplate({
           background: linear-gradient(white, white) padding-box,
             conic-gradient(
               from var(--gradient-angle),
-              transparent,
-              rgba(255,90,80,0.3) 5%,
-              rgba(255,70,60,0.9) 12%,
-              #C0322B 16%,
-              rgba(255,70,60,0.9) 20%,
-              rgba(255,90,80,0.3) 28%,
-              transparent 33%
+              #C0322B,
+              rgba(255,70,60,0.9) 10%,
+              rgba(255,90,80,0.3) 20%,
+              white 25%,
+              rgba(255,90,80,0.3) 27%,
+              rgba(255,70,60,0.9) 29%,
+              #C0322B 30%
             ) border-box;
           border-radius: var(--entry-radius) !important;
           outline: 2px solid #C0322B;
