@@ -164,6 +164,7 @@ function RoomDisplay() {
     <ZeitplanTemplate
       tenantName={snapshot.tenant.name}
       roomName={snapshot.room.name}
+      logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
       entries={visible}
     />
   );

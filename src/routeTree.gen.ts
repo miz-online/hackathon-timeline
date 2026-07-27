@@ -14,6 +14,7 @@ import { Route as TenantIndexRouteImport } from './routes/tenant/index'
 import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenantKey/index'
 import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
 import { Route as TenantTenantKeyRoomRoomIdRouteImport } from './routes/tenant/$tenantKey/room/$roomId'
+import { Route as ApiPublicLogoTenantKeyRouteImport } from './routes/api/public/logo.$tenantKey'
 import { Route as ApiPublicStreamTenantKeyRoomIdRouteImport } from './routes/api/public/stream.$tenantKey.$roomId'
 import { Route as ApiPublicSnapshotTenantKeyRoomIdRouteImport } from './routes/api/public/snapshot.$tenantKey.$roomId'
 
@@ -43,6 +44,11 @@ const TenantTenantKeyRoomRoomIdRoute =
     path: '/tenant/$tenantKey/room/$roomId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicLogoTenantKeyRoute = ApiPublicLogoTenantKeyRouteImport.update({
+  id: '/api/public/logo/$tenantKey',
+  path: '/api/public/logo/$tenantKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicStreamTenantKeyRoomIdRoute =
   ApiPublicStreamTenantKeyRoomIdRouteImport.update({
     id: '/api/public/stream/$tenantKey/$roomId',
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/tenant/': typeof TenantIndexRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
+  '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
   '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
   '/api/public/snapshot/$tenantKey/$roomId': typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/tenant': typeof TenantIndexRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tenant/$tenantKey': typeof TenantTenantKeyIndexRoute
+  '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
   '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
   '/api/public/snapshot/$tenantKey/$roomId': typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/tenant/': typeof TenantIndexRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
+  '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
   '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
   '/api/public/snapshot/$tenantKey/$roomId': typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/tenant/'
     | '/tenant/$tenantKey/rooms'
     | '/tenant/$tenantKey/'
+    | '/api/public/logo/$tenantKey'
     | '/tenant/$tenantKey/room/$roomId'
     | '/api/public/snapshot/$tenantKey/$roomId'
     | '/api/public/stream/$tenantKey/$roomId'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/tenant'
     | '/tenant/$tenantKey/rooms'
     | '/tenant/$tenantKey'
+    | '/api/public/logo/$tenantKey'
     | '/tenant/$tenantKey/room/$roomId'
     | '/api/public/snapshot/$tenantKey/$roomId'
     | '/api/public/stream/$tenantKey/$roomId'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/tenant/'
     | '/tenant/$tenantKey/rooms'
     | '/tenant/$tenantKey/'
+    | '/api/public/logo/$tenantKey'
     | '/tenant/$tenantKey/room/$roomId'
     | '/api/public/snapshot/$tenantKey/$roomId'
     | '/api/public/stream/$tenantKey/$roomId'
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   TenantIndexRoute: typeof TenantIndexRoute
   TenantTenantKeyRoomsRoute: typeof TenantTenantKeyRoomsRoute
   TenantTenantKeyIndexRoute: typeof TenantTenantKeyIndexRoute
+  ApiPublicLogoTenantKeyRoute: typeof ApiPublicLogoTenantKeyRoute
   TenantTenantKeyRoomRoomIdRoute: typeof TenantTenantKeyRoomRoomIdRoute
   ApiPublicSnapshotTenantKeyRoomIdRoute: typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   ApiPublicStreamTenantKeyRoomIdRoute: typeof ApiPublicStreamTenantKeyRoomIdRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantKeyRoomRoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/logo/$tenantKey': {
+      id: '/api/public/logo/$tenantKey'
+      path: '/api/public/logo/$tenantKey'
+      fullPath: '/api/public/logo/$tenantKey'
+      preLoaderRoute: typeof ApiPublicLogoTenantKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/stream/$tenantKey/$roomId': {
       id: '/api/public/stream/$tenantKey/$roomId'
       path: '/api/public/stream/$tenantKey/$roomId'
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   TenantIndexRoute: TenantIndexRoute,
   TenantTenantKeyRoomsRoute: TenantTenantKeyRoomsRoute,
   TenantTenantKeyIndexRoute: TenantTenantKeyIndexRoute,
+  ApiPublicLogoTenantKeyRoute: ApiPublicLogoTenantKeyRoute,
   TenantTenantKeyRoomRoomIdRoute: TenantTenantKeyRoomRoomIdRoute,
   ApiPublicSnapshotTenantKeyRoomIdRoute: ApiPublicSnapshotTenantKeyRoomIdRoute,
   ApiPublicStreamTenantKeyRoomIdRoute: ApiPublicStreamTenantKeyRoomIdRoute,

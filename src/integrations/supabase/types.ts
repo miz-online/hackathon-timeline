@@ -89,6 +89,7 @@ export type Database = {
           created_at: string
           id: string
           key: string
+          logo_url: string | null
           name: string
           past_grace_minutes: number
           template: string
@@ -97,6 +98,7 @@ export type Database = {
           created_at?: string
           id?: string
           key: string
+          logo_url?: string | null
           name?: string
           past_grace_minutes?: number
           template?: string
@@ -105,6 +107,7 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+          logo_url?: string | null
           name?: string
           past_grace_minutes?: number
           template?: string

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   listEntries,
   upsertEntry,
@@ -11,8 +11,11 @@ import {
   deleteRoom,
   getTenant,
   updateTenantSettings,
+  uploadTenantLogo,
+  removeTenantLogo,
   regenerateKey,
 } from "@/lib/board.functions";
+import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +138,7 @@ function AdminPage() {
             <SettingsPanel
               tenantKey={tenantKey}
               name={tenant.name}
+              logoUrl={tenant.logo_url}
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
               onChange={invalidate}
@@ -552,12 +556,14 @@ function RoomForm({
 function SettingsPanel({
   tenantKey,
   name,
+  logoUrl,
   graceMinutes,
   template,
   onChange,
 }: {
   tenantKey: string;
   name: string;
+  logoUrl: string | null;
   graceMinutes: number;
   template: string;
   onChange: () => void;
@@ -570,6 +576,11 @@ function SettingsPanel({
   const [saving, setSaving] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
   const regenFn = useServerFn(regenerateKey);
+  const uploadLogoFn = useServerFn(uploadTenantLogo);
+  const removeLogoFn = useServerFn(removeTenantLogo);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [logoBust, setLogoBust] = useState(0);
+  const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
   return (
     <Card className="p-4 space-y-5 max-w-xl">
@@ -633,6 +644,82 @@ function SettingsPanel({
         >
           {saving ? t("entries.saving") : t("settings.save")}
         </Button>
+      </div>
+
+      <div className="border-t pt-4 space-y-2">
+        <Label>{t("settings.logo")}</Label>
+        <div className="flex items-center gap-4">
+          <div className="rounded-md border bg-muted/40 p-2">
+            <img
+              src={logoSrc ?? defaultLogo.url}
+              alt="Logo"
+              className="h-12 w-auto object-contain"
+            />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {logoSrc ? t("settings.logoHint") : t("settings.logoDefault")}
+          </div>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (ev) => {
+            const file = ev.target.files?.[0];
+            ev.target.value = "";
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+              toast.error(t("settings.logoTooLarge"));
+              return;
+            }
+            try {
+              const buf = new Uint8Array(await file.arrayBuffer());
+              let bin = "";
+              for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+              await uploadLogoFn({
+                data: {
+                  key: tenantKey,
+                  filename: file.name,
+                  contentType: file.type || "image/png",
+                  dataBase64: btoa(bin),
+                },
+              });
+              setLogoBust(Date.now());
+              toast.success(t("settings.logoSaved"));
+              onChange();
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
+          }}
+        />
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            {t("settings.logoUpload")}
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a href={logoSrc ?? defaultLogo.url} download>
+              {t("settings.logoDownload")}
+            </a>
+          </Button>
+          {logoSrc ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await removeLogoFn({ data: { key: tenantKey } });
+                  toast.success(t("settings.logoRemoved"));
+                  onChange();
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              {t("settings.logoRemove")}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="border-t pt-4 space-y-2">
