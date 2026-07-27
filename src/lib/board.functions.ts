@@ -19,11 +19,11 @@ function generateKey(): string {
 
 async function resolveTenant(
   key: string,
-): Promise<{ id: string; name: string; past_grace_minutes: number; template: string }> {
+): Promise<{ id: string; name: string; past_grace_minutes: number; template: string; logo_url: string | null }> {
   const supabase = await getAdmin();
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, past_grace_minutes, template")
+    .select("id, name, past_grace_minutes, template, logo_url")
     .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -249,7 +249,7 @@ export const deleteRoom = createServerFn({ method: "POST" })
 // ---------- snapshot for displays ----------
 
 export type RoomSnapshot = {
-  tenant: { name: string; past_grace_minutes: number; template: string };
+  tenant: { name: string; past_grace_minutes: number; template: string; logo_url: string | null };
   room: { id: string; name: string };
   entries: { id: string; time: string; title: string; description: string; tags: string[] }[];
 };
@@ -279,6 +279,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         name: tenant.name,
         past_grace_minutes: tenant.past_grace_minutes,
         template: tenant.template,
+        logo_url: tenant.logo_url,
       },
       room,
       entries: filterVisible(entries ?? [], room.name, tenant.past_grace_minutes),

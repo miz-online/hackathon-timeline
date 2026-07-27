@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const { data: tenant } = await supabaseAdmin
           .from("tenants")
-          .select("id, name, past_grace_minutes, template")
+          .select("id, name, past_grace_minutes, template, logo_url")
           .eq("key", tenantKey)
           .maybeSingle();
         if (!tenant) return new Response("Not found", { status: 404 });
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               name: tenant.name,
               past_grace_minutes: tenant.past_grace_minutes,
               template: tenant.template,
+              logo_url: tenant.logo_url,
             },
             room,
             entries: visible,
