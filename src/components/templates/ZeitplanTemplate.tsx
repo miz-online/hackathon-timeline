@@ -314,11 +314,14 @@ export function ZeitplanTemplate({
             left: 0,
             right: 0,
             bottom: 0,
-            height: "var(--list-gap)",
-            background: "linear-gradient(to bottom, rgba(255,255,255,0), #ffffff)",
+            height: "calc(var(--list-gap) + clamp(12px, 1.8vw, 28px))",
+            background:
+              "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 55%, #ffffff 100%)",
             pointerEvents: "none",
+            zIndex: 5,
           }}
         />
+
         <footer
           style={{
             position: "absolute",
@@ -327,7 +330,9 @@ export function ZeitplanTemplate({
             display: "flex",
             justifyContent: "flex-start",
             pointerEvents: "none",
+            zIndex: 6,
           }}
+
         >
           <img
             src={logoAsset.url}
