@@ -179,6 +179,8 @@ export function ZeitplanTemplate({
             flex: 1,
             minHeight: 0,
             overflow: "hidden",
+            padding: "4px",
+            margin: "-4px",
           }}
         >
           {entries.length === 0 ? (
