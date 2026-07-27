@@ -330,7 +330,9 @@ export function ZeitplanTemplate({
             display: "flex",
             justifyContent: "flex-start",
             pointerEvents: "none",
+            zIndex: 6,
           }}
+
         >
           <img
             src={logoAsset.url}
