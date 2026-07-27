@@ -325,14 +325,13 @@ export function ZeitplanTemplate({
         <footer
           style={{
             position: "absolute",
-            left: "clamp(12px, 1.8vw, 28px)",
+            right: "clamp(12px, 1.8vw, 28px)",
             bottom: "clamp(12px, 1.8vw, 28px)",
             display: "flex",
-            justifyContent: "flex-start",
+            justifyContent: "flex-end",
             pointerEvents: "none",
             zIndex: 6,
           }}
-
         >
           <img
             src={logoAsset.url}
