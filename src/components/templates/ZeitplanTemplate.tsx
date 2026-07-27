@@ -20,10 +20,12 @@ export function ZeitplanTemplate({
   tenantName,
   roomName,
   entries,
+  logoUrl,
 }: {
   tenantName: string;
   roomName: string;
   entries: Entry[];
+  logoUrl?: string | null;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -334,7 +336,7 @@ export function ZeitplanTemplate({
           }}
         >
           <img
-            src={logoAsset.url}
+            src={logoUrl || logoAsset.url}
             alt="PIT Hackathon"
             style={{ height: "clamp(42px, 5.4vw, 78px)", width: "auto" }}
           />
