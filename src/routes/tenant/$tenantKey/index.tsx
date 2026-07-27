@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   listEntries,
   upsertEntry,
@@ -15,6 +15,7 @@ import {
   removeTenantLogo,
   regenerateKey,
 } from "@/lib/board.functions";
+import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
