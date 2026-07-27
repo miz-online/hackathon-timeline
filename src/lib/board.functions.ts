@@ -285,3 +285,47 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       entries: filterVisible(entries ?? [], room.name, tenant.past_grace_minutes),
     };
   });
+
+// ---------- tenant logo ----------
+
+export const uploadTenantLogo = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; filename: string; contentType: string; dataBase64: string }) =>
+    z
+      .object({
+        key: z.string().min(1),
+        filename: z.string().min(1).max(200),
+        contentType: z.string().regex(/^image\//),
+        dataBase64: z.string().min(1).max(4_000_000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const binary = Uint8Array.from(atob(data.dataBase64), (c) => c.charCodeAt(0));
+    const ext = (data.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
+    const path = `${tenant.id}/logo-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("tenant-logos")
+      .upload(path, binary, { contentType: data.contentType, upsert: true });
+    if (upErr) throw new Error(upErr.message);
+    const { error } = await supabase.from("tenants").update({ logo_url: path }).eq("id", tenant.id);
+    if (error) throw new Error(error.message);
+    if (tenant.logo_url && tenant.logo_url !== path) {
+      await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
+    }
+    return { ok: true };
+  });
+
+export const removeTenantLogo = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    if (tenant.logo_url) {
+      await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
+    }
+    const { error } = await supabase.from("tenants").update({ logo_url: null }).eq("id", tenant.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
