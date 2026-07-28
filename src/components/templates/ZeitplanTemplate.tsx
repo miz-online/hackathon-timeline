@@ -56,6 +56,7 @@ export function ZeitplanTemplate({
   return (
     <>
       <style>{`
+        html, body { overflow: hidden !important; }
         @property --gradient-angle {
           syntax: '<angle>';
           initial-value: 0deg;
@@ -113,7 +114,6 @@ export function ZeitplanTemplate({
               #C0322B 30%
             ) border-box;
           border-radius: var(--entry-radius) !important;
-          outline: 2px solid #C0322B;
           animation: zp-rotate-border 4s linear infinite;
         }
         .zp-glow-bg { animation: zp-glow-bg 10s ease-in-out infinite; }
@@ -128,7 +128,7 @@ export function ZeitplanTemplate({
           fontFamily:
             'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
           color: "#1f2937",
-          padding: "clamp(12px, 1.8vw, 28px)",
+          padding: "clamp(12px, 1.8vw, 28px) clamp(12px, 1.8vw, 28px) 0",
           display: "flex",
           flexDirection: "column",
           gap: "clamp(14px, 1.8vw, 26px)",
@@ -318,7 +318,7 @@ export function ZeitplanTemplate({
             left: 0,
             right: 0,
             bottom: 0,
-            height: "calc(var(--list-gap) + clamp(12px, 1.8vw, 28px))",
+            height: "var(--list-gap)",
             background:
               "linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 55%, #ffffff 100%)",
             pointerEvents: "none",
