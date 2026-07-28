@@ -21,11 +21,13 @@ export function ZeitplanTemplate({
   roomName,
   entries,
   logoUrl,
+  logoHeight,
 }: {
   tenantName: string;
   roomName: string;
   entries: Entry[];
   logoUrl?: string | null;
+  logoHeight?: number | null;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -338,7 +340,10 @@ export function ZeitplanTemplate({
           <img
             src={logoUrl || logoAsset.url}
             alt="PIT Hackathon"
-            style={{ height: "clamp(42px, 5.4vw, 78px)", width: "auto" }}
+            style={{
+              height: logoHeight ? `${logoHeight}px` : "clamp(42px, 5.4vw, 78px)",
+              width: "auto",
+            }}
           />
         </footer>
       </div>

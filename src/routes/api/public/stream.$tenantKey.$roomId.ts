@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
 
         const { data: tenant, error: tErr } = await supabaseAdmin
           .from("tenants")
-          .select("id, name, past_grace_minutes, template, logo_url")
+          .select("id, name, past_grace_minutes, template, logo_url, logo_height")
           .eq("key", tenantKey)
           .maybeSingle();
         if (tErr || !tenant) return new Response("Not found", { status: 404 });
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
         const buildSnapshot = async () => {
           const { data: tNow } = await supabaseAdmin
             .from("tenants")
-            .select("name, past_grace_minutes, template, logo_url")
+            .select("name, past_grace_minutes, template, logo_url, logo_height")
             .eq("id", tenantId)
             .maybeSingle();
           const { data: rNow } = await supabaseAdmin
@@ -53,6 +53,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               past_grace_minutes: tNow.past_grace_minutes,
               template: tNow.template,
               logo_url: tNow.logo_url,
+              logo_height: tNow.logo_height,
             },
             room: rNow,
             entries: visible,

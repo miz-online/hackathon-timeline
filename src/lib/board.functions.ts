@@ -19,11 +19,11 @@ function generateKey(): string {
 
 async function resolveTenant(
   key: string,
-): Promise<{ id: string; name: string; past_grace_minutes: number; template: string; logo_url: string | null }> {
+): Promise<{ id: string; name: string; past_grace_minutes: number; template: string; logo_url: string | null; logo_height: number }> {
   const supabase = await getAdmin();
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, past_grace_minutes, template, logo_url")
+    .select("id, name, past_grace_minutes, template, logo_url, logo_height")
     .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -70,6 +70,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
     name: string;
     past_grace_minutes: number;
     template: string;
+    logo_height: number;
   }) =>
     z
       .object({
@@ -77,6 +78,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         name: z.string().min(1).max(120),
         past_grace_minutes: z.number().int().min(0).max(24 * 60),
         template: z.string().min(1).max(40),
+        logo_height: z.number().int().min(16).max(400),
       })
       .parse(d),
   )
@@ -89,6 +91,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         name: data.name,
         past_grace_minutes: data.past_grace_minutes,
         template: data.template,
+        logo_height: data.logo_height,
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
@@ -249,7 +252,13 @@ export const deleteRoom = createServerFn({ method: "POST" })
 // ---------- snapshot for displays ----------
 
 export type RoomSnapshot = {
-  tenant: { name: string; past_grace_minutes: number; template: string; logo_url: string | null };
+  tenant: {
+    name: string;
+    past_grace_minutes: number;
+    template: string;
+    logo_url: string | null;
+    logo_height: number;
+  };
   room: { id: string; name: string };
   entries: { id: string; time: string; title: string; description: string; tags: string[] }[];
 };
@@ -280,6 +289,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         past_grace_minutes: tenant.past_grace_minutes,
         template: tenant.template,
         logo_url: tenant.logo_url,
+        logo_height: tenant.logo_height,
       },
       room,
       entries: filterVisible(entries ?? [], room.name, tenant.past_grace_minutes),

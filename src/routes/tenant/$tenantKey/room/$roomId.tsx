@@ -165,6 +165,7 @@ function RoomDisplay() {
       tenantName={snapshot.tenant.name}
       roomName={snapshot.room.name}
       logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
+      logoHeight={snapshot.tenant.logo_height}
       entries={visible}
     />
   );
