@@ -56,6 +56,7 @@ export function ZeitplanTemplate({
   return (
     <>
       <style>{`
+        html, body { overflow: hidden !important; }
         @property --gradient-angle {
           syntax: '<angle>';
           initial-value: 0deg;
