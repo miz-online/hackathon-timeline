@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS logo_height integer NOT NULL DEFAULT 78;

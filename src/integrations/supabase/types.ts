@@ -89,6 +89,7 @@ export type Database = {
           created_at: string
           id: string
           key: string
+          logo_height: number
           logo_url: string | null
           name: string
           past_grace_minutes: number
@@ -98,6 +99,7 @@ export type Database = {
           created_at?: string
           id?: string
           key: string
+          logo_height?: number
           logo_url?: string | null
           name?: string
           past_grace_minutes?: number
@@ -107,6 +109,7 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+          logo_height?: number
           logo_url?: string | null
           name?: string
           past_grace_minutes?: number
