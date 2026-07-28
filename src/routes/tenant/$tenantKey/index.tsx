@@ -139,6 +139,7 @@ function AdminPage() {
               tenantKey={tenantKey}
               name={tenant.name}
               logoUrl={tenant.logo_url}
+              logoHeight={tenant.logo_height}
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
               onChange={invalidate}
@@ -557,6 +558,7 @@ function SettingsPanel({
   tenantKey,
   name,
   logoUrl,
+  logoHeight,
   graceMinutes,
   template,
   onChange,
@@ -564,6 +566,7 @@ function SettingsPanel({
   tenantKey: string;
   name: string;
   logoUrl: string | null;
+  logoHeight: number;
   graceMinutes: number;
   template: string;
   onChange: () => void;
@@ -573,6 +576,7 @@ function SettingsPanel({
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   const [tpl, setTpl] = useState(template);
+  const [lh, setLh] = useState(logoHeight);
   const [saving, setSaving] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
   const regenFn = useServerFn(regenerateKey);
@@ -631,6 +635,7 @@ function SettingsPanel({
                   name: n,
                   past_grace_minutes: g,
                   template: tpl,
+                  logo_height: lh,
                 },
               });
               toast.success(t("settings.saved"));
@@ -648,6 +653,16 @@ function SettingsPanel({
 
       <div className="border-t pt-4 space-y-2">
         <Label>{t("settings.logo")}</Label>
+        <div className="space-y-1 pb-2">
+          <Label className="text-xs text-muted-foreground">{t("settings.logoHeight")}</Label>
+          <Input
+            type="number"
+            min={16}
+            max={400}
+            value={lh}
+            onChange={(e) => setLh(Number(e.target.value))}
+          />
+        </div>
         <div className="flex items-center gap-4">
           <div className="rounded-md border bg-muted/40 p-2">
             <img
