@@ -137,6 +137,10 @@
     border-color: var(--color-border);
   }
 
+  html {
+    overflow-y: scroll;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
