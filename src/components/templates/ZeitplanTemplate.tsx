@@ -2,8 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
 import { useI18n } from "@/lib/i18n";
+import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
-type Entry = { id: string; time: string; title: string; description: string; tags: string[] };
+type Entry = {
+  id: string;
+  time: string;
+  title: string;
+  description: string;
+  tags: string[];
+  color?: string | null;
+};
 
 const ANIM_EPOCH = Date.now();
 
@@ -22,12 +30,14 @@ export function ZeitplanTemplate({
   entries,
   logoUrl,
   logoHeight,
+  accentColor,
 }: {
   tenantName: string;
   roomName: string;
   entries: Entry[];
   logoUrl?: string | null;
   logoHeight?: number | null;
+  accentColor?: string | null;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -37,7 +47,7 @@ export function ZeitplanTemplate({
   }, []);
 
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
-  const RED = "#C0322B";
+  const defaultPalette = derivePalette(accentColor || DEFAULT_ACCENT);
 
   // shared animation timeline so every glowing entry animates in sync,
   // computed once per entry when it first mounts
@@ -68,16 +78,16 @@ export function ZeitplanTemplate({
         }
         @keyframes zp-glow-bg {
           0% {
-            background-color: #C0322B;
-            box-shadow: 0 0 0 0 rgba(192,50,43,0);
+            background-color: var(--zp-base);
+            box-shadow: 0 0 0 0 var(--zp-glow-none);
           }
           50% {
-            background-color: #d94840;
-            box-shadow: 0 0 18px 6px rgba(255,90,80,0.8);
+            background-color: var(--zp-peak);
+            box-shadow: 0 0 var(--zp-glow-blur) var(--zp-glow-spread) var(--zp-glow-strong);
           }
           100% {
-            background-color: #C0322B;
-            box-shadow: 0 0 0 0 rgba(192,50,43,0);
+            background-color: var(--zp-base);
+            box-shadow: 0 0 0 0 var(--zp-glow-none);
           }
         }
         .zp-root {
@@ -105,18 +115,18 @@ export function ZeitplanTemplate({
           background: linear-gradient(white, white) padding-box,
             conic-gradient(
               from var(--gradient-angle),
-              #C0322B,
-              rgba(255,70,60,0.9) 10%,
-              rgba(255,90,80,0.3) 20%,
+              var(--zp-base),
+              var(--zp-glow-strong) 10%,
+              var(--zp-glow-soft) 20%,
               white 25%,
-              rgba(255,90,80,0.3) 27%,
-              rgba(255,70,60,0.9) 29%,
-              #C0322B 30%
+              var(--zp-glow-soft) 27%,
+              var(--zp-glow-strong) 29%,
+              var(--zp-base) 30%
             ) border-box;
           border-radius: var(--entry-radius) !important;
-          animation: zp-rotate-border 4s linear infinite;
+          animation: zp-rotate-border var(--zp-border-duration) linear infinite;
         }
-        .zp-glow-bg { animation: zp-glow-bg 10s ease-in-out infinite; }
+        .zp-glow-bg { animation: zp-glow-bg var(--zp-pulse-duration) ease-in-out infinite; }
       `}</style>
       <div
         className="zp-root"
@@ -167,7 +177,7 @@ export function ZeitplanTemplate({
             style={{
               fontSize: "clamp(24px, 2.6vw, 36px)",
               fontWeight: 600,
-              color: RED,
+              color: defaultPalette.base,
               fontVariantNumeric: "tabular-nums",
             }}
           >
@@ -206,6 +216,18 @@ export function ZeitplanTemplate({
                 const inGrace = entryMs <= now;
                 const showRelative = !inGrace && diffMin < 15;
                 const delays = getDelays(e.id);
+                const p = e.color ? derivePalette(e.color) : defaultPalette;
+                const vars = {
+                  "--zp-base": p.base,
+                  "--zp-peak": p.peak,
+                  "--zp-glow-strong": p.glowStrong,
+                  "--zp-glow-soft": p.glowSoft,
+                  "--zp-glow-none": p.glowNone,
+                  "--zp-glow-blur": p.glowBlur,
+                  "--zp-glow-spread": p.glowSpread,
+                  "--zp-border-duration": p.borderDuration,
+                  "--zp-pulse-duration": p.pulseDuration,
+                } as React.CSSProperties;
 
                 return (
                   <motion.div
@@ -217,10 +239,11 @@ export function ZeitplanTemplate({
                     transition={{ duration: 0.4, ease: "easeOut" }}
                     className={`zp-entry ${inGrace ? "zp-glow" : ""}`}
                     style={{
+                      ...vars,
                       display: "flex",
                       alignItems: "stretch",
                       flexShrink: 0,
-                      border: inGrace ? "4px solid transparent" : `2px solid ${RED}`,
+                      border: inGrace ? "4px solid transparent" : `2px solid ${p.base}`,
                       overflow: "hidden",
                       background: inGrace ? undefined : "#fff",
                       animationDelay: inGrace ? delays.border : undefined,
@@ -229,8 +252,8 @@ export function ZeitplanTemplate({
                     <div
                       className={`zp-time ${inGrace ? "zp-glow-bg" : ""}`}
                       style={{
-                        backgroundColor: RED,
-                        color: "#fff",
+                        backgroundColor: p.base,
+                        color: p.onBase,
                         fontWeight: 700,
                         paddingLeft: "clamp(16px, 2vw, 32px)",
                         paddingRight: "clamp(16px, 2vw, 32px)",
