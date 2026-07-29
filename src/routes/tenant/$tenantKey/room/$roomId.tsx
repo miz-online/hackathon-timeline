@@ -9,7 +9,7 @@ export const Route = createFileRoute("/tenant/$tenantKey/room/$roomId")({
   component: RoomDisplay,
 });
 
-type Entry = { id: string; time: string; title: string; description: string; tags: string[] };
+type Entry = RoomSnapshot["entries"][number];
 
 function RoomDisplay() {
   const { tenantKey, roomId } = Route.useParams();
@@ -166,6 +166,7 @@ function RoomDisplay() {
       roomName={snapshot.room.name}
       logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
       logoHeight={snapshot.tenant.logo_height}
+      accentColor={snapshot.tenant.accent_color}
       entries={visible}
     />
   );

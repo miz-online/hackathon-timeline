@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
 import { useI18n } from "@/lib/i18n";
@@ -227,7 +227,7 @@ export function ZeitplanTemplate({
                   "--zp-glow-spread": p.glowSpread,
                   "--zp-border-duration": p.borderDuration,
                   "--zp-pulse-duration": p.pulseDuration,
-                } as React.CSSProperties;
+                } as CSSProperties;
 
                 return (
                   <motion.div
