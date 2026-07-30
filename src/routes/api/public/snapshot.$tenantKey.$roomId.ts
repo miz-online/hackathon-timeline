@@ -57,7 +57,11 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               logo_height: tenant.logo_height,
               accent_color: tenant.accent_color,
             },
-            room,
+            room: {
+              id: room.id,
+              name: room.name,
+              color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
+            },
             entries: visible,
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },
