@@ -72,6 +72,8 @@ const en: Dict = {
   "rooms.form.name": "Name",
   "rooms.form.namePh": "Main Stage",
   "rooms.form.nameHint": "The room name is also the tag used to address entries.",
+  "rooms.form.scheme": "Color scheme",
+  "rooms.form.schemeHint": "Used for the room name and clock on the display.",
   "rooms.picker.empty": "No rooms yet. Add some in the admin.",
 
   "settings.title": "Settings",
