@@ -276,7 +276,7 @@ export type RoomSnapshot = {
     logo_height: number;
     accent_color: string;
   };
-  room: { id: string; name: string };
+  room: { id: string; name: string; color: string | null };
   entries: {
     id: string;
     time: string;
@@ -296,7 +296,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const tenant = await resolveTenant(data.key);
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
-      .select("id, name")
+      .select("id, name, color_scheme_id")
       .eq("id", data.roomId)
       .eq("tenant_id", tenant.id)
       .maybeSingle();
