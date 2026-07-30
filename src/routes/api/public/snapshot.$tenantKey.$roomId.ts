@@ -9,14 +9,16 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const { data: tenant } = await supabaseAdmin
           .from("tenants")
-          .select("id, name, past_grace_minutes, template, logo_url, logo_height, accent_color")
+          .select(
+            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds",
+          )
           .eq("key", tenantKey)
           .maybeSingle();
         if (!tenant) return new Response("Not found", { status: 404 });
 
         const { data: room } = await supabaseAdmin
           .from("rooms")
-          .select("id, name, color_scheme_id")
+          .select("id, name, color_scheme_id, template")
           .eq("id", roomId)
           .eq("tenant_id", tenant.id)
           .maybeSingle();
@@ -32,6 +34,12 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
           .select("id, color")
           .eq("tenant_id", tenant.id);
         const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
+
+        const { data: ads } = await supabaseAdmin
+          .from("ads")
+          .select("id, name, content_type")
+          .eq("tenant_id", tenant.id)
+          .order("sort_order", { ascending: true });
 
         const cutoff = Date.now() - tenant.past_grace_minutes * 60 * 1000;
         const visible = (entries ?? [])
@@ -56,13 +64,21 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               logo_url: tenant.logo_url,
               logo_height: tenant.logo_height,
               accent_color: tenant.accent_color,
+              ad_seconds: tenant.ad_seconds,
             },
             room: {
               id: room.id,
               name: room.name,
               color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
+              template: room.template || tenant.template,
             },
             entries: visible,
+            ads: (ads ?? []).map((a) => ({
+              id: a.id,
+              name: a.name,
+              url: `/api/public/ad/${tenantKey}/${a.id}`,
+              content_type: a.content_type,
+            })),
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },
         );
