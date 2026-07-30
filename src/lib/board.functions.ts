@@ -329,7 +329,11 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
       },
-      room,
+      room: {
+        id: room.id,
+        name: room.name,
+        color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
+      },
       entries: filterVisible(withColor, room.name, tenant.past_grace_minutes),
     };
   });
