@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const { data: room } = await supabaseAdmin
           .from("rooms")
-          .select("id, name")
+          .select("id, name, color_scheme_id")
           .eq("id", roomId)
           .eq("tenant_id", tenant.id)
           .maybeSingle();
