@@ -482,3 +482,368 @@ export const removeTenantLogo = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---------- ads ----------
+
+export const listAds = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("ads")
+      .select("id, name, content_type, sort_order")
+      .eq("tenant_id", id)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const uploadAd = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; filename: string; contentType: string; dataBase64: string }) =>
+    z
+      .object({
+        key: z.string().min(1),
+        filename: z.string().min(1).max(200),
+        contentType: z.string().regex(/^image\//),
+        dataBase64: z.string().min(1).max(14_000_000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const binary = Uint8Array.from(atob(data.dataBase64), (c) => c.charCodeAt(0));
+    const ext = (data.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
+    const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("tenant-ads")
+      .upload(path, binary, { contentType: data.contentType, upsert: true });
+    if (upErr) throw new Error(upErr.message);
+    const { data: last } = await supabase
+      .from("ads")
+      .select("sort_order")
+      .eq("tenant_id", tenant.id)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    const nextOrder = (last?.[0]?.sort_order ?? -1) + 1;
+    const { data: row, error } = await supabase
+      .from("ads")
+      .insert({
+        tenant_id: tenant.id,
+        name: data.filename.slice(0, 120),
+        path,
+        content_type: data.contentType,
+        sort_order: nextOrder,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const renameAd = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string; name: string }) =>
+    z
+      .object({ key: z.string().min(1), id: z.string().uuid(), name: z.string().min(1).max(120) })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { error } = await supabase
+      .from("ads")
+      .update({ name: data.name })
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const moveAd = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string; direction: "up" | "down" }) =>
+    z
+      .object({
+        key: z.string().min(1),
+        id: z.string().uuid(),
+        direction: z.enum(["up", "down"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { data: rows } = await supabase
+      .from("ads")
+      .select("id, sort_order")
+      .eq("tenant_id", tenantId)
+      .order("sort_order", { ascending: true });
+    const list = rows ?? [];
+    const idx = list.findIndex((a) => a.id === data.id);
+    const swapIdx = data.direction === "up" ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= list.length) return { ok: true };
+    await supabase.from("ads").update({ sort_order: swapIdx }).eq("id", list[idx].id);
+    await supabase.from("ads").update({ sort_order: idx }).eq("id", list[swapIdx].id);
+    return { ok: true };
+  });
+
+export const deleteAd = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { data: ad } = await supabase
+      .from("ads")
+      .select("path")
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (ad?.path) await supabase.storage.from("tenant-ads").remove([ad.path]);
+    const { error } = await supabase
+      .from("ads")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------- import / export ----------
+
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+export const exportConfig = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const [schemes, rooms, entries, ads] = await Promise.all([
+      supabase.from("color_schemes").select("id, name, color").eq("tenant_id", tenant.id),
+      supabase.from("rooms").select("id, name, color_scheme_id, template").eq("tenant_id", tenant.id),
+      supabase
+        .from("entries")
+        .select("time, title, description, tags, color_scheme_id")
+        .eq("tenant_id", tenant.id),
+      supabase
+        .from("ads")
+        .select("name, path, content_type, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+    ]);
+
+    let logo: { filename: string; contentType: string; dataBase64: string } | null = null;
+    if (tenant.logo_url) {
+      const { data: file } = await supabase.storage.from("tenant-logos").download(tenant.logo_url);
+      if (file) {
+        logo = {
+          filename: tenant.logo_url.split("/").pop() || "logo.png",
+          contentType: file.type || "image/png",
+          dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
+        };
+      }
+    }
+
+    const adFiles: {
+      name: string;
+      contentType: string;
+      sort_order: number;
+      dataBase64: string;
+    }[] = [];
+    for (const a of ads.data ?? []) {
+      const { data: file } = await supabase.storage.from("tenant-ads").download(a.path);
+      if (!file) continue;
+      adFiles.push({
+        name: a.name,
+        contentType: a.content_type,
+        sort_order: a.sort_order,
+        dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
+      });
+    }
+
+    return {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      tenant: {
+        name: tenant.name,
+        past_grace_minutes: tenant.past_grace_minutes,
+        template: tenant.template,
+        logo_height: tenant.logo_height,
+        accent_color: tenant.accent_color,
+        ad_seconds: tenant.ad_seconds,
+      },
+      color_schemes: (schemes.data ?? []).map((s) => ({ ref: s.id, name: s.name, color: s.color })),
+      rooms: (rooms.data ?? []).map((r) => ({
+        name: r.name,
+        template: r.template,
+        color_scheme_ref: r.color_scheme_id,
+      })),
+      entries: (entries.data ?? []).map((e) => ({
+        time: e.time,
+        title: e.title,
+        description: e.description,
+        tags: e.tags,
+        color_scheme_ref: e.color_scheme_id,
+      })),
+      ads: adFiles,
+      logo,
+    };
+  });
+
+const importSchema = z.object({
+  tenant: z.object({
+    name: z.string().min(1).max(120),
+    past_grace_minutes: z.number().int().min(0).max(1440),
+    template: z.string().min(1).max(40),
+    logo_height: z.number().int().min(16).max(400),
+    accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    ad_seconds: z.number().int().min(1).max(600).default(10),
+  }),
+  color_schemes: z
+    .array(z.object({ ref: z.string(), name: z.string().min(1).max(120), color: z.string() }))
+    .default([]),
+  rooms: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        template: z.string().max(40).nullable().default(null),
+        color_scheme_ref: z.string().nullable().default(null),
+      }),
+    )
+    .default([]),
+  entries: z
+    .array(
+      z.object({
+        time: z.string().min(1),
+        title: z.string().min(1).max(200),
+        description: z.string().max(2000).default(""),
+        tags: z.array(z.string()).default([]),
+        color_scheme_ref: z.string().nullable().default(null),
+      }),
+    )
+    .default([]),
+  ads: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        contentType: z.string().min(1).max(100),
+        sort_order: z.number().int().default(0),
+        dataBase64: z.string().min(1),
+      }),
+    )
+    .default([]),
+  logo: z
+    .object({
+      filename: z.string().min(1).max(200),
+      contentType: z.string().min(1).max(100),
+      dataBase64: z.string().min(1),
+    })
+    .nullable()
+    .default(null),
+});
+
+export const importConfig = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; payload: unknown }) =>
+    z.object({ key: z.string().min(1), payload: importSchema }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const p = data.payload;
+
+    // wipe existing content
+    const { data: oldAds } = await supabase.from("ads").select("path").eq("tenant_id", tenant.id);
+    if (oldAds?.length) {
+      await supabase.storage.from("tenant-ads").remove(oldAds.map((a) => a.path));
+    }
+    await supabase.from("entries").delete().eq("tenant_id", tenant.id);
+    await supabase.from("ads").delete().eq("tenant_id", tenant.id);
+    await supabase.from("rooms").delete().eq("tenant_id", tenant.id);
+    await supabase.from("color_schemes").delete().eq("tenant_id", tenant.id);
+
+    const refMap = new Map<string, string>();
+    for (const s of p.color_schemes) {
+      const { data: row } = await supabase
+        .from("color_schemes")
+        .insert({ tenant_id: tenant.id, name: s.name, color: s.color.toUpperCase() })
+        .select("id")
+        .single();
+      if (row) refMap.set(s.ref, row.id);
+    }
+
+    if (p.rooms.length) {
+      await supabase.from("rooms").insert(
+        p.rooms.map((r) => ({
+          tenant_id: tenant.id,
+          name: r.name,
+          template: r.template || null,
+          color_scheme_id: r.color_scheme_ref ? (refMap.get(r.color_scheme_ref) ?? null) : null,
+        })),
+      );
+    }
+
+    if (p.entries.length) {
+      await supabase.from("entries").insert(
+        p.entries.map((e) => ({
+          tenant_id: tenant.id,
+          time: e.time,
+          title: e.title,
+          description: e.description,
+          tags: e.tags,
+          color_scheme_id: e.color_scheme_ref ? (refMap.get(e.color_scheme_ref) ?? null) : null,
+        })),
+      );
+    }
+
+    let order = 0;
+    for (const a of p.ads) {
+      const bytes = Uint8Array.from(atob(a.dataBase64), (c) => c.charCodeAt(0));
+      const ext = (a.name.split(".").pop() || "png").toLowerCase().slice(0, 5);
+      const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage
+        .from("tenant-ads")
+        .upload(path, bytes, { contentType: a.contentType, upsert: true });
+      if (error) continue;
+      await supabase.from("ads").insert({
+        tenant_id: tenant.id,
+        name: a.name,
+        path,
+        content_type: a.contentType,
+        sort_order: order++,
+      });
+    }
+
+    let logoPath = tenant.logo_url;
+    if (p.logo) {
+      const bytes = Uint8Array.from(atob(p.logo.dataBase64), (c) => c.charCodeAt(0));
+      const ext = (p.logo.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
+      const newPath = `${tenant.id}/logo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("tenant-logos")
+        .upload(newPath, bytes, { contentType: p.logo.contentType, upsert: true });
+      if (!error) {
+        if (logoPath) await supabase.storage.from("tenant-logos").remove([logoPath]);
+        logoPath = newPath;
+      }
+    }
+
+    await supabase
+      .from("tenants")
+      .update({
+        name: p.tenant.name,
+        past_grace_minutes: p.tenant.past_grace_minutes,
+        template: p.tenant.template,
+        logo_height: p.tenant.logo_height,
+        accent_color: p.tenant.accent_color.toUpperCase(),
+        ad_seconds: p.tenant.ad_seconds,
+        logo_url: logoPath,
+      })
+      .eq("id", tenant.id);
+
+    return { ok: true };
+  });
