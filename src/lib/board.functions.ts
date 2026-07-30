@@ -297,8 +297,9 @@ export type RoomSnapshot = {
     logo_url: string | null;
     logo_height: number;
     accent_color: string;
+    ad_seconds: number;
   };
-  room: { id: string; name: string; color: string | null };
+  room: { id: string; name: string; color: string | null; template: string };
   entries: {
     id: string;
     time: string;
@@ -307,6 +308,7 @@ export type RoomSnapshot = {
     tags: string[];
     color: string | null;
   }[];
+  ads: { id: string; name: string; url: string; content_type: string }[];
 };
 
 export const getRoomSnapshot = createServerFn({ method: "GET" })
@@ -318,7 +320,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const tenant = await resolveTenant(data.key);
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
-      .select("id, name, color_scheme_id")
+      .select("id, name, color_scheme_id, template")
       .eq("id", data.roomId)
       .eq("tenant_id", tenant.id)
       .maybeSingle();
@@ -333,6 +335,11 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .from("color_schemes")
       .select("id, color")
       .eq("tenant_id", tenant.id);
+    const { data: ads } = await supabase
+      .from("ads")
+      .select("id, name, content_type, sort_order")
+      .eq("tenant_id", tenant.id)
+      .order("sort_order", { ascending: true });
     const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
     const withColor = (entries ?? []).map((e) => ({
       id: e.id,
@@ -350,13 +357,21 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         logo_url: tenant.logo_url,
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
+        ad_seconds: tenant.ad_seconds,
       },
       room: {
         id: room.id,
         name: room.name,
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
+        template: room.template || tenant.template,
       },
       entries: filterVisible(withColor, room.name, tenant.past_grace_minutes),
+      ads: (ads ?? []).map((a) => ({
+        id: a.id,
+        name: a.name,
+        url: `/api/public/ad/${data.key}/${a.id}`,
+        content_type: a.content_type,
+      })),
     };
   });
 
