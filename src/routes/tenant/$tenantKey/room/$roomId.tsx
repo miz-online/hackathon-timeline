@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ZeitplanTemplate } from "@/components/templates/ZeitplanTemplate";
+import { AdsTemplate } from "@/components/templates/AdsTemplate";
 import type { RoomSnapshot } from "@/lib/board.functions";
 import { useI18n } from "@/lib/i18n";
 
@@ -159,6 +160,19 @@ function RoomDisplay() {
   const visible: Entry[] = snapshot.entries.filter(
     (e) => new Date(e.time).getTime() >= cutoff,
   );
+
+  if ((snapshot.room.template || snapshot.tenant.template) === "ads") {
+    return (
+      <AdsTemplate
+        tenantName={snapshot.tenant.name}
+        roomName={snapshot.room.name}
+        ads={snapshot.ads ?? []}
+        adSeconds={snapshot.tenant.ad_seconds ?? 10}
+        logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
+        logoHeight={snapshot.tenant.logo_height}
+      />
+    );
+  }
 
   return (
     <ZeitplanTemplate

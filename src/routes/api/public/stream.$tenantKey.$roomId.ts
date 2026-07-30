@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
 
         const { data: tenant, error: tErr } = await supabaseAdmin
           .from("tenants")
-          .select("id, name, past_grace_minutes, template, logo_url, logo_height, accent_color")
+          .select("id, name")
           .eq("key", tenantKey)
           .maybeSingle();
         if (tErr || !tenant) return new Response("Not found", { status: 404 });
@@ -29,12 +29,14 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
         const buildSnapshot = async () => {
           const { data: tNow } = await supabaseAdmin
             .from("tenants")
-            .select("name, past_grace_minutes, template, logo_url, logo_height, accent_color")
+            .select(
+              "name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds",
+            )
             .eq("id", tenantId)
             .maybeSingle();
           const { data: rNow } = await supabaseAdmin
             .from("rooms")
-            .select("id, name, color_scheme_id")
+            .select("id, name, color_scheme_id, template")
             .eq("id", roomDbId)
             .maybeSingle();
           if (!tNow || !rNow) return null;
@@ -46,6 +48,11 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             .from("color_schemes")
             .select("id, color")
             .eq("tenant_id", tenantId);
+          const { data: ads } = await supabaseAdmin
+            .from("ads")
+            .select("id, name, content_type")
+            .eq("tenant_id", tenantId)
+            .order("sort_order", { ascending: true });
           const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
           const cutoff = Date.now() - tNow.past_grace_minutes * 60 * 1000;
           const visible = (entries ?? [])
@@ -68,13 +75,21 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               logo_url: tNow.logo_url,
               logo_height: tNow.logo_height,
               accent_color: tNow.accent_color,
+              ad_seconds: tNow.ad_seconds,
             },
             room: {
               id: rNow.id,
               name: rNow.name,
               color: rNow.color_scheme_id ? (colorById.get(rNow.color_scheme_id) ?? null) : null,
+              template: rNow.template || tNow.template,
             },
             entries: visible,
+            ads: (ads ?? []).map((a) => ({
+              id: a.id,
+              name: a.name,
+              url: `/api/public/ad/${tenantKey}/${a.id}`,
+              content_type: a.content_type,
+            })),
           };
         };
 
