@@ -487,10 +487,14 @@ function EntryForm({
 function RoomsPanel({
   tenantKey,
   rooms,
+  schemes,
+  defaultColor,
   onChange,
 }: {
   tenantKey: string;
   rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
   onChange: () => void;
 }) {
   const { t } = useI18n();
