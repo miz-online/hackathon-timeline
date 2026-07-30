@@ -198,6 +198,8 @@ const de: Dict = {
   "rooms.form.name": "Name",
   "rooms.form.namePh": "Hauptbühne",
   "rooms.form.nameHint": "Der Raumname ist gleichzeitig das Tag, mit dem Einträge zugeordnet werden.",
+  "rooms.form.scheme": "Farbschema",
+  "rooms.form.schemeHint": "Wird für Raumname und Uhrzeit auf der Anzeige verwendet.",
   "rooms.picker.empty": "Noch keine Räume. In der Verwaltung anlegen.",
 
   "settings.title": "Einstellungen",
