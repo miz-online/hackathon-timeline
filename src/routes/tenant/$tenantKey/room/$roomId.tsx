@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ZeitplanTemplate } from "@/components/templates/ZeitplanTemplate";
+import { AdsTemplate } from "@/components/templates/AdsTemplate";
 import type { RoomSnapshot } from "@/lib/board.functions";
 import { useI18n } from "@/lib/i18n";
 
