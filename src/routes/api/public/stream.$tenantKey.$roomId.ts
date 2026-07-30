@@ -69,7 +69,11 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               logo_height: tNow.logo_height,
               accent_color: tNow.accent_color,
             },
-            room: rNow,
+            room: {
+              id: rNow.id,
+              name: rNow.name,
+              color: rNow.color_scheme_id ? (colorById.get(rNow.color_scheme_id) ?? null) : null,
+            },
             entries: visible,
           };
         };
