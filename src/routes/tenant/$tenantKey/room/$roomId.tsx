@@ -167,6 +167,7 @@ function RoomDisplay() {
       logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
       logoHeight={snapshot.tenant.logo_height}
       accentColor={snapshot.tenant.accent_color}
+      roomColor={snapshot.room.color}
       entries={visible}
     />
   );
