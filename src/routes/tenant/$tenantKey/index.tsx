@@ -14,6 +14,9 @@ import {
   uploadTenantLogo,
   removeTenantLogo,
   regenerateKey,
+  listColorSchemes,
+  upsertColorScheme,
+  deleteColorScheme,
 } from "@/lib/board.functions";
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
@@ -26,13 +29,22 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
+import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
 });
 
-type EntryRow = { id: string; time: string; title: string; description: string; tags: string[] };
-type RoomRow = { id: string; name: string };
+type EntryRow = {
+  id: string;
+  time: string;
+  title: string;
+  description: string;
+  tags: string[];
+  color_scheme_id: string | null;
+};
+type RoomRow = { id: string; name: string; color_scheme_id?: string | null };
+type SchemeRow = { id: string; name: string; color: string };
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
@@ -42,6 +54,7 @@ function AdminPage() {
   const getTenantFn = useServerFn(getTenant);
   const listEntriesFn = useServerFn(listEntries);
   const listRoomsFn = useServerFn(listRooms);
+  const listSchemesFn = useServerFn(listColorSchemes);
 
   const tenantQ = useQuery({
     queryKey: ["tenant", tenantKey],
@@ -55,6 +68,11 @@ function AdminPage() {
   const roomsQ = useQuery({
     queryKey: ["rooms", tenantKey],
     queryFn: () => listRoomsFn({ data: { key: tenantKey } }),
+    enabled: !!tenantQ.data,
+  });
+  const schemesQ = useQuery({
+    queryKey: ["schemes", tenantKey],
+    queryFn: () => listSchemesFn({ data: { key: tenantKey } }),
     enabled: !!tenantQ.data,
   });
 
@@ -81,6 +99,7 @@ function AdminPage() {
     qc.invalidateQueries({ queryKey: ["entries", tenantKey] });
     qc.invalidateQueries({ queryKey: ["rooms", tenantKey] });
     qc.invalidateQueries({ queryKey: ["tenant", tenantKey] });
+    qc.invalidateQueries({ queryKey: ["schemes", tenantKey] });
   };
 
   return (
@@ -114,6 +133,7 @@ function AdminPage() {
           <TabsList>
             <TabsTrigger value="entries">{t("admin.tabs.entries")}</TabsTrigger>
             <TabsTrigger value="rooms">{t("admin.tabs.rooms")}</TabsTrigger>
+            <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
             <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
           </TabsList>
 
@@ -122,6 +142,8 @@ function AdminPage() {
               tenantKey={tenantKey}
               entries={entriesQ.data ?? []}
               rooms={roomsQ.data ?? []}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
               onChange={invalidate}
             />
           </TabsContent>
@@ -130,6 +152,17 @@ function AdminPage() {
             <RoomsPanel
               tenantKey={tenantKey}
               rooms={roomsQ.data ?? []}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
+              onChange={invalidate}
+            />
+          </TabsContent>
+
+          <TabsContent value="colors" className="space-y-4 pt-4">
+            <ColorSchemesPanel
+              tenantKey={tenantKey}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
               onChange={invalidate}
             />
           </TabsContent>
@@ -140,6 +173,7 @@ function AdminPage() {
               name={tenant.name}
               logoUrl={tenant.logo_url}
               logoHeight={tenant.logo_height}
+              accentColor={tenant.accent_color}
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
               onChange={invalidate}
@@ -163,11 +197,15 @@ function EntriesPanel({
   tenantKey,
   entries,
   rooms,
+  schemes,
+  defaultColor,
   onChange,
 }: {
   tenantKey: string;
   entries: EntryRow[];
   rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -204,6 +242,8 @@ function EntriesPanel({
         <EntryForm
           initial={editing}
           rooms={rooms}
+          schemes={schemes}
+          defaultColor={defaultColor}
           onCancel={() => setShowForm(false)}
           onSubmit={async (entry) => {
             await upsertFn({ data: { key: tenantKey, entry } });
@@ -222,6 +262,14 @@ function EntriesPanel({
         ) : (
           entries.map((e) => (
             <Card key={e.id} className="p-4 flex items-start justify-between gap-4">
+              <span
+                className="mt-1 h-4 w-4 shrink-0 rounded-full border"
+                style={{
+                  backgroundColor:
+                    schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor,
+                }}
+                title={schemes.find((s) => s.id === e.color_scheme_id)?.name ?? t("colors.default")}
+              />
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="font-mono text-sm font-semibold">
@@ -281,17 +329,22 @@ function EntriesPanel({
 function EntryForm({
   initial,
   rooms,
+  schemes,
+  defaultColor,
   onSubmit,
   onCancel,
 }: {
   initial: EntryRow | null;
   rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
   onSubmit: (entry: {
     id?: string;
     time: string;
     title: string;
     description: string;
     tags: string[];
+    color_scheme_id: string | null;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -302,6 +355,7 @@ function EntryForm({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [selectedRooms, setSelectedRooms] = useState<string[]>(initial?.tags ?? []);
+  const [schemeId, setSchemeId] = useState<string>(initial?.color_scheme_id ?? "");
   const [saving, setSaving] = useState(false);
 
   const toggleRoom = (name: string) => {
@@ -370,6 +424,30 @@ function EntryForm({
         </div>
         <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
       </div>
+      <div className="space-y-1">
+        <Label>{t("entries.form.scheme")}</Label>
+        <div className="flex items-center gap-2">
+          <span
+            className="h-6 w-6 shrink-0 rounded-full border"
+            style={{
+              backgroundColor: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+            }}
+          />
+          <select
+            value={schemeId}
+            onChange={(e) => setSchemeId(e.target.value)}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">{t("colors.default")}</option>
+            {schemes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -388,6 +466,7 @@ function EntryForm({
                 title: title.trim(),
                 description: description.trim(),
                 tags,
+                color_scheme_id: schemeId || null,
               });
             } catch (e) {
               toast.error((e as Error).message);
@@ -408,10 +487,14 @@ function EntryForm({
 function RoomsPanel({
   tenantKey,
   rooms,
+  schemes,
+  defaultColor,
   onChange,
 }: {
   tenantKey: string;
   rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -447,6 +530,8 @@ function RoomsPanel({
       {showForm ? (
         <RoomForm
           initial={editing}
+          schemes={schemes}
+          defaultColor={defaultColor}
           onCancel={() => setShowForm(false)}
           onSubmit={async (room) => {
             await upsertFn({ data: { key: tenantKey, room } });
@@ -465,7 +550,19 @@ function RoomsPanel({
         ) : (
           rooms.map((r) => (
             <Card key={r.id} className="p-4 space-y-2">
-              <div className="font-semibold truncate">{r.name}</div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-4 w-4 shrink-0 rounded-full border"
+                  style={{
+                    backgroundColor:
+                      schemes.find((s) => s.id === r.color_scheme_id)?.color ?? defaultColor,
+                  }}
+                  title={
+                    schemes.find((s) => s.id === r.color_scheme_id)?.name ?? t("colors.default")
+                  }
+                />
+                <div className="font-semibold truncate">{r.name}</div>
+              </div>
               <div className="flex gap-2 flex-wrap">
                 <Link
                   to="/tenant/$tenantKey/room/$roomId"
@@ -506,15 +603,24 @@ function RoomsPanel({
 
 function RoomForm({
   initial,
+  schemes,
+  defaultColor,
   onSubmit,
   onCancel,
 }: {
   initial: RoomRow | null;
-  onSubmit: (room: { id?: string; name: string }) => Promise<void>;
+  schemes: SchemeRow[];
+  defaultColor: string;
+  onSubmit: (room: {
+    id?: string;
+    name: string;
+    color_scheme_id: string | null;
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [saving, setSaving] = useState(false);
 
   return (
@@ -528,6 +634,30 @@ function RoomForm({
         />
         <p className="text-xs text-muted-foreground">{t("rooms.form.nameHint")}</p>
       </div>
+      <div className="space-y-1">
+        <Label>{t("rooms.form.scheme")}</Label>
+        <div className="flex items-center gap-2">
+          <span
+            className="h-6 w-6 shrink-0 rounded-full border"
+            style={{
+              backgroundColor: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+            }}
+          />
+          <select
+            value={schemeId}
+            onChange={(e) => setSchemeId(e.target.value)}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">{t("colors.default")}</option>
+            {schemes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("rooms.form.schemeHint")}</p>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -537,7 +667,11 @@ function RoomForm({
           onClick={async () => {
             setSaving(true);
             try {
-              await onSubmit({ id: initial?.id, name: name.trim() });
+              await onSubmit({
+                id: initial?.id,
+                name: name.trim(),
+                color_scheme_id: schemeId || null,
+              });
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
@@ -559,6 +693,7 @@ function SettingsPanel({
   name,
   logoUrl,
   logoHeight,
+  accentColor,
   graceMinutes,
   template,
   onChange,
@@ -567,6 +702,7 @@ function SettingsPanel({
   name: string;
   logoUrl: string | null;
   logoHeight: number;
+  accentColor: string;
   graceMinutes: number;
   template: string;
   onChange: () => void;
@@ -577,6 +713,7 @@ function SettingsPanel({
   const [g, setG] = useState(graceMinutes);
   const [tpl, setTpl] = useState(template);
   const [lh, setLh] = useState(logoHeight);
+  const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
   const regenFn = useServerFn(regenerateKey);
@@ -592,6 +729,12 @@ function SettingsPanel({
         <div className="space-y-1">
           <Label>{t("settings.name")}</Label>
           <Input value={n} onChange={(e) => setN(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>{t("settings.accent")}</Label>
+          <ColorField value={accent} onChange={setAccent} />
+          <p className="text-xs text-muted-foreground">{t("settings.accentHint")}</p>
+          <PalettePreview color={accent} />
         </div>
         <div className="space-y-1">
           <Label>{t("settings.grace")}</Label>
@@ -636,6 +779,7 @@ function SettingsPanel({
                   past_grace_minutes: g,
                   template: tpl,
                   logo_height: lh,
+                  accent_color: accent,
                 },
               });
               toast.success(t("settings.saved"));
@@ -764,6 +908,219 @@ function SettingsPanel({
             {t("settings.regenerate")}
           </Button>
         </div>
+      </div>
+    </Card>
+  );
+}
+
+// --------------- Color schemes ---------------
+
+function ColorField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
+        className="h-9 w-12 cursor-pointer rounded border bg-background p-1"
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
+        className="font-mono"
+      />
+    </div>
+  );
+}
+
+function PalettePreview({ color }: { color: string }) {
+  const { t } = useI18n();
+  const p = derivePalette(color);
+  const swatches: { key: string; value: string }[] = [
+    { key: "colors.swatch.base", value: p.base },
+    { key: "colors.swatch.deep", value: p.deep },
+    { key: "colors.swatch.peak", value: p.peak },
+    { key: "colors.swatch.highlight", value: p.highlight },
+  ];
+  return (
+    <div className="space-y-1 pt-1">
+      <div className="flex gap-2">
+        {swatches.map((s) => (
+          <div key={s.key} className="space-y-1 text-center">
+            <div
+              className="h-7 w-12 rounded border"
+              style={{ backgroundColor: s.value }}
+              title={s.value}
+            />
+            <div className="text-[10px] text-muted-foreground">{t(s.key)}</div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        {t("colors.derived", {
+          glow: p.glowBlur,
+          border: p.borderDuration,
+          pulse: p.pulseDuration,
+        })}
+      </p>
+    </div>
+  );
+}
+
+function ColorSchemesPanel({
+  tenantKey,
+  schemes,
+  defaultColor,
+  onChange,
+}: {
+  tenantKey: string;
+  schemes: SchemeRow[];
+  defaultColor: string;
+  onChange: () => void;
+}) {
+  const { t } = useI18n();
+  const [editing, setEditing] = useState<SchemeRow | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const upsertFn = useServerFn(upsertColorScheme);
+  const deleteFn = useServerFn(deleteColorScheme);
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
+    onSuccess: () => {
+      toast.success(t("colors.deleted"));
+      onChange();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-medium">{t("colors.title")}</h2>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing(null);
+            setShowForm(true);
+          }}
+        >
+          {t("colors.new")}
+        </Button>
+      </div>
+
+      <Card className="p-4 space-y-2 max-w-xl">
+        <div className="font-medium text-sm">{t("colors.default")}</div>
+        <PalettePreview color={defaultColor} />
+        <p className="text-xs text-muted-foreground">{t("colors.defaultHint")}</p>
+      </Card>
+
+      {showForm ? (
+        <SchemeForm
+          initial={editing}
+          onCancel={() => setShowForm(false)}
+          onSubmit={async (scheme) => {
+            await upsertFn({ data: { key: tenantKey, scheme } });
+            toast.success(editing ? t("colors.updated") : t("colors.created"));
+            setShowForm(false);
+            onChange();
+          }}
+        />
+      ) : null}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {schemes.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground text-center sm:col-span-2">
+            {t("colors.empty")}
+          </Card>
+        ) : (
+          schemes.map((s) => (
+            <Card key={s.id} className="p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-5 w-5 rounded-full border"
+                  style={{ backgroundColor: s.color }}
+                />
+                <span className="font-semibold truncate">{s.name}</span>
+                <span className="font-mono text-xs text-muted-foreground">{s.color}</span>
+              </div>
+              <PalettePreview color={s.color} />
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditing(s);
+                    setShowForm(true);
+                  }}
+                >
+                  {t("entries.edit")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    if (confirm(t("colors.confirmDelete"))) delMut.mutate(s.id);
+                  }}
+                >
+                  {t("entries.delete")}
+                </Button>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SchemeForm({
+  initial,
+  onSubmit,
+  onCancel,
+}: {
+  initial: SchemeRow | null;
+  onSubmit: (scheme: { id?: string; name: string; color: string }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  const [name, setName] = useState(initial?.name ?? "");
+  const [color, setColor] = useState(initial?.color ?? DEFAULT_ACCENT);
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <Card className="p-4 space-y-3 max-w-xl">
+      <div className="space-y-1">
+        <Label>{t("colors.form.name")}</Label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("colors.form.namePh")}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label>{t("colors.form.color")}</Label>
+        <ColorField value={color} onChange={setColor} />
+        <PalettePreview color={color} />
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button variant="ghost" onClick={onCancel} disabled={saving}>
+          {t("entries.cancel")}
+        </Button>
+        <Button
+          disabled={saving || !name.trim() || !/^#[0-9a-fA-F]{6}$/.test(color)}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await onSubmit({ id: initial?.id, name: name.trim(), color: color.toUpperCase() });
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          {saving ? t("entries.saving") : t("entries.save")}
+        </Button>
       </div>
     </Card>
   );

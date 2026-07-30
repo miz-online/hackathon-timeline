@@ -19,11 +19,11 @@ function generateKey(): string {
 
 async function resolveTenant(
   key: string,
-): Promise<{ id: string; name: string; past_grace_minutes: number; template: string; logo_url: string | null; logo_height: number }> {
+): Promise<{ id: string; name: string; past_grace_minutes: number; template: string; logo_url: string | null; logo_height: number; accent_color: string }> {
   const supabase = await getAdmin();
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, past_grace_minutes, template, logo_url, logo_height")
+    .select("id, name, past_grace_minutes, template, logo_url, logo_height, accent_color")
     .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -71,6 +71,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
     past_grace_minutes: number;
     template: string;
     logo_height: number;
+    accent_color: string;
   }) =>
     z
       .object({
@@ -79,6 +80,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         past_grace_minutes: z.number().int().min(0).max(24 * 60),
         template: z.string().min(1).max(40),
         logo_height: z.number().int().min(16).max(400),
+        accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       })
       .parse(d),
   )
@@ -92,6 +94,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         past_grace_minutes: data.past_grace_minutes,
         template: data.template,
         logo_height: data.logo_height,
+        accent_color: data.accent_color.toUpperCase(),
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
@@ -121,7 +124,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags")
+      .select("id, time, title, description, tags, color_scheme_id")
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
@@ -134,6 +137,7 @@ const entryInput = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).default(""),
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
+  color_scheme_id: z.string().uuid().nullable().default(null),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
@@ -147,7 +151,13 @@ export const upsertEntry = createServerFn({ method: "POST" })
     if (e.id) {
       const { error } = await supabase
         .from("entries")
-        .update({ time: e.time, title: e.title, description: e.description, tags: e.tags })
+        .update({
+          time: e.time,
+          title: e.title,
+          description: e.description,
+          tags: e.tags,
+          color_scheme_id: e.color_scheme_id ?? null,
+        })
         .eq("id", e.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -161,6 +171,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
           title: e.title,
           description: e.description,
           tags: e.tags,
+          color_scheme_id: e.color_scheme_id ?? null,
         })
         .select("id")
         .single();
@@ -194,7 +205,7 @@ export const listRooms = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("rooms")
-      .select("id, name")
+      .select("id, name, color_scheme_id")
       .eq("tenant_id", id)
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -204,6 +215,7 @@ export const listRooms = createServerFn({ method: "GET" })
 const roomInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(120),
+  color_scheme_id: z.string().uuid().nullable().default(null),
 });
 
 export const upsertRoom = createServerFn({ method: "POST" })
@@ -217,7 +229,7 @@ export const upsertRoom = createServerFn({ method: "POST" })
     if (r.id) {
       const { error } = await supabase
         .from("rooms")
-        .update({ name: r.name })
+        .update({ name: r.name, color_scheme_id: r.color_scheme_id ?? null })
         .eq("id", r.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -225,7 +237,11 @@ export const upsertRoom = createServerFn({ method: "POST" })
     } else {
       const { data: row, error } = await supabase
         .from("rooms")
-        .insert({ tenant_id: tenantId, name: r.name })
+        .insert({
+          tenant_id: tenantId,
+          name: r.name,
+          color_scheme_id: r.color_scheme_id ?? null,
+        })
         .select("id")
         .single();
       if (error) throw new Error(error.message);
@@ -258,9 +274,17 @@ export type RoomSnapshot = {
     template: string;
     logo_url: string | null;
     logo_height: number;
+    accent_color: string;
   };
-  room: { id: string; name: string };
-  entries: { id: string; time: string; title: string; description: string; tags: string[] }[];
+  room: { id: string; name: string; color: string | null };
+  entries: {
+    id: string;
+    time: string;
+    title: string;
+    description: string;
+    tags: string[];
+    color: string | null;
+  }[];
 };
 
 export const getRoomSnapshot = createServerFn({ method: "GET" })
@@ -272,7 +296,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const tenant = await resolveTenant(data.key);
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
-      .select("id, name")
+      .select("id, name, color_scheme_id")
       .eq("id", data.roomId)
       .eq("tenant_id", tenant.id)
       .maybeSingle();
@@ -280,9 +304,22 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     if (!room) throw new Error("Unknown room");
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags")
+      .select("id, time, title, description, tags, color_scheme_id")
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
+    const { data: schemes } = await supabase
+      .from("color_schemes")
+      .select("id, color")
+      .eq("tenant_id", tenant.id);
+    const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
+    const withColor = (entries ?? []).map((e) => ({
+      id: e.id,
+      time: e.time,
+      title: e.title,
+      description: e.description,
+      tags: e.tags,
+      color: e.color_scheme_id ? (colorById.get(e.color_scheme_id) ?? null) : null,
+    }));
     return {
       tenant: {
         name: tenant.name,
@@ -290,10 +327,79 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         template: tenant.template,
         logo_url: tenant.logo_url,
         logo_height: tenant.logo_height,
+        accent_color: tenant.accent_color,
       },
-      room,
-      entries: filterVisible(entries ?? [], room.name, tenant.past_grace_minutes),
+      room: {
+        id: room.id,
+        name: room.name,
+        color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
+      },
+      entries: filterVisible(withColor, room.name, tenant.past_grace_minutes),
     };
+  });
+
+// ---------- color schemes ----------
+
+export const listColorSchemes = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("color_schemes")
+      .select("id, name, color")
+      .eq("tenant_id", id)
+      .order("name", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+const schemeInput = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(120),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+export const upsertColorScheme = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; scheme: z.infer<typeof schemeInput> }) =>
+    z.object({ key: z.string().min(1), scheme: schemeInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const s = { ...data.scheme, color: data.scheme.color.toUpperCase() };
+    if (s.id) {
+      const { error } = await supabase
+        .from("color_schemes")
+        .update({ name: s.name, color: s.color })
+        .eq("id", s.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: s.id };
+    }
+    const { data: row, error } = await supabase
+      .from("color_schemes")
+      .insert({ tenant_id: tenantId, name: s.name, color: s.color })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const deleteColorScheme = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { error } = await supabase
+      .from("color_schemes")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // ---------- tenant logo ----------

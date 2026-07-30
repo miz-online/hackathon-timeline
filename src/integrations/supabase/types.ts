@@ -14,8 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      color_schemes: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          tenant_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "color_schemes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entries: {
         Row: {
+          color_scheme_id: string | null
           created_at: string
           description: string
           id: string
@@ -26,6 +59,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color_scheme_id?: string | null
           created_at?: string
           description: string
           id?: string
@@ -36,6 +70,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color_scheme_id?: string | null
           created_at?: string
           description?: string
           id?: string
@@ -47,6 +82,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "entries_color_scheme_id_fkey"
+            columns: ["color_scheme_id"]
+            isOneToOne: false
+            referencedRelation: "color_schemes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "entries_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -57,24 +99,34 @@ export type Database = {
       }
       rooms: {
         Row: {
+          color_scheme_id: string | null
           created_at: string
           id: string
           name: string
           tenant_id: string
         }
         Insert: {
+          color_scheme_id?: string | null
           created_at?: string
           id?: string
           name: string
           tenant_id: string
         }
         Update: {
+          color_scheme_id?: string | null
           created_at?: string
           id?: string
           name?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rooms_color_scheme_id_fkey"
+            columns: ["color_scheme_id"]
+            isOneToOne: false
+            referencedRelation: "color_schemes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rooms_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -86,6 +138,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          accent_color: string
           created_at: string
           id: string
           key: string
@@ -96,6 +149,7 @@ export type Database = {
           template: string
         }
         Insert: {
+          accent_color?: string
           created_at?: string
           id?: string
           key: string
@@ -106,6 +160,7 @@ export type Database = {
           template?: string
         }
         Update: {
+          accent_color?: string
           created_at?: string
           id?: string
           key?: string
