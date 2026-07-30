@@ -43,7 +43,7 @@ type EntryRow = {
   tags: string[];
   color_scheme_id: string | null;
 };
-type RoomRow = { id: string; name: string };
+type RoomRow = { id: string; name: string; color_scheme_id?: string | null };
 type SchemeRow = { id: string; name: string; color: string };
 
 function AdminPage() {
