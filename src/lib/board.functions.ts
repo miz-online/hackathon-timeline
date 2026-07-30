@@ -85,6 +85,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
     template: string;
     logo_height: number;
     accent_color: string;
+    ad_seconds: number;
   }) =>
     z
       .object({
@@ -94,6 +95,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         template: z.string().min(1).max(40),
         logo_height: z.number().int().min(16).max(400),
         accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        ad_seconds: z.number().int().min(1).max(600).default(10),
       })
       .parse(d),
   )
@@ -108,6 +110,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         template: data.template,
         logo_height: data.logo_height,
         accent_color: data.accent_color.toUpperCase(),
+        ad_seconds: data.ad_seconds,
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
