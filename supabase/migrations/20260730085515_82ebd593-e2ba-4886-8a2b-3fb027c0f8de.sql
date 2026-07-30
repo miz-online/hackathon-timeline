@@ -1,0 +1,1 @@
+ALTER TABLE public.rooms ADD COLUMN color_scheme_id uuid REFERENCES public.color_schemes(id) ON DELETE SET NULL;
