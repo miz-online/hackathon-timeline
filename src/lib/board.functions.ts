@@ -221,7 +221,7 @@ export const listRooms = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("rooms")
-      .select("id, name, color_scheme_id")
+      .select("id, name, color_scheme_id, template")
       .eq("tenant_id", id)
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -232,6 +232,7 @@ const roomInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(120),
   color_scheme_id: z.string().uuid().nullable().default(null),
+  template: z.string().min(1).max(40).nullable().default(null),
 });
 
 export const upsertRoom = createServerFn({ method: "POST" })
@@ -245,7 +246,11 @@ export const upsertRoom = createServerFn({ method: "POST" })
     if (r.id) {
       const { error } = await supabase
         .from("rooms")
-        .update({ name: r.name, color_scheme_id: r.color_scheme_id ?? null })
+        .update({
+          name: r.name,
+          color_scheme_id: r.color_scheme_id ?? null,
+          template: r.template ?? null,
+        })
         .eq("id", r.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -257,6 +262,7 @@ export const upsertRoom = createServerFn({ method: "POST" })
           tenant_id: tenantId,
           name: r.name,
           color_scheme_id: r.color_scheme_id ?? null,
+          template: r.template ?? null,
         })
         .select("id")
         .single();
