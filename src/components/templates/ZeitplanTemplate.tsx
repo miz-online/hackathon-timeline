@@ -31,6 +31,7 @@ export function ZeitplanTemplate({
   logoUrl,
   logoHeight,
   accentColor,
+  roomColor,
 }: {
   tenantName: string;
   roomName: string;
@@ -38,6 +39,7 @@ export function ZeitplanTemplate({
   logoUrl?: string | null;
   logoHeight?: number | null;
   accentColor?: string | null;
+  roomColor?: string | null;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -48,6 +50,7 @@ export function ZeitplanTemplate({
 
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
   const defaultPalette = derivePalette(accentColor || DEFAULT_ACCENT);
+  const headerPalette = derivePalette(roomColor || accentColor || DEFAULT_ACCENT);
 
   // shared animation timeline so every glowing entry animates in sync,
   // computed once per entry when it first mounts
