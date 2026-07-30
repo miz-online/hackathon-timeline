@@ -152,6 +152,8 @@ function AdminPage() {
             <RoomsPanel
               tenantKey={tenantKey}
               rooms={roomsQ.data ?? []}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
               onChange={invalidate}
             />
           </TabsContent>
