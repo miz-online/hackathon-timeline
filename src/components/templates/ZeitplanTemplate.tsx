@@ -31,6 +31,7 @@ export function ZeitplanTemplate({
   logoUrl,
   logoHeight,
   accentColor,
+  roomColor,
 }: {
   tenantName: string;
   roomName: string;
@@ -38,6 +39,7 @@ export function ZeitplanTemplate({
   logoUrl?: string | null;
   logoHeight?: number | null;
   accentColor?: string | null;
+  roomColor?: string | null;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -48,6 +50,7 @@ export function ZeitplanTemplate({
 
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
   const defaultPalette = derivePalette(accentColor || DEFAULT_ACCENT);
+  const headerPalette = derivePalette(roomColor || accentColor || DEFAULT_ACCENT);
 
   // shared animation timeline so every glowing entry animates in sync,
   // computed once per entry when it first mounts
@@ -148,42 +151,50 @@ export function ZeitplanTemplate({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "baseline",
+            alignItems: "center",
             gap: 16,
           }}
         >
-          <div>
-            <div
-              style={{
-                fontSize: 13,
-                color: "#6b7280",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              {tenantName}
-            </div>
-            <div
-              style={{
-                fontSize: "clamp(24px, 3vw, 38px)",
-                fontWeight: 700,
-                color: "#111827",
-              }}
-            >
-              {roomName}
-            </div>
+          <div
+            style={{
+              fontSize: "clamp(24px, 3vw, 38px)",
+              lineHeight: 1.1,
+              fontWeight: 700,
+              color: headerPalette.base,
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {roomName}
           </div>
           <div
             style={{
-              fontSize: "clamp(24px, 2.6vw, 36px)",
-              fontWeight: 600,
-              color: defaultPalette.base,
+              fontSize: 13,
+              color: "#6b7280",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              textAlign: "center",
+              flexShrink: 0,
+            }}
+          >
+            {tenantName}
+          </div>
+          <div
+            style={{
+              fontSize: "clamp(24px, 3vw, 38px)",
+              lineHeight: 1.1,
+              fontWeight: 700,
+              color: headerPalette.base,
               fontVariantNumeric: "tabular-nums",
+              flex: 1,
+              minWidth: 0,
+              textAlign: "right",
             }}
           >
             {clock}
           </div>
         </header>
+
 
         <main
           style={{

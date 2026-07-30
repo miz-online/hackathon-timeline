@@ -43,7 +43,7 @@ type EntryRow = {
   tags: string[];
   color_scheme_id: string | null;
 };
-type RoomRow = { id: string; name: string };
+type RoomRow = { id: string; name: string; color_scheme_id?: string | null };
 type SchemeRow = { id: string; name: string; color: string };
 
 function AdminPage() {
@@ -152,6 +152,8 @@ function AdminPage() {
             <RoomsPanel
               tenantKey={tenantKey}
               rooms={roomsQ.data ?? []}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
               onChange={invalidate}
             />
           </TabsContent>
@@ -485,10 +487,14 @@ function EntryForm({
 function RoomsPanel({
   tenantKey,
   rooms,
+  schemes,
+  defaultColor,
   onChange,
 }: {
   tenantKey: string;
   rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -524,6 +530,8 @@ function RoomsPanel({
       {showForm ? (
         <RoomForm
           initial={editing}
+          schemes={schemes}
+          defaultColor={defaultColor}
           onCancel={() => setShowForm(false)}
           onSubmit={async (room) => {
             await upsertFn({ data: { key: tenantKey, room } });
@@ -542,7 +550,19 @@ function RoomsPanel({
         ) : (
           rooms.map((r) => (
             <Card key={r.id} className="p-4 space-y-2">
-              <div className="font-semibold truncate">{r.name}</div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-4 w-4 shrink-0 rounded-full border"
+                  style={{
+                    backgroundColor:
+                      schemes.find((s) => s.id === r.color_scheme_id)?.color ?? defaultColor,
+                  }}
+                  title={
+                    schemes.find((s) => s.id === r.color_scheme_id)?.name ?? t("colors.default")
+                  }
+                />
+                <div className="font-semibold truncate">{r.name}</div>
+              </div>
               <div className="flex gap-2 flex-wrap">
                 <Link
                   to="/tenant/$tenantKey/room/$roomId"
@@ -583,15 +603,24 @@ function RoomsPanel({
 
 function RoomForm({
   initial,
+  schemes,
+  defaultColor,
   onSubmit,
   onCancel,
 }: {
   initial: RoomRow | null;
-  onSubmit: (room: { id?: string; name: string }) => Promise<void>;
+  schemes: SchemeRow[];
+  defaultColor: string;
+  onSubmit: (room: {
+    id?: string;
+    name: string;
+    color_scheme_id: string | null;
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [saving, setSaving] = useState(false);
 
   return (
@@ -605,6 +634,30 @@ function RoomForm({
         />
         <p className="text-xs text-muted-foreground">{t("rooms.form.nameHint")}</p>
       </div>
+      <div className="space-y-1">
+        <Label>{t("rooms.form.scheme")}</Label>
+        <div className="flex items-center gap-2">
+          <span
+            className="h-6 w-6 shrink-0 rounded-full border"
+            style={{
+              backgroundColor: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+            }}
+          />
+          <select
+            value={schemeId}
+            onChange={(e) => setSchemeId(e.target.value)}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">{t("colors.default")}</option>
+            {schemes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("rooms.form.schemeHint")}</p>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -614,7 +667,11 @@ function RoomForm({
           onClick={async () => {
             setSaving(true);
             try {
-              await onSubmit({ id: initial?.id, name: name.trim() });
+              await onSubmit({
+                id: initial?.id,
+                name: name.trim(),
+                color_scheme_id: schemeId || null,
+              });
             } catch (e) {
               toast.error((e as Error).message);
             } finally {

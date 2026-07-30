@@ -99,24 +99,34 @@ export type Database = {
       }
       rooms: {
         Row: {
+          color_scheme_id: string | null
           created_at: string
           id: string
           name: string
           tenant_id: string
         }
         Insert: {
+          color_scheme_id?: string | null
           created_at?: string
           id?: string
           name: string
           tenant_id: string
         }
         Update: {
+          color_scheme_id?: string | null
           created_at?: string
           id?: string
           name?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rooms_color_scheme_id_fkey"
+            columns: ["color_scheme_id"]
+            isOneToOne: false
+            referencedRelation: "color_schemes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rooms_tenant_id_fkey"
             columns: ["tenant_id"]
