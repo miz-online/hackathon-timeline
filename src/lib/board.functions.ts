@@ -17,19 +17,32 @@ function generateKey(): string {
   return out;
 }
 
-async function resolveTenant(
-  key: string,
-): Promise<{ id: string; name: string; past_grace_minutes: number; template: string; logo_url: string | null; logo_height: number; accent_color: string }> {
+type TenantRow = {
+  id: string;
+  name: string;
+  past_grace_minutes: number;
+  template: string;
+  logo_url: string | null;
+  logo_height: number;
+  accent_color: string;
+  ad_seconds: number;
+};
+
+const TENANT_COLS =
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds";
+
+async function resolveTenant(key: string): Promise<TenantRow> {
   const supabase = await getAdmin();
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, name, past_grace_minutes, template, logo_url, logo_height, accent_color")
+    .select(TENANT_COLS)
     .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Unknown tenant key");
   return data;
 }
+
 
 function filterVisible<T extends { time: string; tags: string[] }>(
   entries: T[],
