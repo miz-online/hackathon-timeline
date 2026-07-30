@@ -34,7 +34,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             .maybeSingle();
           const { data: rNow } = await supabaseAdmin
             .from("rooms")
-            .select("id, name")
+            .select("id, name, color_scheme_id")
             .eq("id", roomDbId)
             .maybeSingle();
           if (!tNow || !rNow) return null;
