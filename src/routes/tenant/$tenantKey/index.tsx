@@ -530,6 +530,8 @@ function RoomsPanel({
       {showForm ? (
         <RoomForm
           initial={editing}
+          schemes={schemes}
+          defaultColor={defaultColor}
           onCancel={() => setShowForm(false)}
           onSubmit={async (room) => {
             await upsertFn({ data: { key: tenantKey, room } });
@@ -548,7 +550,19 @@ function RoomsPanel({
         ) : (
           rooms.map((r) => (
             <Card key={r.id} className="p-4 space-y-2">
-              <div className="font-semibold truncate">{r.name}</div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-4 w-4 shrink-0 rounded-full border"
+                  style={{
+                    backgroundColor:
+                      schemes.find((s) => s.id === r.color_scheme_id)?.color ?? defaultColor,
+                  }}
+                  title={
+                    schemes.find((s) => s.id === r.color_scheme_id)?.name ?? t("colors.default")
+                  }
+                />
+                <div className="font-semibold truncate">{r.name}</div>
+              </div>
               <div className="flex gap-2 flex-wrap">
                 <Link
                   to="/tenant/$tenantKey/room/$roomId"
