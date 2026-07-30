@@ -160,6 +160,19 @@ function RoomDisplay() {
     (e) => new Date(e.time).getTime() >= cutoff,
   );
 
+  if ((snapshot.room.template || snapshot.tenant.template) === "ads") {
+    return (
+      <AdsTemplate
+        tenantName={snapshot.tenant.name}
+        roomName={snapshot.room.name}
+        ads={snapshot.ads ?? []}
+        adSeconds={snapshot.tenant.ad_seconds ?? 10}
+        logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
+        logoHeight={snapshot.tenant.logo_height}
+      />
+    );
+  }
+
   return (
     <ZeitplanTemplate
       tenantName={snapshot.tenant.name}
