@@ -17,6 +17,12 @@ import {
   listColorSchemes,
   upsertColorScheme,
   deleteColorScheme,
+  listAds,
+  uploadAd,
+  deleteAd,
+  moveAd,
+  exportConfig,
+  importConfig,
 } from "@/lib/board.functions";
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
