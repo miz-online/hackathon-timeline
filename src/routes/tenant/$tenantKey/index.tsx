@@ -145,6 +145,7 @@ function AdminPage() {
             <TabsTrigger value="entries">{t("admin.tabs.entries")}</TabsTrigger>
             <TabsTrigger value="rooms">{t("admin.tabs.rooms")}</TabsTrigger>
             <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
+            <TabsTrigger value="ads">{t("admin.tabs.ads")}</TabsTrigger>
             <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
           </TabsList>
 
@@ -178,6 +179,10 @@ function AdminPage() {
             />
           </TabsContent>
 
+          <TabsContent value="ads" className="space-y-4 pt-4">
+            <AdsPanel tenantKey={tenantKey} onChange={invalidate} />
+          </TabsContent>
+
           <TabsContent value="settings" className="space-y-4 pt-4">
             <SettingsPanel
               tenantKey={tenantKey}
@@ -187,6 +192,7 @@ function AdminPage() {
               accentColor={tenant.accent_color}
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
+              adSeconds={tenant.ad_seconds}
               onChange={invalidate}
             />
           </TabsContent>
@@ -626,12 +632,14 @@ function RoomForm({
     id?: string;
     name: string;
     color_scheme_id: string | null;
+    template: string | null;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
+  const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
 
   return (
@@ -669,6 +677,19 @@ function RoomForm({
         </div>
         <p className="text-xs text-muted-foreground">{t("rooms.form.schemeHint")}</p>
       </div>
+      <div className="space-y-1">
+        <Label>{t("rooms.form.template")}</Label>
+        <select
+          value={tpl}
+          onChange={(e) => setTpl(e.target.value)}
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+        >
+          <option value="">{t("rooms.form.templateGlobal")}</option>
+          <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+          <option value="ads">{t("settings.template.ads")}</option>
+        </select>
+        <p className="text-xs text-muted-foreground">{t("rooms.form.templateHint")}</p>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -682,6 +703,7 @@ function RoomForm({
                 id: initial?.id,
                 name: name.trim(),
                 color_scheme_id: schemeId || null,
+                template: tpl || null,
               });
             } catch (e) {
               toast.error((e as Error).message);
@@ -707,6 +729,7 @@ function SettingsPanel({
   accentColor,
   graceMinutes,
   template,
+  adSeconds,
   onChange,
 }: {
   tenantKey: string;
@@ -716,6 +739,7 @@ function SettingsPanel({
   accentColor: string;
   graceMinutes: number;
   template: string;
+  adSeconds: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -723,6 +747,7 @@ function SettingsPanel({
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   const [tpl, setTpl] = useState(template);
+  const [adSec, setAdSec] = useState(adSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
@@ -765,7 +790,19 @@ function SettingsPanel({
             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           >
             <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+            <option value="ads">{t("settings.template.ads")}</option>
           </select>
+        </div>
+        <div className="space-y-1">
+          <Label>{t("settings.adSeconds")}</Label>
+          <Input
+            type="number"
+            min={1}
+            max={600}
+            value={adSec}
+            onChange={(e) => setAdSec(Number(e.target.value))}
+          />
+          <p className="text-xs text-muted-foreground">{t("settings.adSecondsHint")}</p>
         </div>
         <div className="space-y-1">
           <Label>{t("settings.language")}</Label>
@@ -791,6 +828,7 @@ function SettingsPanel({
                   template: tpl,
                   logo_height: lh,
                   accent_color: accent,
+                  ad_seconds: adSec,
                 },
               });
               toast.success(t("settings.saved"));
@@ -1134,5 +1172,207 @@ function SchemeForm({
         </Button>
       </div>
     </Card>
+  );
+}
+
+// --------------- Ads ---------------
+
+function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => void }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const listFn = useServerFn(listAds);
+  const uploadFn = useServerFn(uploadAd);
+  const deleteFn = useServerFn(deleteAd);
+  const moveFn = useServerFn(moveAd);
+  const exportFn = useServerFn(exportConfig);
+  const importFn = useServerFn(importConfig);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const adsQ = useQuery({
+    queryKey: ["ads", tenantKey],
+    queryFn: () => listFn({ data: { key: tenantKey } }),
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["ads", tenantKey] });
+    onChange();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-medium">{t("ads.title")}</h2>
+        <div className="flex gap-2">
+          <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {t("ads.upload")}
+          </Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("ads.hint")}</p>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={async (ev) => {
+          const files = Array.from(ev.target.files ?? []);
+          ev.target.value = "";
+          if (!files.length) return;
+          setBusy(true);
+          try {
+            for (const file of files) {
+              if (file.size > 10 * 1024 * 1024) {
+                toast.error(t("ads.tooLarge"));
+                continue;
+              }
+              const buf = new Uint8Array(await file.arrayBuffer());
+              let bin = "";
+              for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+              await uploadFn({
+                data: {
+                  key: tenantKey,
+                  filename: file.name,
+                  contentType: file.type || "image/png",
+                  dataBase64: btoa(bin),
+                },
+              });
+            }
+            toast.success(t("ads.uploaded"));
+            refresh();
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(adsQ.data ?? []).length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground text-center sm:col-span-2">
+            {t("ads.empty")}
+          </Card>
+        ) : (
+          (adsQ.data ?? []).map((a, i, arr) => (
+            <Card key={a.id} className="p-3 space-y-2">
+              <img
+                src={`/api/public/ad/${tenantKey}/${a.id}`}
+                alt={a.name}
+                className="h-32 w-full rounded border bg-muted/40 object-contain"
+              />
+              <div className="truncate text-sm font-medium">{a.name}</div>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={i === 0}
+                  onClick={async () => {
+                    await moveFn({ data: { key: tenantKey, id: a.id, direction: "up" } });
+                    refresh();
+                  }}
+                >
+                  ↑
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={i === arr.length - 1}
+                  onClick={async () => {
+                    await moveFn({ data: { key: tenantKey, id: a.id, direction: "down" } });
+                    refresh();
+                  }}
+                >
+                  ↓
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <a href={`/api/public/ad/${tenantKey}/${a.id}`} download={a.name}>
+                    {t("ads.download")}
+                  </a>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    if (!confirm(t("ads.confirmDelete"))) return;
+                    await deleteFn({ data: { key: tenantKey, id: a.id } });
+                    toast.success(t("ads.deleted"));
+                    refresh();
+                  }}
+                >
+                  {t("ads.delete")}
+                </Button>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      <Card className="p-4 space-y-2 max-w-xl">
+        <div className="font-medium">{t("io.title")}</div>
+        <p className="text-xs text-muted-foreground">{t("io.hint")}</p>
+        <input
+          ref={importRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={async (ev) => {
+            const file = ev.target.files?.[0];
+            ev.target.value = "";
+            if (!file) return;
+            if (!confirm(t("io.importConfirm"))) return;
+            setBusy(true);
+            try {
+              const payload = JSON.parse(await file.text());
+              await importFn({ data: { key: tenantKey, payload } });
+              toast.success(t("io.imported"));
+              refresh();
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const cfg = await exportFn({ data: { key: tenantKey } });
+                const blob = new Blob([JSON.stringify(cfg, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `board-config-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) {
+                toast.error((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {t("io.export")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => importRef.current?.click()}
+          >
+            {t("io.import")}
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
