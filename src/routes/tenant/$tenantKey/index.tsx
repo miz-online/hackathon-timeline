@@ -755,7 +755,11 @@ function SettingsPanel({
   const regenFn = useServerFn(regenerateKey);
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
+  const exportFn = useServerFn(exportConfig);
+  const importFn = useServerFn(importConfig);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const [ioBusy, setIoBusy] = useState(false);
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
@@ -927,6 +931,70 @@ function SettingsPanel({
               {t("settings.logoRemove")}
             </Button>
           ) : null}
+        </div>
+      </div>
+
+      <div className="border-t pt-4 space-y-2">
+        <div className="font-medium">{t("io.title")}</div>
+        <p className="text-xs text-muted-foreground">{t("io.hint")}</p>
+        <input
+          ref={importRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={async (ev) => {
+            const file = ev.target.files?.[0];
+            ev.target.value = "";
+            if (!file) return;
+            if (!confirm(t("io.importConfirm"))) return;
+            setIoBusy(true);
+            try {
+              const payload = JSON.parse(await file.text());
+              await importFn({ data: { key: tenantKey, payload } });
+              toast.success(t("io.imported"));
+              onChange();
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setIoBusy(false);
+            }
+          }}
+        />
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={ioBusy}
+            onClick={async () => {
+              setIoBusy(true);
+              try {
+                const cfg = await exportFn({ data: { key: tenantKey } });
+                const blob = new Blob([JSON.stringify(cfg, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `board-config-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) {
+                toast.error((e as Error).message);
+              } finally {
+                setIoBusy(false);
+              }
+            }}
+          >
+            {t("io.export")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={ioBusy}
+            onClick={() => importRef.current?.click()}
+          >
+            {t("io.import")}
+          </Button>
         </div>
       </div>
 
@@ -1184,10 +1252,7 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const uploadFn = useServerFn(uploadAd);
   const deleteFn = useServerFn(deleteAd);
   const moveFn = useServerFn(moveAd);
-  const exportFn = useServerFn(exportConfig);
-  const importFn = useServerFn(importConfig);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
   const adsQ = useQuery({
