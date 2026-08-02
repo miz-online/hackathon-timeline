@@ -37,9 +37,25 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const { data: ads } = await supabaseAdmin
           .from("ads")
-          .select("id, name, content_type")
+          .select("id, name, content_type, path")
           .eq("tenant_id", tenant.id)
           .order("sort_order", { ascending: true });
+
+        // Signed storage URLs so displays don't load images through this
+        // worker origin (a long-lived SSE connection can stall those).
+        const signed = new Map<string, string>();
+        if (ads?.length) {
+          const { data: urls } = await supabaseAdmin.storage
+            .from("tenant-ads")
+            .createSignedUrls(
+              ads.map((a) => a.path),
+              60 * 60 * 12,
+            );
+          (urls ?? []).forEach((u, i) => {
+            if (u.signedUrl && ads[i]) signed.set(ads[i].id, u.signedUrl);
+          });
+        }
+
 
         const cutoff = Date.now() - tenant.past_grace_minutes * 60 * 1000;
         const visible = (entries ?? [])
