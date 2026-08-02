@@ -50,9 +50,24 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             .eq("tenant_id", tenantId);
           const { data: ads } = await supabaseAdmin
             .from("ads")
-            .select("id, name, content_type")
+            .select("id, name, content_type, path")
             .eq("tenant_id", tenantId)
             .order("sort_order", { ascending: true });
+          // Signed storage URLs so displays don't load images through this
+          // worker origin (a long-lived SSE connection can stall those).
+          const signed = new Map<string, string>();
+          if (ads?.length) {
+            const { data: urls } = await supabaseAdmin.storage
+              .from("tenant-ads")
+              .createSignedUrls(
+                ads.map((a) => a.path),
+                60 * 60 * 12,
+              );
+            (urls ?? []).forEach((u, i) => {
+              if (u.signedUrl && ads[i]) signed.set(ads[i].id, u.signedUrl);
+            });
+          }
+
           const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
           const cutoff = Date.now() - tNow.past_grace_minutes * 60 * 1000;
           const visible = (entries ?? [])
@@ -87,9 +102,10 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             ads: (ads ?? []).map((a) => ({
               id: a.id,
               name: a.name,
-              url: `/api/public/ad/${tenantKey}/${a.id}`,
+              url: signed.get(a.id) ?? `/api/public/ad/${tenantKey}/${a.id}`,
               content_type: a.content_type,
             })),
+
           };
         };
 

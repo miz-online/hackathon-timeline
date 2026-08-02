@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
 import { useI18n } from "@/lib/i18n";
+import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
 type Ad = { id: string; name: string; url: string; content_type: string };
 
@@ -19,6 +20,8 @@ export function AdsTemplate({
   adSeconds,
   logoUrl,
   logoHeight,
+  accentColor,
+  roomColor,
 }: {
   tenantName: string;
   roomName: string;
@@ -26,8 +29,11 @@ export function AdsTemplate({
   adSeconds: number;
   logoUrl?: string | null;
   logoHeight?: number | null;
+  accentColor?: string | null;
+  roomColor?: string | null;
 }) {
   const { t } = useI18n();
+  const palette = derivePalette(roomColor || accentColor || DEFAULT_ACCENT);
   const [now, setNow] = useState(() => Date.now());
   const [index, setIndex] = useState(0);
 
@@ -121,6 +127,7 @@ export function AdsTemplate({
               lineHeight: 1.1,
               flex: 1,
               minWidth: 0,
+              color: palette.base,
               textShadow: GLOW,
             }}
           >
@@ -147,6 +154,7 @@ export function AdsTemplate({
               flex: 1,
               minWidth: 0,
               textAlign: "right",
+              color: palette.base,
               textShadow: GLOW,
             }}
           >
