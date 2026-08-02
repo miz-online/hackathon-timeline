@@ -1324,7 +1324,7 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
               <img
                 src={`/api/public/ad/${tenantKey}/${a.id}`}
                 alt={a.name}
-                className="h-24 w-40 shrink-0 rounded border bg-muted/40 object-contain"
+                className="h-16 w-16 shrink-0 rounded border bg-muted/40 object-contain"
               />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
