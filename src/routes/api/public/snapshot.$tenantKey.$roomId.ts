@@ -92,9 +92,10 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             ads: (ads ?? []).map((a) => ({
               id: a.id,
               name: a.name,
-              url: `/api/public/ad/${tenantKey}/${a.id}`,
+              url: signed.get(a.id) ?? `/api/public/ad/${tenantKey}/${a.id}`,
               content_type: a.content_type,
             })),
+
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },
         );
