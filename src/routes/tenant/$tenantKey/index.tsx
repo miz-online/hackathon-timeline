@@ -1376,7 +1376,7 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
                 src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
                 alt={a.name}
                 draggable={false}
-                className="h-16 w-16 shrink-0 rounded border bg-muted/40 object-contain"
+                className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
               />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
