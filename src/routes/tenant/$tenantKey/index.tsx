@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
+import { GripVertical } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -21,6 +22,7 @@ import {
   uploadAd,
   deleteAd,
   moveAd,
+  reorderAds,
   exportConfig,
   importConfig,
 } from "@/lib/board.functions";
@@ -1252,8 +1254,12 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const uploadFn = useServerFn(uploadAd);
   const deleteFn = useServerFn(deleteAd);
   const moveFn = useServerFn(moveAd);
+  const reorderFn = useServerFn(reorderAds);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [order, setOrder] = useState<string[] | null>(null);
 
   const adsQ = useQuery({
     queryKey: ["ads", tenantKey],
@@ -1262,6 +1268,28 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["ads", tenantKey] });
     onChange();
+  };
+
+  const raw = adsQ.data ?? [];
+  const ads =
+    order && order.length === raw.length
+      ? order.map((id) => raw.find((a) => a.id === id)).filter((a): a is (typeof raw)[number] => !!a)
+      : raw;
+
+  const reorder = async (fromId: string, toId: string) => {
+    const ids = ads.map((a) => a.id);
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from < 0 || to < 0 || from === to) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    setOrder(ids);
+    try {
+      await reorderFn({ data: { key: tenantKey, ids } });
+      refresh();
+    } catch (e) {
+      setOrder(null);
+      toast.error((e as Error).message);
+    }
   };
 
   return (
@@ -1316,14 +1344,38 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
       />
 
       <div className="space-y-2">
-        {(adsQ.data ?? []).length === 0 ? (
+        {ads.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
         ) : (
-          (adsQ.data ?? []).map((a, i, arr) => (
-            <Card key={a.id} className="flex items-center gap-4 p-3">
+          ads.map((a, i, arr) => (
+            <Card
+              key={a.id}
+              draggable
+              onDragStart={() => setDragId(a.id)}
+              onDragEnd={() => {
+                setDragId(null);
+                setOverId(null);
+              }}
+              onDragOver={(ev) => {
+                ev.preventDefault();
+                if (dragId && dragId !== a.id) setOverId(a.id);
+              }}
+              onDragLeave={() => setOverId((p) => (p === a.id ? null : p))}
+              onDrop={(ev) => {
+                ev.preventDefault();
+                setOverId(null);
+                if (dragId) reorder(dragId, a.id);
+                setDragId(null);
+              }}
+              className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
+                dragId === a.id ? "opacity-50" : ""
+              } ${overId === a.id ? "ring-2 ring-primary" : ""}`}
+            >
+              <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
               <img
-                src={`/api/public/ad/${tenantKey}/${a.id}`}
+                src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
                 alt={a.name}
+                draggable={false}
                 className="h-16 w-16 shrink-0 rounded border bg-muted/40 object-contain"
               />
               <div className="min-w-0 flex-1 space-y-2">
