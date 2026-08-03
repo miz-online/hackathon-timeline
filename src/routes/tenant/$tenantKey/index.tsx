@@ -1316,14 +1316,38 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
       />
 
       <div className="space-y-2">
-        {(adsQ.data ?? []).length === 0 ? (
+        {ads.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
         ) : (
-          (adsQ.data ?? []).map((a, i, arr) => (
-            <Card key={a.id} className="flex items-center gap-4 p-3">
+          ads.map((a, i, arr) => (
+            <Card
+              key={a.id}
+              draggable
+              onDragStart={() => setDragId(a.id)}
+              onDragEnd={() => {
+                setDragId(null);
+                setOverId(null);
+              }}
+              onDragOver={(ev) => {
+                ev.preventDefault();
+                if (dragId && dragId !== a.id) setOverId(a.id);
+              }}
+              onDragLeave={() => setOverId((p) => (p === a.id ? null : p))}
+              onDrop={(ev) => {
+                ev.preventDefault();
+                setOverId(null);
+                if (dragId) reorder(dragId, a.id);
+                setDragId(null);
+              }}
+              className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
+                dragId === a.id ? "opacity-50" : ""
+              } ${overId === a.id ? "ring-2 ring-primary" : ""}`}
+            >
+              <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
               <img
-                src={`/api/public/ad/${tenantKey}/${a.id}`}
+                src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
                 alt={a.name}
+                draggable={false}
                 className="h-16 w-16 shrink-0 rounded border bg-muted/40 object-contain"
               />
               <div className="min-w-0 flex-1 space-y-2">
