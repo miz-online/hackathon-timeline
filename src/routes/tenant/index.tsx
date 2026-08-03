@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { setStoredTenantKey, getStoredTenantKey } from "@/lib/tenant-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,12 @@ export const Route = createFileRoute("/tenant/")({
 function TenantGate() {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const [key, setKey] = useState(() =>
-    typeof window !== "undefined" ? getStoredTenantKey() ?? "" : "",
-  );
+  const [key, setKey] = useState("");
+
+  useEffect(() => {
+    const stored = getStoredTenantKey();
+    if (stored) setKey((k) => (k ? k : stored));
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
