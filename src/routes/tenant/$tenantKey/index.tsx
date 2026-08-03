@@ -21,6 +21,7 @@ import {
   uploadAd,
   deleteAd,
   moveAd,
+  reorderAds,
   exportConfig,
   importConfig,
 } from "@/lib/board.functions";
