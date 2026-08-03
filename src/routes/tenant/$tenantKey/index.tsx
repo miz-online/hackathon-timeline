@@ -1252,8 +1252,12 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const uploadFn = useServerFn(uploadAd);
   const deleteFn = useServerFn(deleteAd);
   const moveFn = useServerFn(moveAd);
+  const reorderFn = useServerFn(reorderAds);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [order, setOrder] = useState<string[] | null>(null);
 
   const adsQ = useQuery({
     queryKey: ["ads", tenantKey],
@@ -1262,6 +1266,28 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["ads", tenantKey] });
     onChange();
+  };
+
+  const raw = adsQ.data ?? [];
+  const ads =
+    order && order.length === raw.length
+      ? order.map((id) => raw.find((a) => a.id === id)).filter((a): a is (typeof raw)[number] => !!a)
+      : raw;
+
+  const reorder = async (fromId: string, toId: string) => {
+    const ids = ads.map((a) => a.id);
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from < 0 || to < 0 || from === to) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    setOrder(ids);
+    try {
+      await reorderFn({ data: { key: tenantKey, ids } });
+      refresh();
+    } catch (e) {
+      setOrder(null);
+      toast.error((e as Error).message);
+    }
   };
 
   return (
