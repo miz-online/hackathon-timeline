@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      ads: {
+        Row: {
+          content_type: string
+          created_at: string
+          id: string
+          name: string
+          path: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          name?: string
+          path: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          name?: string
+          path?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       color_schemes: {
         Row: {
           color: string
@@ -103,6 +144,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          template: string | null
           tenant_id: string
         }
         Insert: {
@@ -110,6 +152,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          template?: string | null
           tenant_id: string
         }
         Update: {
@@ -117,6 +160,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          template?: string | null
           tenant_id?: string
         }
         Relationships: [
@@ -139,6 +183,7 @@ export type Database = {
       tenants: {
         Row: {
           accent_color: string
+          ad_seconds: number
           created_at: string
           id: string
           key: string
@@ -150,6 +195,7 @@ export type Database = {
         }
         Insert: {
           accent_color?: string
+          ad_seconds?: number
           created_at?: string
           id?: string
           key: string
@@ -161,6 +207,7 @@ export type Database = {
         }
         Update: {
           accent_color?: string
+          ad_seconds?: number
           created_at?: string
           id?: string
           key?: string

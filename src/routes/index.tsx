@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { createTenant } from "@/lib/board.functions";
 import { setStoredTenantKey, getStoredTenantKey } from "@/lib/tenant-storage";
@@ -22,11 +22,14 @@ function Index() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const create = useServerFn(createTenant);
-  const [key, setKey] = useState(() =>
-    typeof window !== "undefined" ? getStoredTenantKey() ?? "" : "",
-  );
+  const [key, setKey] = useState("");
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = getStoredTenantKey();
+    if (stored) setKey((k) => (k ? k : stored));
+  }, []);
 
   const handleCreate = async () => {
     setCreating(true);

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
+import { GripVertical } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -17,6 +18,13 @@ import {
   listColorSchemes,
   upsertColorScheme,
   deleteColorScheme,
+  listAds,
+  uploadAd,
+  deleteAd,
+  moveAd,
+  reorderAds,
+  exportConfig,
+  importConfig,
 } from "@/lib/board.functions";
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
@@ -43,7 +51,12 @@ type EntryRow = {
   tags: string[];
   color_scheme_id: string | null;
 };
-type RoomRow = { id: string; name: string; color_scheme_id?: string | null };
+type RoomRow = {
+  id: string;
+  name: string;
+  color_scheme_id?: string | null;
+  template?: string | null;
+};
 type SchemeRow = { id: string; name: string; color: string };
 
 function AdminPage() {
@@ -134,6 +147,7 @@ function AdminPage() {
             <TabsTrigger value="entries">{t("admin.tabs.entries")}</TabsTrigger>
             <TabsTrigger value="rooms">{t("admin.tabs.rooms")}</TabsTrigger>
             <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
+            <TabsTrigger value="ads">{t("admin.tabs.ads")}</TabsTrigger>
             <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
           </TabsList>
 
@@ -167,6 +181,10 @@ function AdminPage() {
             />
           </TabsContent>
 
+          <TabsContent value="ads" className="space-y-4 pt-4">
+            <AdsPanel tenantKey={tenantKey} onChange={invalidate} />
+          </TabsContent>
+
           <TabsContent value="settings" className="space-y-4 pt-4">
             <SettingsPanel
               tenantKey={tenantKey}
@@ -176,6 +194,7 @@ function AdminPage() {
               accentColor={tenant.accent_color}
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
+              adSeconds={tenant.ad_seconds}
               onChange={invalidate}
             />
           </TabsContent>
@@ -615,12 +634,14 @@ function RoomForm({
     id?: string;
     name: string;
     color_scheme_id: string | null;
+    template: string | null;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
+  const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
 
   return (
@@ -658,6 +679,19 @@ function RoomForm({
         </div>
         <p className="text-xs text-muted-foreground">{t("rooms.form.schemeHint")}</p>
       </div>
+      <div className="space-y-1">
+        <Label>{t("rooms.form.template")}</Label>
+        <select
+          value={tpl}
+          onChange={(e) => setTpl(e.target.value)}
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+        >
+          <option value="">{t("rooms.form.templateGlobal")}</option>
+          <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+          <option value="ads">{t("settings.template.ads")}</option>
+        </select>
+        <p className="text-xs text-muted-foreground">{t("rooms.form.templateHint")}</p>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -671,6 +705,7 @@ function RoomForm({
                 id: initial?.id,
                 name: name.trim(),
                 color_scheme_id: schemeId || null,
+                template: tpl || null,
               });
             } catch (e) {
               toast.error((e as Error).message);
@@ -696,6 +731,7 @@ function SettingsPanel({
   accentColor,
   graceMinutes,
   template,
+  adSeconds,
   onChange,
 }: {
   tenantKey: string;
@@ -705,6 +741,7 @@ function SettingsPanel({
   accentColor: string;
   graceMinutes: number;
   template: string;
+  adSeconds: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -712,6 +749,7 @@ function SettingsPanel({
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   const [tpl, setTpl] = useState(template);
+  const [adSec, setAdSec] = useState(adSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
@@ -719,7 +757,11 @@ function SettingsPanel({
   const regenFn = useServerFn(regenerateKey);
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
+  const exportFn = useServerFn(exportConfig);
+  const importFn = useServerFn(importConfig);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const [ioBusy, setIoBusy] = useState(false);
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
@@ -754,7 +796,19 @@ function SettingsPanel({
             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           >
             <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+            <option value="ads">{t("settings.template.ads")}</option>
           </select>
+        </div>
+        <div className="space-y-1">
+          <Label>{t("settings.adSeconds")}</Label>
+          <Input
+            type="number"
+            min={1}
+            max={600}
+            value={adSec}
+            onChange={(e) => setAdSec(Number(e.target.value))}
+          />
+          <p className="text-xs text-muted-foreground">{t("settings.adSecondsHint")}</p>
         </div>
         <div className="space-y-1">
           <Label>{t("settings.language")}</Label>
@@ -780,6 +834,7 @@ function SettingsPanel({
                   template: tpl,
                   logo_height: lh,
                   accent_color: accent,
+                  ad_seconds: adSec,
                 },
               });
               toast.success(t("settings.saved"));
@@ -878,6 +933,70 @@ function SettingsPanel({
               {t("settings.logoRemove")}
             </Button>
           ) : null}
+        </div>
+      </div>
+
+      <div className="border-t pt-4 space-y-2">
+        <div className="font-medium">{t("io.title")}</div>
+        <p className="text-xs text-muted-foreground">{t("io.hint")}</p>
+        <input
+          ref={importRef}
+          type="file"
+          accept="application/json"
+          className="hidden"
+          onChange={async (ev) => {
+            const file = ev.target.files?.[0];
+            ev.target.value = "";
+            if (!file) return;
+            if (!confirm(t("io.importConfirm"))) return;
+            setIoBusy(true);
+            try {
+              const payload = JSON.parse(await file.text());
+              await importFn({ data: { key: tenantKey, payload } });
+              toast.success(t("io.imported"));
+              onChange();
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setIoBusy(false);
+            }
+          }}
+        />
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={ioBusy}
+            onClick={async () => {
+              setIoBusy(true);
+              try {
+                const cfg = await exportFn({ data: { key: tenantKey } });
+                const blob = new Blob([JSON.stringify(cfg, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `board-config-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch (e) {
+                toast.error((e as Error).message);
+              } finally {
+                setIoBusy(false);
+              }
+            }}
+          >
+            {t("io.export")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={ioBusy}
+            onClick={() => importRef.current?.click()}
+          >
+            {t("io.import")}
+          </Button>
         </div>
       </div>
 
@@ -1123,5 +1242,191 @@ function SchemeForm({
         </Button>
       </div>
     </Card>
+  );
+}
+
+// --------------- Ads ---------------
+
+function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => void }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const listFn = useServerFn(listAds);
+  const uploadFn = useServerFn(uploadAd);
+  const deleteFn = useServerFn(deleteAd);
+  const moveFn = useServerFn(moveAd);
+  const reorderFn = useServerFn(reorderAds);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [order, setOrder] = useState<string[] | null>(null);
+
+  const adsQ = useQuery({
+    queryKey: ["ads", tenantKey],
+    queryFn: () => listFn({ data: { key: tenantKey } }),
+  });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["ads", tenantKey] });
+    onChange();
+  };
+
+  const raw = adsQ.data ?? [];
+  const ads =
+    order && order.length === raw.length
+      ? order.map((id) => raw.find((a) => a.id === id)).filter((a): a is (typeof raw)[number] => !!a)
+      : raw;
+
+  const reorder = async (fromId: string, toId: string) => {
+    const ids = ads.map((a) => a.id);
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from < 0 || to < 0 || from === to) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    setOrder(ids);
+    try {
+      await reorderFn({ data: { key: tenantKey, ids } });
+      refresh();
+    } catch (e) {
+      setOrder(null);
+      toast.error((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-medium">{t("ads.title")}</h2>
+        <div className="flex gap-2">
+          <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {t("ads.upload")}
+          </Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("ads.hint")}</p>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={async (ev) => {
+          const files = Array.from(ev.target.files ?? []);
+          ev.target.value = "";
+          if (!files.length) return;
+          setBusy(true);
+          try {
+            for (const file of files) {
+              if (file.size > 10 * 1024 * 1024) {
+                toast.error(t("ads.tooLarge"));
+                continue;
+              }
+              const buf = new Uint8Array(await file.arrayBuffer());
+              let bin = "";
+              for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+              await uploadFn({
+                data: {
+                  key: tenantKey,
+                  filename: file.name,
+                  contentType: file.type || "image/png",
+                  dataBase64: btoa(bin),
+                },
+              });
+            }
+            toast.success(t("ads.uploaded"));
+            refresh();
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+
+      <div className="space-y-2">
+        {ads.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
+        ) : (
+          ads.map((a, i, arr) => (
+            <Card
+              key={a.id}
+              draggable
+              onDragStart={() => setDragId(a.id)}
+              onDragEnd={() => {
+                setDragId(null);
+                setOverId(null);
+              }}
+              onDragOver={(ev) => {
+                ev.preventDefault();
+                if (dragId && dragId !== a.id) setOverId(a.id);
+              }}
+              onDragLeave={() => setOverId((p) => (p === a.id ? null : p))}
+              onDrop={(ev) => {
+                ev.preventDefault();
+                setOverId(null);
+                if (dragId) reorder(dragId, a.id);
+                setDragId(null);
+              }}
+              className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
+                dragId === a.id ? "opacity-50" : ""
+              } ${overId === a.id ? "ring-2 ring-primary" : ""}`}
+            >
+              <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <img
+                src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
+                alt={a.name}
+                draggable={false}
+                className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
+              />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="truncate text-sm font-medium">{a.name}</div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={i === 0}
+                    onClick={async () => {
+                      await moveFn({ data: { key: tenantKey, id: a.id, direction: "up" } });
+                      refresh();
+                    }}
+                  >
+                    ↑
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={i === arr.length - 1}
+                    onClick={async () => {
+                      await moveFn({ data: { key: tenantKey, id: a.id, direction: "down" } });
+                      refresh();
+                    }}
+                  >
+                    ↓
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={`/api/public/ad/${tenantKey}/${a.id}`} download={a.name}>
+                      {t("ads.download")}
+                    </a>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      if (!confirm(t("ads.confirmDelete"))) return;
+                      await deleteFn({ data: { key: tenantKey, id: a.id } });
+                      toast.success(t("ads.deleted"));
+                      refresh();
+                    }}
+                  >
+                    {t("ads.delete")}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+    </div>
   );
 }
