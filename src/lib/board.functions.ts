@@ -492,11 +492,49 @@ export const listAds = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("ads")
-      .select("id, name, content_type, sort_order")
+      .select("id, name, content_type, sort_order, path")
       .eq("tenant_id", id)
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    const list = rows ?? [];
+    // Signed storage URLs so previews load directly from storage instead of
+    // streaming megabytes back through this worker.
+    const signed = new Map<string, string>();
+    if (list.length) {
+      const { data: urls } = await supabase.storage
+        .from("tenant-ads")
+        .createSignedUrls(
+          list.map((a) => a.path),
+          60 * 60 * 12,
+        );
+      (urls ?? []).forEach((u, i) => {
+        if (u.signedUrl && list[i]) signed.set(list[i].id, u.signedUrl);
+      });
+    }
+    return list.map((a) => ({
+      id: a.id,
+      name: a.name,
+      content_type: a.content_type,
+      sort_order: a.sort_order,
+      url: signed.get(a.id) ?? null,
+    }));
+  });
+
+export const reorderAds = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; ids: string[] }) =>
+    z.object({ key: z.string().min(1), ids: z.array(z.string().uuid()).min(1) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    for (let i = 0; i < data.ids.length; i++) {
+      await supabase
+        .from("ads")
+        .update({ sort_order: i })
+        .eq("id", data.ids[i])
+        .eq("tenant_id", tenantId);
+    }
+    return { ok: true };
   });
 
 export const uploadAd = createServerFn({ method: "POST" })
