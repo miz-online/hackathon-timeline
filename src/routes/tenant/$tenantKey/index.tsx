@@ -641,6 +641,7 @@ function RoomForm({
   defaultColor: string;
   onSubmit: (room: {
     id?: string;
+    ref_id: string | null;
     name: string;
     color_scheme_id: string | null;
     template: string | null;
@@ -649,9 +650,11 @@ function RoomForm({
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
+
 
   return (
     <Card className="p-4 space-y-3">
