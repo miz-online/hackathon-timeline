@@ -25,6 +25,8 @@ import {
   reorderAds,
 } from "@/lib/board.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
+import { slugify } from "@/lib/ref-id";
+
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
 
