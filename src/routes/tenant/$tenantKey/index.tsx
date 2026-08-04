@@ -53,11 +53,13 @@ type EntryRow = {
 };
 type RoomRow = {
   id: string;
+  ref_id?: string | null;
   name: string;
   color_scheme_id?: string | null;
   template?: string | null;
 };
-type SchemeRow = { id: string; name: string; color: string };
+type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
+
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
