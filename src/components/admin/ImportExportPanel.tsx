@@ -19,7 +19,6 @@ import {
   type TenantData,
 } from "@/lib/tenant-io";
 
-void _t;
 
 type LoadedFile = { path: string; content_type: string; dataBase64: string };
 
