@@ -399,7 +399,7 @@ export const listColorSchemes = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("color_schemes")
-      .select("id, name, color")
+      .select("id, ref_id, name, color")
       .eq("tenant_id", id)
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -408,6 +408,7 @@ export const listColorSchemes = createServerFn({ method: "GET" })
 
 const schemeInput = z.object({
   id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
   name: z.string().min(1).max(120),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 });
@@ -420,10 +421,11 @@ export const upsertColorScheme = createServerFn({ method: "POST" })
     const supabase = await getAdmin();
     const { id: tenantId } = await resolveTenant(data.key);
     const s = { ...data.scheme, color: data.scheme.color.toUpperCase() };
+    const refId = s.ref_id?.trim() ? slugify(s.ref_id) : null;
     if (s.id) {
       const { error } = await supabase
         .from("color_schemes")
-        .update({ name: s.name, color: s.color })
+        .update({ name: s.name, color: s.color, ref_id: refId })
         .eq("id", s.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -431,12 +433,13 @@ export const upsertColorScheme = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await supabase
       .from("color_schemes")
-      .insert({ tenant_id: tenantId, name: s.name, color: s.color })
+      .insert({ tenant_id: tenantId, name: s.name, color: s.color, ref_id: refId })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
+
 
 export const deleteColorScheme = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string }) =>
