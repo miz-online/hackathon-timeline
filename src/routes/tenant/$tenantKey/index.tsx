@@ -23,11 +23,13 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
-  exportConfig,
-  importConfig,
 } from "@/lib/board.functions";
+import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
+import { slugify } from "@/lib/ref-id";
+
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,11 +55,38 @@ type EntryRow = {
 };
 type RoomRow = {
   id: string;
+  ref_id?: string | null;
   name: string;
   color_scheme_id?: string | null;
   template?: string | null;
 };
-type SchemeRow = { id: string; name: string; color: string };
+type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
+
+/** Editable reference id used by the import/export format. Empty = derived from the name. */
+function RefIdField({
+  value,
+  onChange,
+  name,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  name: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-1">
+      <Label>{t("refId.label")}</Label>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={slugify(name) || t("refId.placeholder")}
+      />
+      <p className="text-xs text-muted-foreground">{t("refId.hint")}</p>
+    </div>
+  );
+}
+
+
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
@@ -149,7 +178,9 @@ function AdminPage() {
             <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
             <TabsTrigger value="ads">{t("admin.tabs.ads")}</TabsTrigger>
             <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
+            <TabsTrigger value="io">{t("admin.tabs.io")}</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="entries" className="space-y-4 pt-4">
             <EntriesPanel
@@ -198,7 +229,12 @@ function AdminPage() {
               onChange={invalidate}
             />
           </TabsContent>
+
+          <TabsContent value="io" className="space-y-4 pt-4">
+            <ImportExportPanel tenantKey={tenantKey} onChange={invalidate} />
+          </TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
@@ -632,6 +668,7 @@ function RoomForm({
   defaultColor: string;
   onSubmit: (room: {
     id?: string;
+    ref_id: string | null;
     name: string;
     color_scheme_id: string | null;
     template: string | null;
@@ -640,9 +677,11 @@ function RoomForm({
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
+
 
   return (
     <Card className="p-4 space-y-3">
@@ -655,6 +694,8 @@ function RoomForm({
         />
         <p className="text-xs text-muted-foreground">{t("rooms.form.nameHint")}</p>
       </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
+
       <div className="space-y-1">
         <Label>{t("rooms.form.scheme")}</Label>
         <div className="flex items-center gap-2">
@@ -702,6 +743,8 @@ function RoomForm({
             setSaving(true);
             try {
               await onSubmit({
+                ref_id: refId.trim() || null,
+
                 id: initial?.id,
                 name: name.trim(),
                 color_scheme_id: schemeId || null,
@@ -757,11 +800,8 @@ function SettingsPanel({
   const regenFn = useServerFn(regenerateKey);
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
-  const exportFn = useServerFn(exportConfig);
-  const importFn = useServerFn(importConfig);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
-  const [ioBusy, setIoBusy] = useState(false);
+
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
@@ -933,70 +973,6 @@ function SettingsPanel({
               {t("settings.logoRemove")}
             </Button>
           ) : null}
-        </div>
-      </div>
-
-      <div className="border-t pt-4 space-y-2">
-        <div className="font-medium">{t("io.title")}</div>
-        <p className="text-xs text-muted-foreground">{t("io.hint")}</p>
-        <input
-          ref={importRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={async (ev) => {
-            const file = ev.target.files?.[0];
-            ev.target.value = "";
-            if (!file) return;
-            if (!confirm(t("io.importConfirm"))) return;
-            setIoBusy(true);
-            try {
-              const payload = JSON.parse(await file.text());
-              await importFn({ data: { key: tenantKey, payload } });
-              toast.success(t("io.imported"));
-              onChange();
-            } catch (e) {
-              toast.error((e as Error).message);
-            } finally {
-              setIoBusy(false);
-            }
-          }}
-        />
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={ioBusy}
-            onClick={async () => {
-              setIoBusy(true);
-              try {
-                const cfg = await exportFn({ data: { key: tenantKey } });
-                const blob = new Blob([JSON.stringify(cfg, null, 2)], {
-                  type: "application/json",
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `board-config-${new Date().toISOString().slice(0, 10)}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-              } catch (e) {
-                toast.error((e as Error).message);
-              } finally {
-                setIoBusy(false);
-              }
-            }}
-          >
-            {t("io.export")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={ioBusy}
-            onClick={() => importRef.current?.click()}
-          >
-            {t("io.import")}
-          </Button>
         </div>
       </div>
 
@@ -1198,11 +1174,17 @@ function SchemeForm({
   onCancel,
 }: {
   initial: SchemeRow | null;
-  onSubmit: (scheme: { id?: string; name: string; color: string }) => Promise<void>;
+  onSubmit: (scheme: {
+    id?: string;
+    ref_id: string | null;
+    name: string;
+    color: string;
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [color, setColor] = useState(initial?.color ?? DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
 
@@ -1216,6 +1198,7 @@ function SchemeForm({
           placeholder={t("colors.form.namePh")}
         />
       </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
       <div className="space-y-1">
         <Label>{t("colors.form.color")}</Label>
         <ColorField value={color} onChange={setColor} />
@@ -1230,7 +1213,13 @@ function SchemeForm({
           onClick={async () => {
             setSaving(true);
             try {
-              await onSubmit({ id: initial?.id, name: name.trim(), color: color.toUpperCase() });
+              await onSubmit({
+                id: initial?.id,
+                ref_id: refId.trim() || null,
+                name: name.trim(),
+                color: color.toUpperCase(),
+              });
+
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
