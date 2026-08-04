@@ -60,6 +60,31 @@ type RoomRow = {
 };
 type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
 
+/** Editable reference id used by the import/export format. Empty = derived from the name. */
+function RefIdField({
+  value,
+  onChange,
+  name,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  name: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-1">
+      <Label>{t("refId.label")}</Label>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={slugify(name) || t("refId.placeholder")}
+      />
+      <p className="text-xs text-muted-foreground">{t("refId.hint")}</p>
+    </div>
+  );
+}
+
+
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
