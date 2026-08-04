@@ -1147,11 +1147,17 @@ function SchemeForm({
   onCancel,
 }: {
   initial: SchemeRow | null;
-  onSubmit: (scheme: { id?: string; name: string; color: string }) => Promise<void>;
+  onSubmit: (scheme: {
+    id?: string;
+    ref_id: string | null;
+    name: string;
+    color: string;
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [color, setColor] = useState(initial?.color ?? DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
 
@@ -1165,6 +1171,7 @@ function SchemeForm({
           placeholder={t("colors.form.namePh")}
         />
       </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
       <div className="space-y-1">
         <Label>{t("colors.form.color")}</Label>
         <ColorField value={color} onChange={setColor} />
@@ -1179,7 +1186,13 @@ function SchemeForm({
           onClick={async () => {
             setSaving(true);
             try {
-              await onSubmit({ id: initial?.id, name: name.trim(), color: color.toUpperCase() });
+              await onSubmit({
+                id: initial?.id,
+                ref_id: refId.trim() || null,
+                name: name.trim(),
+                color: color.toUpperCase(),
+              });
+
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
