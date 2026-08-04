@@ -23,11 +23,11 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
-  exportConfig,
-  importConfig,
 } from "@/lib/board.functions";
+import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { setStoredTenantKey } from "@/lib/tenant-storage";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
