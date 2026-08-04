@@ -231,7 +231,7 @@ export const listRooms = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("rooms")
-      .select("id, name, color_scheme_id, template")
+      .select("id, ref_id, name, color_scheme_id, template")
       .eq("tenant_id", id)
       .order("name", { ascending: true });
     if (error) throw new Error(error.message);
@@ -240,6 +240,7 @@ export const listRooms = createServerFn({ method: "GET" })
 
 const roomInput = z.object({
   id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
   name: z.string().min(1).max(120),
   color_scheme_id: z.string().uuid().nullable().default(null),
   template: z.string().min(1).max(40).nullable().default(null),
@@ -253,11 +254,13 @@ export const upsertRoom = createServerFn({ method: "POST" })
     const supabase = await getAdmin();
     const { id: tenantId } = await resolveTenant(data.key);
     const r = data.room;
+    const refId = r.ref_id?.trim() ? slugify(r.ref_id) : null;
     if (r.id) {
       const { error } = await supabase
         .from("rooms")
         .update({
           name: r.name,
+          ref_id: refId,
           color_scheme_id: r.color_scheme_id ?? null,
           template: r.template ?? null,
         })
@@ -271,6 +274,7 @@ export const upsertRoom = createServerFn({ method: "POST" })
         .insert({
           tenant_id: tenantId,
           name: r.name,
+          ref_id: refId,
           color_scheme_id: r.color_scheme_id ?? null,
           template: r.template ?? null,
         })
@@ -280,6 +284,7 @@ export const upsertRoom = createServerFn({ method: "POST" })
       return { id: row.id };
     }
   });
+
 
 export const deleteRoom = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string }) =>
