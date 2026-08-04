@@ -151,7 +151,9 @@ function AdminPage() {
             <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
             <TabsTrigger value="ads">{t("admin.tabs.ads")}</TabsTrigger>
             <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
+            <TabsTrigger value="io">{t("admin.tabs.io")}</TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="entries" className="space-y-4 pt-4">
             <EntriesPanel
