@@ -985,7 +985,7 @@ export const importTenantData = createServerFn({ method: "POST" })
 
     // ---- tenant settings ----
     if ((wants("tenant") && p.tenant) || logoPath !== undefined) {
-      const update: Record<string, unknown> = {};
+      const update: TablesUpdate<"tenants"> = {};
       if (wants("tenant") && p.tenant) {
         update.name = p.tenant.name;
         update.past_grace_minutes = p.tenant.past_grace_minutes;
