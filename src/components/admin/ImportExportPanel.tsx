@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { toast as _t } from "sonner";
+
 import { useI18n } from "@/lib/i18n";
 import { exportTenantData, importTenantData } from "@/lib/board.functions";
 import {
