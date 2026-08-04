@@ -716,6 +716,8 @@ function RoomForm({
             setSaving(true);
             try {
               await onSubmit({
+                ref_id: refId.trim() || null,
+
                 id: initial?.id,
                 name: name.trim(),
                 color_scheme_id: schemeId || null,
