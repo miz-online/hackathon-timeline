@@ -667,6 +667,8 @@ function RoomForm({
         />
         <p className="text-xs text-muted-foreground">{t("rooms.form.nameHint")}</p>
       </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
+
       <div className="space-y-1">
         <Label>{t("rooms.form.scheme")}</Label>
         <div className="flex items-center gap-2">
