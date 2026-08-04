@@ -773,11 +773,8 @@ function SettingsPanel({
   const regenFn = useServerFn(regenerateKey);
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
-  const exportFn = useServerFn(exportConfig);
-  const importFn = useServerFn(importConfig);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
-  const [ioBusy, setIoBusy] = useState(false);
+
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
