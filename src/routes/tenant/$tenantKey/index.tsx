@@ -202,7 +202,12 @@ function AdminPage() {
               onChange={invalidate}
             />
           </TabsContent>
+
+          <TabsContent value="io" className="space-y-4 pt-4">
+            <ImportExportPanel tenantKey={tenantKey} onChange={invalidate} />
+          </TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
