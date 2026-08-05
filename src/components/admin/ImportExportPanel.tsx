@@ -19,7 +19,6 @@ import {
   type TenantData,
 } from "@/lib/tenant-io";
 
-
 type LoadedFile = { path: string; content_type: string; dataBase64: string };
 
 function base64FromBytes(bytes: Uint8Array): string {
@@ -62,6 +61,7 @@ export function ImportExportPanel({
   const [parsed, setParsed] = useState<TenantData | null>(null);
   const [files, setFiles] = useState<LoadedFile[]>([]);
   const [selected, setSelected] = useState<Section[]>([]);
+  const [issues, setIssues] = useState<string[] | null>(null);
 
   const available = parsed
     ? SECTIONS.filter((s) => parsed[s] !== undefined && parsed[s] !== null)
@@ -119,16 +119,17 @@ export function ImportExportPanel({
       }
       const result = tenantDataSchema.safeParse(data);
       if (!result.success) {
-        toast.error(`${t("io.invalid")}: ${result.error.issues[0]?.message ?? ""}`);
+        setIssues(result.error.issues.map((i) => `${i.path.join(".") || "root"}: ${i.message}`));
+        toast.error(t("io.invalid"));
         return;
       }
+      setIssues(null);
       setParsed(result.data);
       setFiles(loaded);
       setFileName(file.name);
-      setSelected(
-        SECTIONS.filter((s) => result.data[s] !== undefined && result.data[s] !== null),
-      );
+      setSelected(SECTIONS.filter((s) => result.data[s] !== undefined && result.data[s] !== null));
     } catch (e) {
+      setIssues([(e as Error).message]);
       toast.error((e as Error).message);
     }
   };
@@ -146,19 +147,21 @@ export function ImportExportPanel({
           mode,
           sections: selected,
           data: payload,
-          files: files.filter((f) => f.path.startsWith("images/")),
+          files,
         },
       });
       const summary = Object.entries(res.counts)
         .map(([k, v]) => `${t(`io.section.${k}`)}: ${v}`)
         .join(", ");
       toast.success(summary ? `${t("io.imported")} — ${summary}` : t("io.imported"));
+      setIssues(res.warnings ?? []);
       setParsed(null);
       setFiles([]);
       setFileName(null);
       setSelected([]);
       onChange();
     } catch (e) {
+      setIssues([(e as Error).message]);
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
@@ -180,6 +183,25 @@ export function ImportExportPanel({
           <div className="font-medium">{t("io.importTitle")}</div>
           <p className="text-xs text-muted-foreground">{t("io.importHint")}</p>
         </div>
+
+        {issues ? (
+          <div
+            className={`rounded-md border px-3 py-2 text-xs space-y-1 ${
+              issues.length
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : "border-border bg-muted text-muted-foreground"
+            }`}
+          >
+            <div className="font-medium">{issues.length ? t("io.issues") : t("io.noIssues")}</div>
+            {issues.length ? (
+              <ul className="list-disc pl-4 space-y-0.5">
+                {issues.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
 
         <input
           ref={fileRef}

@@ -10,7 +10,6 @@ import {
 } from "@/lib/tenant-io";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
-
 // ---------- helpers ----------
 
 async function getAdmin() {
@@ -53,7 +52,6 @@ async function resolveTenant(key: string): Promise<TenantRow> {
   return data;
 }
 
-
 function filterVisible<T extends { time: string; tags: string[] }>(
   entries: T[],
   roomName: string,
@@ -72,11 +70,7 @@ export const createTenant = createServerFn({ method: "POST" }).handler(async () 
   const supabase = await getAdmin();
   for (let attempt = 0; attempt < 5; attempt++) {
     const key = generateKey();
-    const { data, error } = await supabase
-      .from("tenants")
-      .insert({ key })
-      .select("key")
-      .single();
+    const { data, error } = await supabase.from("tenants").insert({ key }).select("key").single();
     if (!error && data) return { key: data.key };
     if (error && !error.message.includes("duplicate")) throw new Error(error.message);
   }
@@ -88,26 +82,31 @@ export const getTenant = createServerFn({ method: "GET" })
   .handler(async ({ data }) => resolveTenant(data.key));
 
 export const updateTenantSettings = createServerFn({ method: "POST" })
-  .inputValidator((d: {
-    key: string;
-    name: string;
-    past_grace_minutes: number;
-    template: string;
-    logo_height: number;
-    accent_color: string;
-    ad_seconds: number;
-  }) =>
-    z
-      .object({
-        key: z.string().min(1),
-        name: z.string().min(1).max(120),
-        past_grace_minutes: z.number().int().min(0).max(24 * 60),
-        template: z.string().min(1).max(40),
-        logo_height: z.number().int().min(16).max(400),
-        accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-        ad_seconds: z.number().int().min(1).max(600).default(10),
-      })
-      .parse(d),
+  .inputValidator(
+    (d: {
+      key: string;
+      name: string;
+      past_grace_minutes: number;
+      template: string;
+      logo_height: number;
+      accent_color: string;
+      ad_seconds: number;
+    }) =>
+      z
+        .object({
+          key: z.string().min(1),
+          name: z.string().min(1).max(120),
+          past_grace_minutes: z
+            .number()
+            .int()
+            .min(0)
+            .max(24 * 60),
+          template: z.string().min(1).max(40),
+          logo_height: z.number().int().min(16).max(400),
+          accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+          ad_seconds: z.number().int().min(1).max(600).default(10),
+        })
+        .parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
@@ -139,6 +138,23 @@ export const regenerateKey = createServerFn({ method: "POST" })
       if (!error.message.includes("duplicate")) throw new Error(error.message);
     }
     throw new Error("Could not generate unique key");
+  });
+
+export const deleteTenant = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const { data: ads } = await supabase.from("ads").select("path").eq("tenant_id", tenant.id);
+    if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
+    if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
+    await supabase.from("entries").delete().eq("tenant_id", tenant.id);
+    await supabase.from("ads").delete().eq("tenant_id", tenant.id);
+    await supabase.from("rooms").delete().eq("tenant_id", tenant.id);
+    await supabase.from("color_schemes").delete().eq("tenant_id", tenant.id);
+    const { error } = await supabase.from("tenants").delete().eq("id", tenant.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // ---------- entries ----------
@@ -284,7 +300,6 @@ export const upsertRoom = createServerFn({ method: "POST" })
       return { id: row.id };
     }
   });
-
 
 export const deleteRoom = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string }) =>
@@ -440,7 +455,6 @@ export const upsertColorScheme = createServerFn({ method: "POST" })
     return { id: row.id };
   });
 
-
 export const deleteColorScheme = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string }) =>
     z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
@@ -519,12 +533,10 @@ export const listAds = createServerFn({ method: "GET" })
     // streaming megabytes back through this worker.
     const signed = new Map<string, string>();
     if (list.length) {
-      const { data: urls } = await supabase.storage
-        .from("tenant-ads")
-        .createSignedUrls(
-          list.map((a) => a.path),
-          60 * 60 * 12,
-        );
+      const { data: urls } = await supabase.storage.from("tenant-ads").createSignedUrls(
+        list.map((a) => a.path),
+        60 * 60 * 12,
+      );
       (urls ?? []).forEach((u, i) => {
         if (u.signedUrl && list[i]) signed.set(list[i].id, u.signedUrl);
       });
@@ -822,8 +834,28 @@ export const importTenantData = createServerFn({ method: "POST" })
     const p = data.data;
     const replace = data.mode === "replace";
     const wants = (s: Section) => data.sections.includes(s);
-    const fileByPath = new Map(data.files.map((f) => [f.path, f]));
+    const norm = (path: string) =>
+      path
+        .replace(/\\/g, "/")
+        .replace(/^\.?\//, "")
+        .toLowerCase();
+    const base = (path: string) => norm(path).split("/").pop() ?? "";
+    const fileByPath = new Map<string, (typeof data.files)[number]>();
+    for (const f of data.files) {
+      fileByPath.set(norm(f.path), f);
+      const b = base(f.path);
+      if (!fileByPath.has(b)) fileByPath.set(b, f);
+    }
+    /** Tolerates archives that were re-zipped with an extra top level folder. */
+    const findFile = (ref: string) => {
+      const n = norm(ref);
+      const direct = fileByPath.get(n) ?? fileByPath.get(base(ref));
+      if (direct) return direct;
+      for (const [k, v] of fileByPath) if (k.endsWith(n) || n.endsWith(k)) return v;
+      return undefined;
+    };
     const counts: Record<string, number> = {};
+    const warnings: string[] = [];
 
     // ---- color schemes ----
     const schemeUuidByRef = new Map<string, string>();
@@ -887,6 +919,9 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
       for (const r of p.rooms) {
         const ref = uniqueRefId(slugify(r.id) || slugify(r.name), taken, "room");
+        if (r.color_scheme && !schemeUuid(r.color_scheme)) {
+          warnings.push(`Room "${r.name}": unknown color scheme "${r.color_scheme}"`);
+        }
         const { error } = await supabase.from("rooms").insert({
           tenant_id: tenant.id,
           name: r.name,
@@ -898,6 +933,8 @@ export const importTenantData = createServerFn({ method: "POST" })
           roomNameByRef.set(ref, r.name);
           roomNameByRef.set(r.id, r.name);
           counts.rooms = (counts.rooms ?? 0) + 1;
+        } else {
+          warnings.push(`Room "${r.name}" not imported: ${error.message}`);
         }
       }
     } else {
@@ -917,14 +954,24 @@ export const importTenantData = createServerFn({ method: "POST" })
         await supabase.from("entries").delete().eq("tenant_id", tenant.id);
       }
       if (p.entries.length) {
-        const rows = p.entries.map((e) => ({
-          tenant_id: tenant.id,
-          time: e.time,
-          title: e.title,
-          description: e.description,
-          tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
-          color_scheme_id: schemeUuid(e.color_scheme),
-        }));
+        const rows = p.entries.map((e) => {
+          for (const ref of e.rooms) {
+            if (!roomNameByRef.get(ref)) {
+              warnings.push(`Entry "${e.title}": unknown room "${ref}"`);
+            }
+          }
+          if (e.color_scheme && !schemeUuid(e.color_scheme)) {
+            warnings.push(`Entry "${e.title}": unknown color scheme "${e.color_scheme}"`);
+          }
+          return {
+            tenant_id: tenant.id,
+            time: e.time,
+            title: e.title,
+            description: e.description,
+            tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
+            color_scheme_id: schemeUuid(e.color_scheme),
+          };
+        });
         const { error } = await supabase.from("entries").insert(rows);
         if (error) throw new Error(error.message);
         counts.entries = rows.length;
@@ -951,21 +998,31 @@ export const importTenantData = createServerFn({ method: "POST" })
         .limit(1);
       let order = (last?.[0]?.sort_order ?? -1) + 1;
       for (const a of p.ads) {
-        const file = fileByPath.get(a.file);
-        if (!file) continue;
+        const file = findFile(a.file);
+        if (!file) {
+          warnings.push(`Ad "${a.name}": image file "${a.file}" is missing in the archive`);
+          continue;
+        }
         const bytes = fromBase64(file.dataBase64);
         const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file)}`;
-        const { error } = await supabase.storage
+        const { error: upErr } = await supabase.storage
           .from("tenant-ads")
           .upload(path, bytes, { contentType: a.content_type || file.content_type, upsert: true });
-        if (error) continue;
-        await supabase.from("ads").insert({
+        if (upErr) {
+          warnings.push(`Ad "${a.name}": upload failed — ${upErr.message}`);
+          continue;
+        }
+        const { error: insErr } = await supabase.from("ads").insert({
           tenant_id: tenant.id,
           name: a.name,
           path,
           content_type: a.content_type || file.content_type,
           sort_order: order++,
         });
+        if (insErr) {
+          warnings.push(`Ad "${a.name}" not imported: ${insErr.message}`);
+          continue;
+        }
         counts.ads = (counts.ads ?? 0) + 1;
       }
     }
@@ -973,20 +1030,23 @@ export const importTenantData = createServerFn({ method: "POST" })
     // ---- logo ----
     let logoPath: string | null | undefined;
     if (wants("logo") && p.logo) {
-      const file = fileByPath.get(p.logo.file);
-      if (file) {
+      const file = findFile(p.logo.file);
+      if (!file) {
+        warnings.push(`Logo: image file "${p.logo.file}" is missing in the archive`);
+      } else {
         const bytes = fromBase64(file.dataBase64);
         const newPath = `${tenant.id}/logo-${Date.now()}.${extOf(p.logo.file)}`;
-        const { error } = await supabase.storage
-          .from("tenant-logos")
-          .upload(newPath, bytes, {
-            contentType: p.logo.content_type || file.content_type,
-            upsert: true,
-          });
+        const { error } = await supabase.storage.from("tenant-logos").upload(newPath, bytes, {
+          contentType: p.logo.content_type || file.content_type,
+          upsert: true,
+        });
         if (!error) {
-          if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
+          if (tenant.logo_url)
+            await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
           logoPath = newPath;
           counts.logo = 1;
+        } else {
+          warnings.push(`Logo: upload failed — ${error.message}`);
         }
       }
     }
@@ -1008,6 +1068,5 @@ export const importTenantData = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    return { ok: true, counts };
+    return { ok: true, counts, warnings };
   });
-
