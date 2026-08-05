@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
 import {
   listEntries,
@@ -14,7 +14,7 @@ import {
   updateTenantSettings,
   uploadTenantLogo,
   removeTenantLogo,
-  regenerateKey,
+  deleteTenant,
   listColorSchemes,
   upsertColorScheme,
   deleteColorScheme,
@@ -28,7 +28,7 @@ import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { slugify } from "@/lib/ref-id";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
-import { setStoredTenantKey } from "@/lib/tenant-storage";
+import { clearStoredTenantKey } from "@/lib/tenant-storage";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
+
+const TABS = ["entries", "ads", "rooms", "colors", "settings", "io"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -86,8 +88,6 @@ function RefIdField({
   );
 }
 
-
-
 function AdminPage() {
   const { tenantKey } = Route.useParams();
   const qc = useQueryClient();
@@ -117,6 +117,21 @@ function AdminPage() {
     queryFn: () => listSchemesFn({ data: { key: tenantKey } }),
     enabled: !!tenantQ.data,
   });
+
+  const [tab, setTab] = useState<string>(TABS[0]);
+  useEffect(() => {
+    const read = () => {
+      const h = window.location.hash.replace(/^#/, "");
+      if ((TABS as readonly string[]).includes(h)) setTab(h);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
+  const changeTab = (v: string) => {
+    setTab(v);
+    window.history.replaceState(null, "", `#${v}`);
+  };
 
   if (tenantQ.isLoading) {
     return <div className="p-8 text-sm text-muted-foreground">{t("admin.loading")}</div>;
@@ -171,16 +186,14 @@ function AdminPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        <Tabs defaultValue="entries">
+        <Tabs value={tab} onValueChange={changeTab}>
           <TabsList>
-            <TabsTrigger value="entries">{t("admin.tabs.entries")}</TabsTrigger>
-            <TabsTrigger value="rooms">{t("admin.tabs.rooms")}</TabsTrigger>
-            <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
-            <TabsTrigger value="ads">{t("admin.tabs.ads")}</TabsTrigger>
-            <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
-            <TabsTrigger value="io">{t("admin.tabs.io")}</TabsTrigger>
+            {TABS.map((v) => (
+              <TabsTrigger key={v} value={v}>
+                {t(`admin.tabs.${v}`)}
+              </TabsTrigger>
+            ))}
           </TabsList>
-
 
           <TabsContent value="entries" className="space-y-4 pt-4">
             <EntriesPanel
@@ -234,7 +247,6 @@ function AdminPage() {
             <ImportExportPanel tenantKey={tenantKey} onChange={invalidate} />
           </TabsContent>
         </Tabs>
-
       </main>
     </div>
   );
@@ -448,9 +460,7 @@ function EntryForm({
         <Label>{t("entries.form.rooms")}</Label>
         <div className="flex flex-wrap gap-2">
           {rooms.length === 0 ? (
-            <span className="text-xs italic text-muted-foreground">
-              {t("entries.allRooms")}
-            </span>
+            <span className="text-xs italic text-muted-foreground">{t("entries.allRooms")}</span>
           ) : (
             rooms.map((r) => {
               const active = selectedRooms.includes(r.name);
@@ -682,7 +692,6 @@ function RoomForm({
   const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
 
-
   return (
     <Card className="p-4 space-y-3">
       <div className="space-y-1">
@@ -796,8 +805,10 @@ function SettingsPanel({
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
-  const regenFn = useServerFn(regenerateKey);
+  const deleteFn = useServerFn(deleteTenant);
+
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -861,33 +872,6 @@ function SettingsPanel({
             <option value="de">Deutsch</option>
           </select>
         </div>
-        <Button
-          disabled={saving}
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await updateFn({
-                data: {
-                  key: tenantKey,
-                  name: n,
-                  past_grace_minutes: g,
-                  template: tpl,
-                  logo_height: lh,
-                  accent_color: accent,
-                  ad_seconds: adSec,
-                },
-              });
-              toast.success(t("settings.saved"));
-              onChange();
-            } catch (e) {
-              toast.error((e as Error).message);
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          {saving ? t("entries.saving") : t("settings.save")}
-        </Button>
       </div>
 
       <div className="border-t pt-4 space-y-2">
@@ -974,6 +958,35 @@ function SettingsPanel({
             </Button>
           ) : null}
         </div>
+        <div className="pt-2">
+          <Button
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await updateFn({
+                  data: {
+                    key: tenantKey,
+                    name: n,
+                    past_grace_minutes: g,
+                    template: tpl,
+                    logo_height: lh,
+                    accent_color: accent,
+                    ad_seconds: adSec,
+                  },
+                });
+                toast.success(t("settings.saved"));
+                onChange();
+              } catch (e) {
+                toast.error((e as Error).message);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? t("entries.saving") : t("settings.save")}
+          </Button>
+        </div>
       </div>
 
       <div className="border-t pt-4 space-y-2">
@@ -989,20 +1002,33 @@ function SettingsPanel({
           >
             {t("home.copy")}
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={async () => {
-              if (!confirm(t("settings.regenerateConfirm"))) return;
-              const res = await regenFn({ data: { key: tenantKey } });
-              setStoredTenantKey(res.key);
-              toast.success(t("settings.regenerated"));
-              navigate({ to: "/tenant/$tenantKey", params: { tenantKey: res.key } });
-            }}
-          >
-            {t("settings.regenerate")}
-          </Button>
         </div>
+      </div>
+
+      <div className="border-t pt-4 space-y-2">
+        <div className="font-medium text-destructive">{t("settings.dangerTitle")}</div>
+        <p className="text-xs text-muted-foreground">{t("settings.dangerHint")}</p>
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={deleting}
+          onClick={async () => {
+            if (!confirm(t("settings.deleteConfirm"))) return;
+            setDeleting(true);
+            try {
+              await deleteFn({ data: { key: tenantKey } });
+              clearStoredTenantKey();
+              toast.success(t("settings.deleted"));
+              navigate({ to: "/" });
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        >
+          {t("settings.delete")}
+        </Button>
       </div>
     </Card>
   );
@@ -1219,7 +1245,6 @@ function SchemeForm({
                 name: name.trim(),
                 color: color.toUpperCase(),
               });
-
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
@@ -1262,7 +1287,9 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const raw = adsQ.data ?? [];
   const ads =
     order && order.length === raw.length
-      ? order.map((id) => raw.find((a) => a.id === id)).filter((a): a is (typeof raw)[number] => !!a)
+      ? order
+          .map((id) => raw.find((a) => a.id === id))
+          .filter((a): a is (typeof raw)[number] => !!a)
       : raw;
 
   const reorder = async (fromId: string, toId: string) => {
@@ -1415,7 +1442,6 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
           ))
         )}
       </div>
-
     </div>
   );
 }

@@ -18,11 +18,13 @@ const en: Dict = {
   "home.openPlaceholder": "Enter your tenant key",
   "home.open": "Open",
   "home.createTitle": "Create new tenant",
-  "home.createBlurb": "Generates a random key. Share it with anyone who should administer this org.",
+  "home.createBlurb":
+    "Generates a random key. Share it with anyone who should administer this org.",
   "home.create": "Create tenant",
   "home.creating": "Creating…",
   "home.keyTitle": "Your tenant key",
-  "home.keyBlurb": "Save this somewhere safe. Anyone with the key can manage entries and rooms. It will not be shown again.",
+  "home.keyBlurb":
+    "Save this somewhere safe. Anyone with the key can manage entries and rooms. It will not be shown again.",
   "home.copy": "Copy",
   "home.continue": "Continue",
 
@@ -85,9 +87,13 @@ const en: Dict = {
   "settings.save": "Save settings",
   "settings.saved": "Settings saved",
   "settings.keyTitle": "Tenant key",
-  "settings.regenerate": "Regenerate key",
-  "settings.regenerateConfirm": "Generate a new key? The old key stops working immediately.",
-  "settings.regenerated": "New tenant key generated",
+  "settings.dangerTitle": "Delete tenant",
+  "settings.dangerHint":
+    "Deletes this organization with all entries, rooms, colors, ads and the logo. This cannot be undone.",
+  "settings.delete": "Delete tenant",
+  "settings.deleteConfirm": "Really delete this tenant with all its data? This cannot be undone.",
+  "settings.deleted": "Tenant deleted",
+
   "settings.logo": "Display logo",
   "settings.logoHint": "PNG, JPG or SVG. Shown in the bottom-right of room displays.",
   "settings.logoHeight": "Logo height (px)",
@@ -109,7 +115,8 @@ const en: Dict = {
   "colors.deleted": "Scheme deleted",
   "colors.created": "Scheme created",
   "colors.updated": "Scheme updated",
-  "colors.confirmDelete": "Delete this color scheme? Entries using it fall back to the default color.",
+  "colors.confirmDelete":
+    "Delete this color scheme? Entries using it fall back to the default color.",
   "colors.form.name": "Name",
   "colors.form.namePh": "Break",
   "colors.form.color": "Base color",
@@ -119,7 +126,8 @@ const en: Dict = {
   "colors.swatch.highlight": "glow",
   "colors.derived": "Derived: glow {glow} · border {border} · pulse {pulse}",
   "settings.accent": "Default color",
-  "settings.accentHint": "All other shades, lines, fills and animation values are derived from this color.",
+  "settings.accentHint":
+    "All other shades, lines, fills and animation values are derived from this color.",
   "entries.form.scheme": "Color scheme",
   "entries.form.schemeHint": "Optional. Overrides the default color for this entry only.",
 
@@ -136,7 +144,8 @@ const en: Dict = {
   "rooms.form.templateGlobal": "Use global setting",
   "rooms.form.templateHint": "Overrides the global template for this room only.",
   "ads.title": "Ads",
-  "ads.hint": "Upload images (PNG, JPG, SVG, animated GIF or WebP). They rotate in the given order.",
+  "ads.hint":
+    "Upload images (PNG, JPG, SVG, animated GIF or WebP). They rotate in the given order.",
   "ads.upload": "Upload ads",
   "ads.uploaded": "Ads uploaded",
   "ads.empty": "No ads yet.",
@@ -156,8 +165,7 @@ const en: Dict = {
     "ZIP archive with the data as JSON, the JSON schema, a VS Code settings file and all images.",
   "io.export": "Export ZIP",
   "io.importTitle": "Import",
-  "io.importHint":
-    "Choose a ZIP export or a JSON file. Only the sections you select are imported.",
+  "io.importHint": "Choose a ZIP export or a JSON file. Only the sections you select are imported.",
   "io.chooseFile": "Choose file",
   "io.noFileSelected": "No file selected",
   "io.mode": "Import mode",
@@ -179,8 +187,9 @@ const en: Dict = {
   "io.section.entries": "Entries",
   "io.section.ads": "Ads",
   "io.section.logo": "Logo",
+  "io.issues": "Issues found",
+  "io.noIssues": "No issues found.",
 };
-
 
 const de: Dict = {
   "app.title": "Raum-Anzeige",
@@ -196,11 +205,13 @@ const de: Dict = {
   "home.openPlaceholder": "Mandantenschlüssel eingeben",
   "home.open": "Öffnen",
   "home.createTitle": "Neuen Mandanten anlegen",
-  "home.createBlurb": "Erzeugt einen zufälligen Schlüssel. Teile ihn mit allen, die diese Organisation verwalten sollen.",
+  "home.createBlurb":
+    "Erzeugt einen zufälligen Schlüssel. Teile ihn mit allen, die diese Organisation verwalten sollen.",
   "home.create": "Mandant anlegen",
   "home.creating": "Wird angelegt…",
   "home.keyTitle": "Dein Mandantenschlüssel",
-  "home.keyBlurb": "Sicher aufbewahren. Wer den Schlüssel hat, kann Einträge und Räume verwalten. Er wird nicht erneut angezeigt.",
+  "home.keyBlurb":
+    "Sicher aufbewahren. Wer den Schlüssel hat, kann Einträge und Räume verwalten. Er wird nicht erneut angezeigt.",
   "home.copy": "Kopieren",
   "home.continue": "Weiter",
 
@@ -249,7 +260,8 @@ const de: Dict = {
   "rooms.updated": "Raum aktualisiert",
   "rooms.form.name": "Name",
   "rooms.form.namePh": "Hauptbühne",
-  "rooms.form.nameHint": "Der Raumname ist gleichzeitig das Tag, mit dem Einträge zugeordnet werden.",
+  "rooms.form.nameHint":
+    "Der Raumname ist gleichzeitig das Tag, mit dem Einträge zugeordnet werden.",
   "rooms.form.scheme": "Farbschema",
   "rooms.form.schemeHint": "Wird für Raumname und Uhrzeit auf der Anzeige verwendet.",
   "rooms.picker.empty": "Noch keine Räume. In der Verwaltung anlegen.",
@@ -263,9 +275,14 @@ const de: Dict = {
   "settings.save": "Einstellungen speichern",
   "settings.saved": "Einstellungen gespeichert",
   "settings.keyTitle": "Mandantenschlüssel",
-  "settings.regenerate": "Schlüssel neu erzeugen",
-  "settings.regenerateConfirm": "Neuen Schlüssel erzeugen? Der alte Schlüssel funktioniert sofort nicht mehr.",
-  "settings.regenerated": "Neuer Mandantenschlüssel erzeugt",
+  "settings.dangerTitle": "Mandant löschen",
+  "settings.dangerHint":
+    "Löscht diese Organisation mit allen Einträgen, Räumen, Farben, Anzeigen und dem Logo. Das kann nicht rückgängig gemacht werden.",
+  "settings.delete": "Mandant löschen",
+  "settings.deleteConfirm":
+    "Diesen Mandanten mit allen Daten wirklich löschen? Das kann nicht rückgängig gemacht werden.",
+  "settings.deleted": "Mandant gelöscht",
+
   "settings.logo": "Anzeige-Logo",
   "settings.logoHint": "PNG, JPG oder SVG. Wird unten rechts auf den Raumanzeigen gezeigt.",
   "settings.logoHeight": "Logohöhe (px)",
@@ -283,7 +300,8 @@ const de: Dict = {
   "colors.new": "Neues Schema",
   "colors.empty": "Noch keine Farbschemata.",
   "colors.default": "Standardfarbe",
-  "colors.defaultHint": "Wird für alle Einträge ohne eigenes Schema verwendet. Änderbar in den Einstellungen.",
+  "colors.defaultHint":
+    "Wird für alle Einträge ohne eigenes Schema verwendet. Änderbar in den Einstellungen.",
   "colors.deleted": "Schema gelöscht",
   "colors.created": "Schema angelegt",
   "colors.updated": "Schema aktualisiert",
@@ -297,7 +315,8 @@ const de: Dict = {
   "colors.swatch.highlight": "Leuchten",
   "colors.derived": "Abgeleitet: Leuchten {glow} · Rahmen {border} · Puls {pulse}",
   "settings.accent": "Standardfarbe",
-  "settings.accentHint": "Alle weiteren Farbtöne, Linien, Flächen und Animationswerte werden daraus abgeleitet.",
+  "settings.accentHint":
+    "Alle weiteren Farbtöne, Linien, Flächen und Animationswerte werden daraus abgeleitet.",
   "entries.form.scheme": "Farbschema",
   "entries.form.schemeHint": "Optional. Überschreibt die Standardfarbe nur für diesen Eintrag.",
 
@@ -314,7 +333,8 @@ const de: Dict = {
   "rooms.form.templateGlobal": "Globale Einstellung verwenden",
   "rooms.form.templateHint": "Übersteuert die globale Vorlage nur für diesen Raum.",
   "ads.title": "Anzeigen",
-  "ads.hint": "Grafiken hochladen (PNG, JPG, SVG, animiertes GIF oder WebP). Sie werden in dieser Reihenfolge gezeigt.",
+  "ads.hint":
+    "Grafiken hochladen (PNG, JPG, SVG, animiertes GIF oder WebP). Sie werden in dieser Reihenfolge gezeigt.",
   "ads.upload": "Anzeigen hochladen",
   "ads.uploaded": "Anzeigen hochgeladen",
   "ads.empty": "Noch keine Anzeigen.",
@@ -359,6 +379,8 @@ const de: Dict = {
   "io.section.entries": "Einträge",
   "io.section.ads": "Anzeigen",
   "io.section.logo": "Logo",
+  "io.issues": "Probleme gefunden",
+  "io.noIssues": "Keine Probleme gefunden.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };
