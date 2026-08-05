@@ -61,6 +61,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          ref_id: string | null
           tenant_id: string
         }
         Insert: {
@@ -68,6 +69,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          ref_id?: string | null
           tenant_id: string
         }
         Update: {
@@ -75,6 +77,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          ref_id?: string | null
           tenant_id?: string
         }
         Relationships: [
@@ -144,6 +147,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          ref_id: string | null
           template: string | null
           tenant_id: string
         }
@@ -152,6 +156,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          ref_id?: string | null
           template?: string | null
           tenant_id: string
         }
@@ -160,6 +165,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          ref_id?: string | null
           template?: string | null
           tenant_id?: string
         }

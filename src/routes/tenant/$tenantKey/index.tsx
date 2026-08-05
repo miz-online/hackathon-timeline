@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
 import {
   listEntries,
@@ -14,7 +14,7 @@ import {
   updateTenantSettings,
   uploadTenantLogo,
   removeTenantLogo,
-  regenerateKey,
+  deleteTenant,
   listColorSchemes,
   upsertColorScheme,
   deleteColorScheme,
@@ -23,11 +23,13 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
-  exportConfig,
-  importConfig,
 } from "@/lib/board.functions";
+import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
+import { slugify } from "@/lib/ref-id";
+
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
-import { setStoredTenantKey } from "@/lib/tenant-storage";
+import { clearStoredTenantKey } from "@/lib/tenant-storage";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +40,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
+
+const TABS = ["entries", "ads", "rooms", "colors", "settings", "io"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -53,11 +57,36 @@ type EntryRow = {
 };
 type RoomRow = {
   id: string;
+  ref_id?: string | null;
   name: string;
   color_scheme_id?: string | null;
   template?: string | null;
 };
-type SchemeRow = { id: string; name: string; color: string };
+type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
+
+/** Editable reference id used by the import/export format. Empty = derived from the name. */
+function RefIdField({
+  value,
+  onChange,
+  name,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  name: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-1">
+      <Label>{t("refId.label")}</Label>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={slugify(name) || t("refId.placeholder")}
+      />
+      <p className="text-xs text-muted-foreground">{t("refId.hint")}</p>
+    </div>
+  );
+}
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
@@ -88,6 +117,21 @@ function AdminPage() {
     queryFn: () => listSchemesFn({ data: { key: tenantKey } }),
     enabled: !!tenantQ.data,
   });
+
+  const [tab, setTab] = useState<string>(TABS[0]);
+  useEffect(() => {
+    const read = () => {
+      const h = window.location.hash.replace(/^#/, "");
+      if ((TABS as readonly string[]).includes(h)) setTab(h);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
+  const changeTab = (v: string) => {
+    setTab(v);
+    window.history.replaceState(null, "", `#${v}`);
+  };
 
   if (tenantQ.isLoading) {
     return <div className="p-8 text-sm text-muted-foreground">{t("admin.loading")}</div>;
@@ -142,13 +186,13 @@ function AdminPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        <Tabs defaultValue="entries">
+        <Tabs value={tab} onValueChange={changeTab}>
           <TabsList>
-            <TabsTrigger value="entries">{t("admin.tabs.entries")}</TabsTrigger>
-            <TabsTrigger value="rooms">{t("admin.tabs.rooms")}</TabsTrigger>
-            <TabsTrigger value="colors">{t("admin.tabs.colors")}</TabsTrigger>
-            <TabsTrigger value="ads">{t("admin.tabs.ads")}</TabsTrigger>
-            <TabsTrigger value="settings">{t("admin.tabs.settings")}</TabsTrigger>
+            {TABS.map((v) => (
+              <TabsTrigger key={v} value={v}>
+                {t(`admin.tabs.${v}`)}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="entries" className="space-y-4 pt-4">
@@ -197,6 +241,10 @@ function AdminPage() {
               adSeconds={tenant.ad_seconds}
               onChange={invalidate}
             />
+          </TabsContent>
+
+          <TabsContent value="io" className="space-y-4 pt-4">
+            <ImportExportPanel tenantKey={tenantKey} onChange={invalidate} />
           </TabsContent>
         </Tabs>
       </main>
@@ -412,9 +460,7 @@ function EntryForm({
         <Label>{t("entries.form.rooms")}</Label>
         <div className="flex flex-wrap gap-2">
           {rooms.length === 0 ? (
-            <span className="text-xs italic text-muted-foreground">
-              {t("entries.allRooms")}
-            </span>
+            <span className="text-xs italic text-muted-foreground">{t("entries.allRooms")}</span>
           ) : (
             rooms.map((r) => {
               const active = selectedRooms.includes(r.name);
@@ -632,6 +678,7 @@ function RoomForm({
   defaultColor: string;
   onSubmit: (room: {
     id?: string;
+    ref_id: string | null;
     name: string;
     color_scheme_id: string | null;
     template: string | null;
@@ -640,6 +687,7 @@ function RoomForm({
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
@@ -655,6 +703,8 @@ function RoomForm({
         />
         <p className="text-xs text-muted-foreground">{t("rooms.form.nameHint")}</p>
       </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
+
       <div className="space-y-1">
         <Label>{t("rooms.form.scheme")}</Label>
         <div className="flex items-center gap-2">
@@ -702,6 +752,8 @@ function RoomForm({
             setSaving(true);
             try {
               await onSubmit({
+                ref_id: refId.trim() || null,
+
                 id: initial?.id,
                 name: name.trim(),
                 color_scheme_id: schemeId || null,
@@ -753,15 +805,14 @@ function SettingsPanel({
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
-  const regenFn = useServerFn(regenerateKey);
+  const deleteFn = useServerFn(deleteTenant);
+
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
-  const exportFn = useServerFn(exportConfig);
-  const importFn = useServerFn(importConfig);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importRef = useRef<HTMLInputElement>(null);
-  const [ioBusy, setIoBusy] = useState(false);
+
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
@@ -821,33 +872,6 @@ function SettingsPanel({
             <option value="de">Deutsch</option>
           </select>
         </div>
-        <Button
-          disabled={saving}
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await updateFn({
-                data: {
-                  key: tenantKey,
-                  name: n,
-                  past_grace_minutes: g,
-                  template: tpl,
-                  logo_height: lh,
-                  accent_color: accent,
-                  ad_seconds: adSec,
-                },
-              });
-              toast.success(t("settings.saved"));
-              onChange();
-            } catch (e) {
-              toast.error((e as Error).message);
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          {saving ? t("entries.saving") : t("settings.save")}
-        </Button>
       </div>
 
       <div className="border-t pt-4 space-y-2">
@@ -934,68 +958,33 @@ function SettingsPanel({
             </Button>
           ) : null}
         </div>
-      </div>
-
-      <div className="border-t pt-4 space-y-2">
-        <div className="font-medium">{t("io.title")}</div>
-        <p className="text-xs text-muted-foreground">{t("io.hint")}</p>
-        <input
-          ref={importRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={async (ev) => {
-            const file = ev.target.files?.[0];
-            ev.target.value = "";
-            if (!file) return;
-            if (!confirm(t("io.importConfirm"))) return;
-            setIoBusy(true);
-            try {
-              const payload = JSON.parse(await file.text());
-              await importFn({ data: { key: tenantKey, payload } });
-              toast.success(t("io.imported"));
-              onChange();
-            } catch (e) {
-              toast.error((e as Error).message);
-            } finally {
-              setIoBusy(false);
-            }
-          }}
-        />
-        <div className="flex gap-2 flex-wrap">
+        <div className="pt-2">
           <Button
-            size="sm"
-            variant="outline"
-            disabled={ioBusy}
+            disabled={saving}
             onClick={async () => {
-              setIoBusy(true);
+              setSaving(true);
               try {
-                const cfg = await exportFn({ data: { key: tenantKey } });
-                const blob = new Blob([JSON.stringify(cfg, null, 2)], {
-                  type: "application/json",
+                await updateFn({
+                  data: {
+                    key: tenantKey,
+                    name: n,
+                    past_grace_minutes: g,
+                    template: tpl,
+                    logo_height: lh,
+                    accent_color: accent,
+                    ad_seconds: adSec,
+                  },
                 });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `board-config-${new Date().toISOString().slice(0, 10)}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
+                toast.success(t("settings.saved"));
+                onChange();
               } catch (e) {
                 toast.error((e as Error).message);
               } finally {
-                setIoBusy(false);
+                setSaving(false);
               }
             }}
           >
-            {t("io.export")}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={ioBusy}
-            onClick={() => importRef.current?.click()}
-          >
-            {t("io.import")}
+            {saving ? t("entries.saving") : t("settings.save")}
           </Button>
         </div>
       </div>
@@ -1013,20 +1002,33 @@ function SettingsPanel({
           >
             {t("home.copy")}
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={async () => {
-              if (!confirm(t("settings.regenerateConfirm"))) return;
-              const res = await regenFn({ data: { key: tenantKey } });
-              setStoredTenantKey(res.key);
-              toast.success(t("settings.regenerated"));
-              navigate({ to: "/tenant/$tenantKey", params: { tenantKey: res.key } });
-            }}
-          >
-            {t("settings.regenerate")}
-          </Button>
         </div>
+      </div>
+
+      <div className="border-t pt-4 space-y-2">
+        <div className="font-medium text-destructive">{t("settings.dangerTitle")}</div>
+        <p className="text-xs text-muted-foreground">{t("settings.dangerHint")}</p>
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={deleting}
+          onClick={async () => {
+            if (!confirm(t("settings.deleteConfirm"))) return;
+            setDeleting(true);
+            try {
+              await deleteFn({ data: { key: tenantKey } });
+              clearStoredTenantKey();
+              toast.success(t("settings.deleted"));
+              navigate({ to: "/" });
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        >
+          {t("settings.delete")}
+        </Button>
       </div>
     </Card>
   );
@@ -1198,11 +1200,17 @@ function SchemeForm({
   onCancel,
 }: {
   initial: SchemeRow | null;
-  onSubmit: (scheme: { id?: string; name: string; color: string }) => Promise<void>;
+  onSubmit: (scheme: {
+    id?: string;
+    ref_id: string | null;
+    name: string;
+    color: string;
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [color, setColor] = useState(initial?.color ?? DEFAULT_ACCENT);
   const [saving, setSaving] = useState(false);
 
@@ -1216,6 +1224,7 @@ function SchemeForm({
           placeholder={t("colors.form.namePh")}
         />
       </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
       <div className="space-y-1">
         <Label>{t("colors.form.color")}</Label>
         <ColorField value={color} onChange={setColor} />
@@ -1230,7 +1239,12 @@ function SchemeForm({
           onClick={async () => {
             setSaving(true);
             try {
-              await onSubmit({ id: initial?.id, name: name.trim(), color: color.toUpperCase() });
+              await onSubmit({
+                id: initial?.id,
+                ref_id: refId.trim() || null,
+                name: name.trim(),
+                color: color.toUpperCase(),
+              });
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
@@ -1273,7 +1287,9 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const raw = adsQ.data ?? [];
   const ads =
     order && order.length === raw.length
-      ? order.map((id) => raw.find((a) => a.id === id)).filter((a): a is (typeof raw)[number] => !!a)
+      ? order
+          .map((id) => raw.find((a) => a.id === id))
+          .filter((a): a is (typeof raw)[number] => !!a)
       : raw;
 
   const reorder = async (fromId: string, toId: string) => {
@@ -1426,7 +1442,6 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
           ))
         )}
       </div>
-
     </div>
   );
 }
