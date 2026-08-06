@@ -180,6 +180,26 @@ export const TENANT_JSON_SCHEMA = {
         },
       },
     },
+    webhooks: {
+      type: "array",
+      description: "Webhook targets for automatic and manual messages. URLs are never exported.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name"],
+        properties: {
+          id: {
+            type: "string",
+            minLength: 1,
+            maxLength: 60,
+            description: "Reference id, derived from the name when not set explicitly",
+          },
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          type: { type: "string", enum: ["discord"], default: "discord" },
+          enabled: { type: "boolean", default: true },
+        },
+      },
+    },
     logo: {
       type: ["object", "null"],
       additionalProperties: false,
