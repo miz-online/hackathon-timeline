@@ -35,12 +35,20 @@ export const entryItem = z.object({
   description: z.string().max(2000).default(""),
   rooms: z.array(z.string().min(1).max(60)).max(50).default([]),
   color_scheme: z.string().max(60).nullable().default(null),
+  notify: z.boolean().default(true),
 });
 
 export const adItem = z.object({
   name: z.string().min(1).max(120),
   file: z.string().min(1).max(300),
   content_type: z.string().min(1).max(100).default("image/png"),
+});
+
+export const webhookItem = z.object({
+  id: z.string().min(1).max(60),
+  name: z.string().min(1).max(120),
+  type: z.enum(["discord"]).default("discord"),
+  enabled: z.boolean().default(true),
 });
 
 export const logoSection = z.object({
