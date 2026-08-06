@@ -65,6 +65,7 @@ export const tenantDataSchema = z.object({
   rooms: z.array(roomItem).optional(),
   entries: z.array(entryItem).optional(),
   ads: z.array(adItem).optional(),
+  webhooks: z.array(webhookItem).optional(),
   logo: logoSection.nullable().optional(),
 });
 
