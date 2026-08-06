@@ -8,6 +8,7 @@ import {
   type Section,
   type TenantData,
 } from "@/lib/tenant-io";
+import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
