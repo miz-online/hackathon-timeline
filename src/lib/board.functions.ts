@@ -456,7 +456,7 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
     const { id: tenantId } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("webhooks")
-      .select("id, url, type, enabled")
+      .select("id, name, url, type, enabled")
       .in("id", data.webhookIds)
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
