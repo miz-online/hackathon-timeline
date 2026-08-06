@@ -67,7 +67,7 @@ type RoomRow = {
 type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
 
 /** Editable reference id used by the import/export format. Empty = derived from the name. */
-function RefIdField({
+export function RefIdField({
   value,
   onChange,
   name,
