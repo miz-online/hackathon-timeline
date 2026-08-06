@@ -535,6 +535,7 @@ function EntryForm({
                 description: description.trim(),
                 tags,
                 color_scheme_id: schemeId || null,
+                notify,
               });
             } catch (e) {
               toast.error((e as Error).message);
