@@ -424,6 +424,7 @@ function EntryForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [selectedRooms, setSelectedRooms] = useState<string[]>(initial?.tags ?? []);
   const [schemeId, setSchemeId] = useState<string>(initial?.color_scheme_id ?? "");
+  const [notify, setNotify] = useState<boolean>(initial?.notify !== false);
   const [saving, setSaving] = useState(false);
 
   const toggleRoom = (name: string) => {
