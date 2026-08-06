@@ -182,6 +182,7 @@ const entryInput = z.object({
   description: z.string().max(2000).default(""),
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
   color_scheme_id: z.string().uuid().nullable().default(null),
+  notify: z.boolean().default(true),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
