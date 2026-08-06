@@ -517,6 +517,16 @@ function EntryForm({
         </div>
         <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
       </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="notify"
+          checked={notify}
+          onCheckedChange={(c) => setNotify(c === true)}
+        />
+        <Label htmlFor="notify" className="text-sm font-normal">
+          {t("entries.form.notify")}
+        </Label>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
