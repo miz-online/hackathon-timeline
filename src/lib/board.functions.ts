@@ -1146,6 +1146,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             description: e.description,
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
             color_scheme_id: schemeUuid(e.color_scheme),
+            notify: e.notify,
           };
         });
         const { error } = await supabase.from("entries").insert(rows);
