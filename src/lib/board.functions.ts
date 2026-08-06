@@ -896,7 +896,9 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const schemeIds = refIdsFor(schemeRows);
     const roomIds = refIdsFor(roomRows);
     const schemeIdByUuid = new Map(schemeRows.map((s, i) => [s.id, schemeIds[i]]));
-    const roomIdByName = new Map(roomRows.map((r, i) => [r.name, roomIds[i]]));
+    const webhookRows = webhooks.data ?? [];
+    const webhookIds = refIdsFor(webhookRows);
+    const webhookIdByUuid = new Map(webhookRows.map((w, i) => [w.id, webhookIds[i]]));
 
     const files: ExportedFile[] = [];
 
