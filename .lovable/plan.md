@@ -1,6 +1,6 @@
 # Discord-Anbindung über Webhooks
 
-Neuer Admin-Tab **Webhooks** mit konfigurierbaren Zielen. Einträge werden automatisch zu ihrer Eintragszeit gepostet, zusätzlich gibt es Test- und Direktnachrichten.
+Neuer Admin-Tab **Nachrichten** mit konfigurierbaren Webhook-Zielen. Einträge werden automatisch zu ihrer Eintragszeit gepostet, zusätzlich gibt es Test- und Direktnachrichten.
 
 ## Webhook-Verwaltung
 
@@ -39,7 +39,7 @@ Im Webhooks-Tab eine Karte „Nachricht senden“ mit denselben Feldern wie ein 
 
 ## Tabs
 
-Einträge · Ads · Räume · Farben · **Webhooks** · Einstellungen · Im-/Export, inklusive `#webhooks`-Navigation.
+Einträge · Ads · Räume · Farben · **Nachrichten** · Einstellungen · Im-/Export, inklusive `#messages`-Navigation.
 
 ## Technische Umsetzung
 
