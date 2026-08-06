@@ -863,7 +863,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await resolveTenant(data.key);
-    const [schemes, rooms, entries, ads] = await Promise.all([
+    const [schemes, rooms, entries, ads, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -876,7 +876,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("name", { ascending: true }),
       supabase
         .from("entries")
-        .select("time, title, description, tags, color_scheme_id")
+        .select("time, title, description, tags, color_scheme_id, notify")
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
       supabase
@@ -884,6 +884,11 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .select("name, path, content_type, sort_order")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("webhooks")
+        .select("id, ref_id, name, type, enabled")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: true }),
     ]);
 
     const schemeRows = schemes.data ?? [];
