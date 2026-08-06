@@ -155,6 +155,11 @@ export const TENANT_JSON_SCHEMA = {
             type: ["string", "null"],
             description: "id of an entry in color_schemes",
           },
+          notify: {
+            type: "boolean",
+            description: "Whether to post this entry to configured webhooks at its due time",
+            default: true,
+          },
         },
       },
     },
