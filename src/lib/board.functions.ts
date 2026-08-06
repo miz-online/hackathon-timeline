@@ -964,8 +964,15 @@ export const exportTenantData = createServerFn({ method: "GET" })
         description: e.description,
         rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
         color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
+        notify: e.notify,
       })),
       ads: adItems,
+      webhooks: webhookRows.map((w, idx) => ({
+        id: webhookIds[idx],
+        name: w.name,
+        type: w.type,
+        enabled: w.enabled,
+      })),
       logo,
     };
 
