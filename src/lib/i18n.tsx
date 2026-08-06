@@ -350,6 +350,9 @@ const de: Dict = {
     "Alle weiteren Farbtöne, Linien, Flächen und Animationswerte werden daraus abgeleitet.",
   "entries.form.scheme": "Farbschema",
   "entries.form.schemeHint": "Optional. Überschreibt die Standardfarbe nur für diesen Eintrag.",
+  "entries.form.notify": "Bei Fälligkeit an Webhooks posten",
+
+  "admin.tabs.messages": "Nachrichten",
 
   "display.empty": "Keine Einträge",
   "display.connecting": "Verbindung…",
