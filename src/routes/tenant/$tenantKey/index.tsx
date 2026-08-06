@@ -25,6 +25,7 @@ import {
   reorderAds,
 } from "@/lib/board.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
+import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
