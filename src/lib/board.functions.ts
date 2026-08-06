@@ -970,7 +970,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       webhooks: webhookRows.map((w, idx) => ({
         id: webhookIds[idx],
         name: w.name,
-        type: w.type,
+        type: w.type as "discord",
         enabled: w.enabled,
       })),
       logo,
