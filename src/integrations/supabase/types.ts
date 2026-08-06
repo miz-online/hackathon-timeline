@@ -96,6 +96,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          notify: boolean
           tags: string[]
           tenant_id: string
           time: string
@@ -107,6 +108,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          notify?: boolean
           tags?: string[]
           tenant_id: string
           time: string
@@ -118,6 +120,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          notify?: boolean
           tags?: string[]
           tenant_id?: string
           time?: string
@@ -224,6 +227,89 @@ export type Database = {
           template?: string
         }
         Relationships: []
+      }
+      webhook_deliveries: {
+        Row: {
+          entry_id: string
+          entry_time: string
+          id: string
+          sent_at: string
+          webhook_id: string
+        }
+        Insert: {
+          entry_id: string
+          entry_time: string
+          id?: string
+          sent_at?: string
+          webhook_id: string
+        }
+        Update: {
+          entry_id?: string
+          entry_time?: string
+          id?: string
+          sent_at?: string
+          webhook_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhook_deliveries_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "webhooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          ref_id: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          ref_id?: string | null
+          tenant_id: string
+          type?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          ref_id?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
