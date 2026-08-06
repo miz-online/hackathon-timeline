@@ -149,7 +149,6 @@ export const deleteTenant = createServerFn({ method: "POST" })
     const { data: ads } = await supabase.from("ads").select("path").eq("tenant_id", tenant.id);
     if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
     if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
-    await supabase.from("webhook_deliveries").delete().eq("webhook_id", supabase.from("webhooks").select("id").eq("tenant_id", tenant.id)).throwOnError;
     await supabase.from("entries").delete().eq("tenant_id", tenant.id);
     await supabase.from("webhooks").delete().eq("tenant_id", tenant.id);
     await supabase.from("ads").delete().eq("tenant_id", tenant.id);
