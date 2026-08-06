@@ -232,6 +232,16 @@ function AdminPage() {
             <AdsPanel tenantKey={tenantKey} onChange={invalidate} />
           </TabsContent>
 
+          <TabsContent value="messages" className="space-y-4 pt-4">
+            <WebhooksPanel
+              tenantKey={tenantKey}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
+              onChange={invalidate}
+            />
+          </TabsContent>
+
+
           <TabsContent value="settings" className="space-y-4 pt-4">
             <SettingsPanel
               tenantKey={tenantKey}
