@@ -192,7 +192,7 @@ const en: Dict = {
   "io.section.logo": "Logo",
   "io.section.webhooks": "Webhooks (without URLs)",
   "io.issues": "Issues found",
-  "io.noIssues": "No issues found.
+  "io.noIssues": "No issues found.",
 
   "messages.title": "Messages",
   "messages.hint": "Webhooks are notified automatically when an entry is due.",
