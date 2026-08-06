@@ -316,6 +316,162 @@ export const deleteRoom = createServerFn({ method: "POST" })
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
     return { ok: true };
+});
+
+// ---------- webhooks ----------
+
+export const listWebhooks = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("webhooks")
+      .select("id, ref_id, name, type, enabled, url")
+      .eq("tenant_id", id)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((w) => ({
+      id: w.id,
+      ref_id: w.ref_id,
+      name: w.name,
+      type: w.type,
+      enabled: w.enabled,
+      has_url: (w.url || "").trim().length > 0,
+    }));
+  });
+
+const webhookInput = z.object({
+  id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
+  name: z.string().min(1).max(120),
+  type: z.enum(["discord"]),
+  url: z.string().max(1000).optional(),
+  enabled: z.boolean().default(true),
+});
+
+export const upsertWebhook = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; webhook: z.infer<typeof webhookInput> }) =>
+    z.object({ key: z.string().min(1), webhook: webhookInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const w = data.webhook;
+    const refId = w.ref_id?.trim() ? slugify(w.ref_id) : null;
+    const url = (w.url ?? "").trim();
+    if (w.id) {
+      const update: TablesUpdate<"webhooks"> = {
+        name: w.name,
+        type: w.type,
+        enabled: w.enabled,
+        ref_id: refId,
+      };
+      if (w.url !== undefined) update.url = url;
+      const { error } = await supabase
+        .from("webhooks")
+        .update(update)
+        .eq("id", w.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: w.id };
+    }
+    const { data: row, error } = await supabase
+      .from("webhooks")
+      .insert({
+        tenant_id: tenantId,
+        name: w.name,
+        type: w.type,
+        url,
+        enabled: w.enabled,
+        ref_id: refId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const deleteWebhook = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { error } = await supabase
+      .from("webhooks")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const testWebhook = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const { data: row, error } = await supabase
+      .from("webhooks")
+      .select("url, type")
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Webhook not found");
+    const result = await sendWebhook(row.url, row.type as WebhookType, {
+      title: `Testnachricht von ${tenant.name}`,
+      description: "This is a test message from the timeline app.",
+      color: tenant.accent_color,
+    });
+    if (!result.ok) throw new Error(result.error);
+    return { ok: true };
+  });
+
+export const sendWebhookMessage = createServerFn({ method: "POST" })
+  .inputValidator(
+    (d: {
+      key: string;
+      webhookIds: string[];
+      message: { title: string; description: string; color?: string | null };
+    }) =>
+      z
+        .object({
+          key: z.string().min(1),
+          webhookIds: z.array(z.string().uuid()).min(1),
+          message: z.object({
+            title: z.string().min(1).max(200),
+            description: z.string().max(2000).default(""),
+            color: z.string().max(7).nullable().default(null),
+          }),
+        })
+        .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("webhooks")
+      .select("id, url, type, enabled")
+      .in("id", data.webhookIds)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    const webhooks = (rows ?? []).filter((w) => w.enabled);
+    if (webhooks.length === 0) throw new Error("No enabled webhooks selected");
+    const results = await Promise.all(
+      webhooks.map(async (w) => {
+        const result = await sendWebhook(w.url, w.type as WebhookType, {
+          ...data.message,
+          time: new Date(),
+        });
+        return { id: w.id, name: w.name, ok: result.ok, error: result.ok ? undefined : result.error };
+      }),
+    );
+    return { results };
   });
 
 // ---------- snapshot for displays ----------
