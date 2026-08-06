@@ -15,7 +15,7 @@ Pro Webhook: Name, Typ (aktuell nur `discord`), URL und ein Aktiv-Schalter.
 - Ein Eintrag gilt als fällig, sobald seine Eintragszeit erreicht ist.
 - Ein minütlicher Server-Job prüft alle Tenants und postet fällige Einträge an **alle aktiven Webhooks** – unabhängig davon, ob ein Raum-Display geöffnet ist.
 - Jeder Eintrag wird pro Webhook nur einmal gepostet (Versandprotokoll). Wird ein Eintrag zeitlich in die Zukunft verschoben, kann er erneut fällig werden und wird dann wieder gepostet.
-- Nachträglich angelegte Einträge, deren Zeit lange vorbei ist, werden nicht mehr geflutet: gepostet wird nur, was innerhalb der letzten 60 Minuten fällig wurde.
+- Gepostet wird nur, was im gerade geprüften Minutenfenster fällig wird. Einträge, deren Zeit davor lag (z. B. vor einer Minute oder nachträglich mit Vergangenheitszeit angelegt), werden nicht gesendet.
 - **Opt-out pro Eintrag**: Checkbox „Nicht an Webhooks senden“ im Eintragsformular. Standard ist senden.
 
 ## Nachrichtenformat (Discord)
