@@ -43,7 +43,7 @@ import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
-const TABS = ["entries", "ads", "rooms", "colors", "settings", "io"] as const;
+const TABS = ["entries", "ads", "rooms", "colors", "settings", "messages", "io"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
