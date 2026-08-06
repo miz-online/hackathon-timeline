@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const IO_VERSION = 2;
 
-export const SECTIONS = ["tenant", "color_schemes", "rooms", "entries", "ads", "logo"] as const;
+export const SECTIONS = ["tenant", "color_schemes", "rooms", "entries", "ads", "webhooks", "logo"] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
