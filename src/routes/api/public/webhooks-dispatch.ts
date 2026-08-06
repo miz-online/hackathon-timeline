@@ -87,7 +87,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 webhook_id: webhook.id,
                 entry_id: entry.id,
                 success: result.ok,
-                error: result.error ?? null,
+                error: result.ok ? null : result.error,
               });
 
               results.push({
@@ -95,7 +95,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 webhook: webhook.name,
                 entry: entry.title,
                 ok: result.ok,
-                error: result.error,
+                error: result.ok ? undefined : result.error,
               });
             }
           }
