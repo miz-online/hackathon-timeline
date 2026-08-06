@@ -130,6 +130,9 @@ const en: Dict = {
     "All other shades, lines, fills and animation values are derived from this color.",
   "entries.form.scheme": "Color scheme",
   "entries.form.schemeHint": "Optional. Overrides the default color for this entry only.",
+  "entries.form.notify": "Post to webhooks when due",
+
+  "admin.tabs.messages": "Messages",
 
   "display.empty": "No entries",
   "display.connecting": "Connecting…",
