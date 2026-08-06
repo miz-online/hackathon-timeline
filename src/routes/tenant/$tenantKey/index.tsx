@@ -25,6 +25,7 @@ import {
   reorderAds,
 } from "@/lib/board.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
+import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
@@ -37,11 +38,12 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
-const TABS = ["entries", "ads", "rooms", "colors", "settings", "io"] as const;
+const TABS = ["entries", "ads", "rooms", "colors", "settings", "messages", "io"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -54,6 +56,7 @@ type EntryRow = {
   description: string;
   tags: string[];
   color_scheme_id: string | null;
+  notify: boolean;
 };
 type RoomRow = {
   id: string;
@@ -65,7 +68,7 @@ type RoomRow = {
 type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
 
 /** Editable reference id used by the import/export format. Empty = derived from the name. */
-function RefIdField({
+export function RefIdField({
   value,
   onChange,
   name,
@@ -228,6 +231,16 @@ function AdminPage() {
           <TabsContent value="ads" className="space-y-4 pt-4">
             <AdsPanel tenantKey={tenantKey} onChange={invalidate} />
           </TabsContent>
+
+          <TabsContent value="messages" className="space-y-4 pt-4">
+            <WebhooksPanel
+              tenantKey={tenantKey}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
+              onChange={invalidate}
+            />
+          </TabsContent>
+
 
           <TabsContent value="settings" className="space-y-4 pt-4">
             <SettingsPanel
@@ -412,6 +425,7 @@ function EntryForm({
     description: string;
     tags: string[];
     color_scheme_id: string | null;
+    notify: boolean;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -423,6 +437,7 @@ function EntryForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [selectedRooms, setSelectedRooms] = useState<string[]>(initial?.tags ?? []);
   const [schemeId, setSchemeId] = useState<string>(initial?.color_scheme_id ?? "");
+  const [notify, setNotify] = useState<boolean>(initial?.notify !== false);
   const [saving, setSaving] = useState(false);
 
   const toggleRoom = (name: string) => {
@@ -513,6 +528,16 @@ function EntryForm({
         </div>
         <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
       </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="notify"
+          checked={notify}
+          onCheckedChange={(c) => setNotify(c === true)}
+        />
+        <Label htmlFor="notify" className="text-sm font-normal">
+          {t("entries.form.notify")}
+        </Label>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -532,6 +557,7 @@ function EntryForm({
                 description: description.trim(),
                 tags,
                 color_scheme_id: schemeId || null,
+                notify,
               });
             } catch (e) {
               toast.error((e as Error).message);

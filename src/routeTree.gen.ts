@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TenantIndexRouteImport } from './routes/tenant/index'
 import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenantKey/index'
 import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
+import { Route as ApiPublicWebhooksDispatchRouteImport } from './routes/api/public/webhooks-dispatch'
 import { Route as TenantTenantKeyRoomRoomIdRouteImport } from './routes/tenant/$tenantKey/room/$roomId'
 import { Route as ApiPublicLogoTenantKeyRouteImport } from './routes/api/public/logo.$tenantKey'
 import { Route as ApiPublicStreamTenantKeyRoomIdRouteImport } from './routes/api/public/stream.$tenantKey.$roomId'
@@ -39,6 +40,12 @@ const TenantTenantKeyRoomsRoute = TenantTenantKeyRoomsRouteImport.update({
   path: '/tenant/$tenantKey/rooms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebhooksDispatchRoute =
+  ApiPublicWebhooksDispatchRouteImport.update({
+    id: '/api/public/webhooks-dispatch',
+    path: '/api/public/webhooks-dispatch',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TenantTenantKeyRoomRoomIdRoute =
   TenantTenantKeyRoomRoomIdRouteImport.update({
     id: '/tenant/$tenantKey/room/$roomId',
@@ -72,6 +79,7 @@ const ApiPublicAdTenantKeyAdIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/tenant/': typeof TenantIndexRoute
+  '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
   '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
@@ -83,6 +91,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/tenant': typeof TenantIndexRoute
+  '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tenant/$tenantKey': typeof TenantTenantKeyIndexRoute
   '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
@@ -95,6 +104,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/tenant/': typeof TenantIndexRoute
+  '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
   '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/tenant/'
+    | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
     | '/tenant/$tenantKey/'
     | '/api/public/logo/$tenantKey'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/tenant'
+    | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
     | '/tenant/$tenantKey'
     | '/api/public/logo/$tenantKey'
@@ -130,6 +142,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/tenant/'
+    | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
     | '/tenant/$tenantKey/'
     | '/api/public/logo/$tenantKey'
@@ -142,6 +155,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   TenantIndexRoute: typeof TenantIndexRoute
+  ApiPublicWebhooksDispatchRoute: typeof ApiPublicWebhooksDispatchRoute
   TenantTenantKeyRoomsRoute: typeof TenantTenantKeyRoomsRoute
   TenantTenantKeyIndexRoute: typeof TenantTenantKeyIndexRoute
   ApiPublicLogoTenantKeyRoute: typeof ApiPublicLogoTenantKeyRoute
@@ -179,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/tenant/$tenantKey/rooms'
       fullPath: '/tenant/$tenantKey/rooms'
       preLoaderRoute: typeof TenantTenantKeyRoomsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks-dispatch': {
+      id: '/api/public/webhooks-dispatch'
+      path: '/api/public/webhooks-dispatch'
+      fullPath: '/api/public/webhooks-dispatch'
+      preLoaderRoute: typeof ApiPublicWebhooksDispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tenant/$tenantKey/room/$roomId': {
@@ -222,6 +243,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   TenantIndexRoute: TenantIndexRoute,
+  ApiPublicWebhooksDispatchRoute: ApiPublicWebhooksDispatchRoute,
   TenantTenantKeyRoomsRoute: TenantTenantKeyRoomsRoute,
   TenantTenantKeyIndexRoute: TenantTenantKeyIndexRoute,
   ApiPublicLogoTenantKeyRoute: ApiPublicLogoTenantKeyRoute,
@@ -233,13 +255,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
