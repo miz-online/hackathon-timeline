@@ -1155,6 +1155,37 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
     }
 
+    // ---- webhooks ----
+    if (wants("webhooks") && p.webhooks) {
+      if (replace) {
+        await supabase.from("webhooks").delete().eq("tenant_id", tenant.id);
+      }
+      const taken = new Set<string>();
+      const { data: existing } = await supabase
+        .from("webhooks")
+        .select("ref_id")
+        .eq("tenant_id", tenant.id);
+      for (const row of existing ?? []) {
+        if (row.ref_id) taken.add(row.ref_id.toLowerCase());
+      }
+      for (const w of p.webhooks) {
+        const ref = uniqueRefId(slugify(w.id) || slugify(w.name), taken, "webhook");
+        const { error } = await supabase.from("webhooks").insert({
+          tenant_id: tenant.id,
+          name: w.name,
+          type: w.type === "discord" ? "discord" : "discord",
+          enabled: w.enabled,
+          ref_id: ref,
+          url: "",
+        });
+        if (!error) {
+          counts.webhooks = (counts.webhooks ?? 0) + 1;
+        } else {
+          warnings.push(`Webhook "${w.name}" not imported: ${error.message}`);
+        }
+      }
+    }
+
     // ---- ads ----
     if (wants("ads") && p.ads) {
       if (replace) {
