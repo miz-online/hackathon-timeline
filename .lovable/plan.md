@@ -24,8 +24,8 @@ Discord-Webhook mit einem Embed:
 
 - Titel = Eintragstitel, Beschreibung = Beschreibung des Eintrags
 - Farbe = Farbschema des Eintrags bzw. die Akzentfarbe des Tenants
-- Felder: Zeit (als Discord-Zeitstempel) und Räume (bzw. „alle Räume“)
-- Footer = Organisationsname
+- Feld: Zeit (als Discord-Zeitstempel)
+- Kein Footer mit Organisationsname.
 
 ## Direktnachricht
 
