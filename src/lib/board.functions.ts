@@ -195,31 +195,33 @@ export const upsertEntry = createServerFn({ method: "POST" })
     const e = data.entry;
     if (e.id) {
       const { error } = await supabase
-        .from("entries")
-        .update({
-          time: e.time,
-          title: e.title,
-          description: e.description,
-          tags: e.tags,
-          color_scheme_id: e.color_scheme_id ?? null,
-        })
-        .eq("id", e.id)
-        .eq("tenant_id", tenantId);
-      if (error) throw new Error(error.message);
-      return { id: e.id };
-    } else {
-      const { data: row, error } = await supabase
-        .from("entries")
-        .insert({
-          tenant_id: tenantId,
-          time: e.time,
-          title: e.title,
-          description: e.description,
-          tags: e.tags,
-          color_scheme_id: e.color_scheme_id ?? null,
-        })
-        .select("id")
-        .single();
+      .from("entries")
+      .update({
+        time: e.time,
+        title: e.title,
+        description: e.description,
+        tags: e.tags,
+        color_scheme_id: e.color_scheme_id ?? null,
+        notify: e.notify,
+      })
+      .eq("id", e.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { id: e.id };
+  } else {
+    const { data: row, error } = await supabase
+      .from("entries")
+      .insert({
+        tenant_id: tenantId,
+        time: e.time,
+        title: e.title,
+        description: e.description,
+        tags: e.tags,
+        color_scheme_id: e.color_scheme_id ?? null,
+        notify: e.notify,
+      })
+      .select("id")
+      .single();
       if (error) throw new Error(error.message);
       return { id: row.id };
     }
