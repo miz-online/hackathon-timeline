@@ -412,6 +412,7 @@ function EntryForm({
     description: string;
     tags: string[];
     color_scheme_id: string | null;
+    notify: boolean;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
