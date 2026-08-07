@@ -127,6 +127,22 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateTenantTemplate = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; template: string }) =>
+    z.object({ key: z.string().min(1), template: z.string().min(1).max(40) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ template: data.template })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 export const regenerateKey = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
@@ -440,13 +456,11 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
   .inputValidator(
     (d: {
       key: string;
-      webhookIds: string[];
       message: { title: string; description: string; color?: string | null };
     }) =>
       z
         .object({
           key: z.string().min(1),
-          webhookIds: z.array(z.string().uuid()).min(1),
           message: z.object({
             title: z.string().min(1).max(200),
             description: z.string().max(2000).default(""),
@@ -461,17 +475,14 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
     const { data: rows, error } = await supabase
       .from("webhooks")
       .select("id, name, url, type, enabled")
-      .in("id", data.webhookIds)
-      .eq("tenant_id", tenantId);
+      .eq("tenant_id", tenantId)
+      .eq("enabled", true);
     if (error) throw new Error(error.message);
-    const webhooks = (rows ?? []).filter((w) => w.enabled);
-    if (webhooks.length === 0) throw new Error("No enabled webhooks selected");
+    const webhooks = rows ?? [];
+    if (webhooks.length === 0) throw new Error("No active webhooks configured");
     const results = await Promise.all(
       webhooks.map(async (w) => {
-        const result = await sendWebhook(w.url, w.type as WebhookType, {
-          ...data.message,
-          time: new Date(),
-        });
+        const result = await sendWebhook(w.url, w.type as WebhookType, data.message);
         return { id: w.id, name: w.name, ok: result.ok, error: result.ok ? undefined : result.error };
       }),
     );
