@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RefIdField } from "@/routes/tenant/$tenantKey";
 
 type WebhookListItem = Awaited<ReturnType<typeof listWebhooks>>[number];
@@ -38,40 +39,11 @@ export function WebhooksPanel({
     queryFn: () => listFn({ data: { key: tenantKey } }),
   });
 
-  const upsertFn = useServerFn(upsertWebhook);
   const deleteFn = useServerFn(deleteWebhook);
   const testFn = useServerFn(testWebhook);
 
   const [editing, setEditing] = useState<WebhookListItem | null>(null);
-  const [name, setName] = useState("");
-  const [refId, setRefId] = useState("");
-  const [type, setType] = useState<"discord">("discord");
-  const [enabled, setEnabled] = useState(true);
-  const [url, setUrl] = useState("");
-
-  const upsertMut = useMutation({
-    mutationFn: () =>
-      upsertFn({
-        data: {
-          key: tenantKey,
-          webhook: {
-            id: editing?.id,
-            ref_id: refId,
-            name,
-            type,
-            enabled,
-            url: url.trim() || undefined,
-          },
-        },
-      }),
-    onSuccess: () => {
-      toast.success(t("messages.saved"));
-      resetForm();
-      refetch();
-      onChange();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const [formOpen, setFormOpen] = useState(false);
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
@@ -89,77 +61,48 @@ export function WebhooksPanel({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  function resetForm() {
-    setEditing(null);
-    setName("");
-    setRefId("");
-    setType("discord");
-    setEnabled(true);
-    setUrl("");
-  }
-
-  function edit(w: WebhookListItem) {
-    setEditing(w);
-    setName(w.name);
-    setRefId(w.ref_id ?? "");
-    setType(w.type as "discord");
-    setEnabled(w.enabled);
-    setUrl("");
-  }
-
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        <h2 className="text-lg font-medium">{t("messages.title")}</h2>
+      <DirectMessagePanel
+        tenantKey={tenantKey}
+        webhooks={webhooks ?? []}
+        schemes={schemes}
+        defaultColor={defaultColor}
+      />
+
+      <div className="space-y-2 border-t pt-6">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-medium">{t("messages.configTitle")}</h2>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing(null);
+              setFormOpen(true);
+            }}
+          >
+            {t("messages.new")}
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground">{t("messages.hint")}</p>
       </div>
 
-      <Card className="p-4 space-y-4">
-        <div className="space-y-1">
-          <Label>{t("messages.name")}</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <RefIdField value={refId} onChange={setRefId} name={name} />
-        <div className="space-y-1">
-          <Label>{t("messages.type")}</Label>
-          <Tabs value={type} onValueChange={(v) => setType(v as "discord")}>
-            <TabsList>
-              <TabsTrigger value="discord">{t("messages.type.discord")}</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className="space-y-1">
-          <Label>{t("messages.url")}</Label>
-          <Input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={editing?.has_url ? t("messages.urlSaved") : "https://discord.com/api/webhooks/…"}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("messages.editWebhook") : t("messages.new")}</DialogTitle>
+          </DialogHeader>
+          <WebhookForm
+            tenantKey={tenantKey}
+            initial={editing}
+            onCancel={() => setFormOpen(false)}
+            onSaved={() => {
+              setFormOpen(false);
+              refetch();
+              onChange();
+            }}
           />
-          {editing?.has_url ? (
-            <p className="text-xs text-muted-foreground">{t("messages.urlHint")}</p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox id="enabled" checked={enabled} onCheckedChange={(c) => setEnabled(c === true)} />
-          <Label htmlFor="enabled" className="text-sm font-normal">
-            {t("messages.enabled")}
-          </Label>
-        </div>
-        <div className="flex gap-2 justify-end">
-          {editing ? (
-            <Button variant="ghost" onClick={resetForm}>
-              {t("entries.cancel")}
-            </Button>
-          ) : null}
-          <Button
-            disabled={!name.trim() || upsertMut.isPending}
-            onClick={() => upsertMut.mutate()}
-          >
-            {t("messages.save")}
-          </Button>
-        </div>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-2">
         {(webhooks ?? []).length === 0 ? (
@@ -172,18 +115,31 @@ export function WebhooksPanel({
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="font-medium flex items-center gap-2 flex-wrap">
                   {w.name}
-                  <span className="text-xs text-muted-foreground">{t("messages.type.discord")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("messages.type.discord")}
+                  </span>
                   {!w.enabled ? (
-                    <span className="text-xs text-muted-foreground">({t("messages.enabled")}: off)</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({t("messages.enabled")}: off)
+                    </span>
                   ) : null}
                 </div>
-                {w.ref_id ? <div className="text-xs text-muted-foreground">Id: {w.ref_id}</div> : null}
+                {w.ref_id ? (
+                  <div className="text-xs text-muted-foreground">Id: {w.ref_id}</div>
+                ) : null}
               </div>
               <div className="flex gap-2 shrink-0">
                 <Button size="sm" variant="outline" onClick={() => testMut.mutate(w.id)}>
                   {t("messages.test")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => edit(w)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditing(w);
+                    setFormOpen(true);
+                  }}
+                >
                   {t("entries.edit")}
                 </Button>
                 <Button
@@ -200,13 +156,106 @@ export function WebhooksPanel({
           ))
         )}
       </div>
+    </div>
+  );
+}
 
-      <DirectMessagePanel
-        tenantKey={tenantKey}
-        webhooks={webhooks ?? []}
-        schemes={schemes}
-        defaultColor={defaultColor}
-      />
+function WebhookForm({
+  tenantKey,
+  initial,
+  onCancel,
+  onSaved,
+}: {
+  tenantKey: string;
+  initial: WebhookListItem | null;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useI18n();
+  const upsertFn = useServerFn(upsertWebhook);
+  const [name, setName] = useState(initial?.name ?? "");
+  const [refId, setRefId] = useState(initial?.ref_id ?? "");
+  const [type, setType] = useState<"discord">((initial?.type as "discord") ?? "discord");
+  const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    setName(initial?.name ?? "");
+    setRefId(initial?.ref_id ?? "");
+    setType((initial?.type as "discord") ?? "discord");
+    setEnabled(initial?.enabled ?? true);
+    setUrl("");
+  }, [initial]);
+
+  const upsertMut = useMutation({
+    mutationFn: () =>
+      upsertFn({
+        data: {
+          key: tenantKey,
+          webhook: {
+            id: initial?.id,
+            ref_id: refId,
+            name,
+            type,
+            enabled,
+            url: url.trim() || undefined,
+          },
+        },
+      }),
+    onSuccess: () => {
+      toast.success(t("messages.saved"));
+      onSaved();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <Label>{t("messages.name")}</Label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <RefIdField value={refId} onChange={setRefId} name={name} />
+      <div className="space-y-1">
+        <Label>{t("messages.type")}</Label>
+        <Tabs value={type} onValueChange={(v) => setType(v as "discord")}>
+          <TabsList>
+            <TabsTrigger value="discord">{t("messages.type.discord")}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      <div className="space-y-1">
+        <Label>{t("messages.url")}</Label>
+        <Input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={
+            initial?.has_url ? t("messages.urlSaved") : "https://discord.com/api/webhooks/…"
+          }
+        />
+        {initial?.has_url ? (
+          <p className="text-xs text-muted-foreground">{t("messages.urlHint")}</p>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="webhook-enabled"
+          checked={enabled}
+          onCheckedChange={(c) => setEnabled(c === true)}
+        />
+        <Label htmlFor="webhook-enabled" className="text-sm font-normal">
+          {t("messages.enabled")}
+        </Label>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <Button variant="ghost" onClick={onCancel}>
+          {t("entries.cancel")}
+        </Button>
+        <Button disabled={!name.trim() || upsertMut.isPending} onClick={() => upsertMut.mutate()}>
+          {t("messages.save")}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -227,14 +276,14 @@ function DirectMessagePanel({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [schemeId, setSchemeId] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+
+  const activeCount = webhooks.filter((w) => w.enabled).length;
 
   const sendMut = useMutation({
     mutationFn: () =>
       sendFn({
         data: {
           key: tenantKey,
-          webhookIds: selected,
           message: {
             title: title.trim(),
             description: description.trim(),
@@ -247,25 +296,27 @@ function DirectMessagePanel({
       if (failed.length === 0) {
         toast.success(t("messages.sent"));
       } else {
-        toast.error(
-          failed.map((f) => `${f.name}: ${f.error ?? ""}`).join("\n"),
-        );
+        toast.error(failed.map((f) => `${f.name}: ${f.error ?? ""}`).join("\n"));
       }
       setTitle("");
       setDescription("");
-      setSelected([]);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const active = webhooks.filter((w) => w.enabled);
-
   return (
     <Card className="p-4 space-y-4">
-      <h3 className="font-medium">{t("messages.sendTitle")}</h3>
+      <h2 className="text-lg font-medium">{t("messages.sendTitle")}</h2>
+      <p className="text-sm text-muted-foreground">
+        {activeCount === 0 ? t("messages.noActive") : t("messages.sendHint")}
+      </p>
       <div className="space-y-1">
         <Label>{t("entries.form.title")}</Label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("messages.sendTitlePh")} />
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={t("messages.sendTitlePh")}
+        />
       </div>
       <div className="space-y-1">
         <Label>{t("entries.form.description")}</Label>
@@ -299,41 +350,9 @@ function DirectMessagePanel({
           </select>
         </div>
       </div>
-      <div className="space-y-1">
-        <Label>{t("messages.selectWebhooks")}</Label>
-        <p className="text-xs text-muted-foreground">{t("messages.selectWebhooksHint")}</p>
-        <div className="flex flex-wrap gap-2">
-          {active.length === 0 ? (
-            <span className="text-sm text-muted-foreground">{t("messages.noWebhooks")}</span>
-          ) : (
-            active.map((w) => {
-              const on = selected.includes(w.id);
-              return (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() =>
-                    setSelected((prev) =>
-                      prev.includes(w.id) ? prev.filter((id) => id !== w.id) : [...prev, w.id],
-                    )
-                  }
-                  className={
-                    "px-3 py-1 rounded-full border text-sm transition " +
-                    (on
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-input hover:bg-accent")
-                  }
-                >
-                  {w.name}
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
       <div className="flex justify-end">
         <Button
-          disabled={!title.trim() || selected.length === 0 || sendMut.isPending}
+          disabled={!title.trim() || activeCount === 0 || sendMut.isPending}
           onClick={() => sendMut.mutate()}
         >
           {t("messages.send")}

@@ -8,20 +8,24 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const auth = request.headers.get("apikey");
-        if (auth !== process.env["VITE_SUPABASE_ANON_KEY"]) {
+        const provided = request.headers.get("apikey");
+        const allowed = [
+          process.env["SUPABASE_ANON_KEY"],
+          process.env["SUPABASE_PUBLISHABLE_KEY"],
+          process.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
+        ].filter((v): v is string => !!v);
+        if (!provided || !allowed.includes(provided)) {
           return new Response("Unauthorized", { status: 401 });
         }
 
         const supabase = createClient(
-          process.env["VITE_SUPABASE_URL"]!,
+          process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"]!,
           process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
           { auth: { autoRefreshToken: false, persistSession: false } },
         );
 
         const now = new Date();
         const windowStart = new Date(now.getTime() - CHECK_WINDOW_MS);
-        const windowEnd = new Date(now.getTime() + CHECK_WINDOW_MS / 2);
 
         const { data: tenants } = await supabase.from("tenants").select("id, name, accent_color");
 
@@ -42,28 +46,17 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
 
           if (!webhooks?.length) continue;
 
+          // Entries becoming due within the checked minute window
           const { data: entries } = await supabase
             .from("entries")
             .select("id, time, title, description, color_scheme_id, notify")
             .eq("tenant_id", tenant.id)
             .eq("notify", true)
-            .gte("time", windowStart.toISOString())
-            .lte("time", windowEnd.toISOString());
+            .gt("time", windowStart.toISOString())
+            .lte("time", now.toISOString());
 
           for (const entry of entries ?? []) {
-            // Skip if already delivered in this minute window
-            const { data: existing } = await supabase
-              .from("webhook_deliveries")
-              .select("id")
-              .eq("entry_id", entry.id)
-              .gte("delivered_at", windowStart.toISOString())
-              .limit(1);
-            if (existing?.length) continue;
-
             const entryTime = new Date(entry.time);
-            // Only post entries that are exactly due in the current checked minute
-            const diffMs = now.getTime() - entryTime.getTime();
-            if (diffMs < 0 || diffMs > CHECK_WINDOW_MS) continue;
 
             const { data: scheme } = entry.color_scheme_id
               ? await supabase
@@ -76,6 +69,16 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
             const color = scheme?.color ?? tenant.accent_color;
 
             for (const webhook of webhooks) {
+              // Deliver each entry once per webhook and entry time
+              const { data: existing } = await supabase
+                .from("webhook_deliveries")
+                .select("id")
+                .eq("webhook_id", webhook.id)
+                .eq("entry_id", entry.id)
+                .eq("entry_time", entryTime.toISOString())
+                .limit(1);
+              if (existing?.length) continue;
+
               const result = await sendWebhook(webhook.url, webhook.type as WebhookType, {
                 title: entry.title,
                 description: entry.description,
@@ -83,12 +86,13 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 time: entryTime,
               });
 
-              await supabase.from("webhook_deliveries").insert({
-                webhook_id: webhook.id,
-                entry_id: entry.id,
-                success: result.ok,
-                error: result.ok ? null : result.error,
-              });
+              if (result.ok) {
+                await supabase.from("webhook_deliveries").insert({
+                  webhook_id: webhook.id,
+                  entry_id: entry.id,
+                  entry_time: entryTime.toISOString(),
+                });
+              }
 
               results.push({
                 tenant: tenant.name,

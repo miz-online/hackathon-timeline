@@ -220,6 +220,10 @@ const en: Dict = {
   "messages.selectWebhooksHint": "Select at least one active webhook.",
   "messages.sent": "Message sent",
   "messages.noWebhooks": "No webhooks configured yet.",
+  "messages.configTitle": "Webhook configuration",
+  "messages.sendHint": "The message is sent to all active webhooks.",
+  "messages.editWebhook": "Edit webhook",
+  "messages.noActive": "No active webhook available.",
 };
 
 const de: Dict = {
@@ -443,6 +447,10 @@ const de: Dict = {
   "messages.selectWebhooksHint": "Mindestens einen aktiven Webhook wählen.",
   "messages.sent": "Nachricht gesendet",
   "messages.noWebhooks": "Noch keine Webhooks konfiguriert.",
+  "messages.configTitle": "Webhook-Konfiguration",
+  "messages.sendHint": "Die Nachricht wird an alle aktiven Webhooks gesendet.",
+  "messages.editWebhook": "Webhook bearbeiten",
+  "messages.noActive": "Kein aktiver Webhook vorhanden.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };

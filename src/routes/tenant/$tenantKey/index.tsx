@@ -23,6 +23,8 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
+  updateTenantTemplate,
+
 } from "@/lib/board.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
@@ -36,6 +38,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,7 +47,7 @@ import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
-const TABS = ["entries", "ads", "rooms", "colors", "settings", "messages", "io"] as const;
+const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -90,6 +94,56 @@ export function RefIdField({
     </div>
   );
 }
+
+/** Global display template selector — applies immediately. */
+function TemplateSwitcher({
+  tenantKey,
+  template,
+  onChange,
+}: {
+  tenantKey: string;
+  template: string;
+  onChange: () => void;
+}) {
+  const { t } = useI18n();
+  const updateFn = useServerFn(updateTenantTemplate);
+  const [value, setValue] = useState(template);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => setValue(template), [template]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {t("settings.template")}
+      </span>
+      <select
+        value={value}
+        disabled={saving}
+        onChange={async (e) => {
+          const next = e.target.value;
+          setValue(next);
+          setSaving(true);
+          try {
+            await updateFn({ data: { key: tenantKey, template: next } });
+            toast.success(t("settings.saved"));
+            onChange();
+          } catch (err) {
+            setValue(template);
+            toast.error((err as Error).message);
+          } finally {
+            setSaving(false);
+          }
+        }}
+        className="rounded-md border bg-background px-2 py-1.5 text-sm"
+      >
+        <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+        <option value="ads">{t("settings.template.ads")}</option>
+      </select>
+    </div>
+  );
+}
+
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
@@ -172,7 +226,15 @@ function AdminPage() {
             </div>
             <h1 className="text-xl font-semibold">{tenant.name}</h1>
           </div>
+          <div className="flex-1 flex justify-center">
+            <TemplateSwitcher
+              tenantKey={tenantKey}
+              template={tenant.template}
+              onChange={invalidate}
+            />
+          </div>
           <div className="flex gap-2 items-center">
+
             <LanguageSwitcher />
             <Link to="/tenant/$tenantKey/rooms" params={{ tenantKey }}>
               <Button variant="outline" size="sm">
@@ -318,21 +380,29 @@ function EntriesPanel({
         </Button>
       </div>
 
-      {showForm ? (
-        <EntryForm
-          initial={editing}
-          rooms={rooms}
-          schemes={schemes}
-          defaultColor={defaultColor}
-          onCancel={() => setShowForm(false)}
-          onSubmit={async (entry) => {
-            await upsertFn({ data: { key: tenantKey, entry } });
-            toast.success(editing ? t("entries.updated") : t("entries.created"));
-            setShowForm(false);
-            onChange();
-          }}
-        />
-      ) : null}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
+          </DialogHeader>
+          {showForm ? (
+            <EntryForm
+              initial={editing}
+              rooms={rooms}
+              schemes={schemes}
+              defaultColor={defaultColor}
+              onCancel={() => setShowForm(false)}
+              onSubmit={async (entry) => {
+                await upsertFn({ data: { key: tenantKey, entry } });
+                toast.success(editing ? t("entries.updated") : t("entries.created"));
+                setShowForm(false);
+                onChange();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
 
       <div className="space-y-2">
         {entries.length === 0 ? (
@@ -447,7 +517,8 @@ function EntryForm({
   };
 
   return (
-    <Card className="p-4 space-y-3">
+    <div className="space-y-3">
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>{t("entries.form.time")}</Label>
@@ -569,7 +640,7 @@ function EntryForm({
           {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -618,20 +689,28 @@ function RoomsPanel({
         </Button>
       </div>
 
-      {showForm ? (
-        <RoomForm
-          initial={editing}
-          schemes={schemes}
-          defaultColor={defaultColor}
-          onCancel={() => setShowForm(false)}
-          onSubmit={async (room) => {
-            await upsertFn({ data: { key: tenantKey, room } });
-            toast.success(editing ? t("rooms.updated") : t("rooms.created"));
-            setShowForm(false);
-            onChange();
-          }}
-        />
-      ) : null}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("rooms.edit") : t("rooms.new")}</DialogTitle>
+          </DialogHeader>
+          {showForm ? (
+            <RoomForm
+              initial={editing}
+              schemes={schemes}
+              defaultColor={defaultColor}
+              onCancel={() => setShowForm(false)}
+              onSubmit={async (room) => {
+                await upsertFn({ data: { key: tenantKey, room } });
+                toast.success(editing ? t("rooms.updated") : t("rooms.created"));
+                setShowForm(false);
+                onChange();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
 
       <div className="grid gap-2 sm:grid-cols-2">
         {rooms.length === 0 ? (
@@ -719,7 +798,7 @@ function RoomForm({
   const [saving, setSaving] = useState(false);
 
   return (
-    <Card className="p-4 space-y-3">
+    <div className="space-y-3">
       <div className="space-y-1">
         <Label>{t("rooms.form.name")}</Label>
         <Input
@@ -795,7 +874,7 @@ function RoomForm({
           {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -826,7 +905,7 @@ function SettingsPanel({
   const { t, lang, setLang } = useI18n();
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
-  const [tpl, setTpl] = useState(template);
+  
   const [adSec, setAdSec] = useState(adSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
@@ -864,17 +943,6 @@ function SettingsPanel({
             value={g}
             onChange={(e) => setG(Number(e.target.value))}
           />
-        </div>
-        <div className="space-y-1">
-          <Label>{t("settings.template")}</Label>
-          <select
-            value={tpl}
-            onChange={(e) => setTpl(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="zeitplan">{t("settings.template.zeitplan")}</option>
-            <option value="ads">{t("settings.template.ads")}</option>
-          </select>
         </div>
         <div className="space-y-1">
           <Label>{t("settings.adSeconds")}</Label>
@@ -995,7 +1063,7 @@ function SettingsPanel({
                     key: tenantKey,
                     name: n,
                     past_grace_minutes: g,
-                    template: tpl,
+                    template,
                     logo_height: lh,
                     accent_color: accent,
                     ad_seconds: adSec,
@@ -1161,18 +1229,26 @@ function ColorSchemesPanel({
         <p className="text-xs text-muted-foreground">{t("colors.defaultHint")}</p>
       </Card>
 
-      {showForm ? (
-        <SchemeForm
-          initial={editing}
-          onCancel={() => setShowForm(false)}
-          onSubmit={async (scheme) => {
-            await upsertFn({ data: { key: tenantKey, scheme } });
-            toast.success(editing ? t("colors.updated") : t("colors.created"));
-            setShowForm(false);
-            onChange();
-          }}
-        />
-      ) : null}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("entries.edit") : t("colors.new")}</DialogTitle>
+          </DialogHeader>
+          {showForm ? (
+            <SchemeForm
+              initial={editing}
+              onCancel={() => setShowForm(false)}
+              onSubmit={async (scheme) => {
+                await upsertFn({ data: { key: tenantKey, scheme } });
+                toast.success(editing ? t("colors.updated") : t("colors.created"));
+                setShowForm(false);
+                onChange();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
 
       <div className="grid gap-2 sm:grid-cols-2">
         {schemes.length === 0 ? (
@@ -1241,7 +1317,7 @@ function SchemeForm({
   const [saving, setSaving] = useState(false);
 
   return (
-    <Card className="p-4 space-y-3 max-w-xl">
+    <div className="space-y-3">
       <div className="space-y-1">
         <Label>{t("colors.form.name")}</Label>
         <Input
@@ -1281,7 +1357,7 @@ function SchemeForm({
           {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
