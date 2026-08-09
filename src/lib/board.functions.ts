@@ -542,12 +542,15 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .from("color_schemes")
       .select("id, color")
       .eq("tenant_id", tenant.id);
-    const { data: ads } = await supabase
-      .from("ads")
-      .select("id, name, content_type, sort_order")
-      .eq("tenant_id", tenant.id)
-      .order("sort_order", { ascending: true });
     const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
+    const template = room.template || tenant.template;
+    const { loadAdsForTemplate } = await import("@/lib/ads.server");
+    const { ads, adSeconds } = await loadAdsForTemplate({
+      tenantId: tenant.id,
+      tenantKey: data.key,
+      template,
+      fallbackSeconds: tenant.ad_seconds,
+    });
     const withColor = (entries ?? []).map((e) => ({
       id: e.id,
       time: e.time,
@@ -564,22 +567,18 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         logo_url: tenant.logo_url,
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
-        ad_seconds: tenant.ad_seconds,
+        ad_seconds: adSeconds,
       },
       room: {
         id: room.id,
         name: room.name,
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
-        template: room.template || tenant.template,
+        template,
       },
       entries: filterVisible(withColor, room.name, tenant.past_grace_minutes),
-      ads: (ads ?? []).map((a) => ({
-        id: a.id,
-        name: a.name,
-        url: `/api/public/ad/${data.key}/${a.id}`,
-        content_type: a.content_type,
-      })),
+      ads,
     };
+
   });
 
 // ---------- color schemes ----------
