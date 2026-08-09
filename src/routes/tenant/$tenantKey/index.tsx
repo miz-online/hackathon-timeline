@@ -101,6 +101,21 @@ export function RefIdField({
   );
 }
 
+/** Template options: the schedule plus one entry per ad set. */
+export function useTemplateOptions(tenantKey: string) {
+  const { t } = useI18n();
+  const listSetsFn = useServerFn(listAdSets);
+  const setsQ = useQuery({
+    queryKey: ["adSets", tenantKey],
+    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+  });
+  const sets = setsQ.data ?? [];
+  return [
+    { value: "zeitplan", label: t("settings.template.zeitplan") },
+    ...sets.map((s) => ({ value: `ads:${s.id}`, label: `${t("settings.template.ads")}: ${s.name}` })),
+  ];
+}
+
 /** Global display template selector — applies immediately. */
 function TemplateSwitcher({
   tenantKey,
@@ -113,10 +128,13 @@ function TemplateSwitcher({
 }) {
   const { t } = useI18n();
   const updateFn = useServerFn(updateTenantTemplate);
+  const options = useTemplateOptions(tenantKey);
   const [value, setValue] = useState(template);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => setValue(template), [template]);
+
+  const known = options.some((o) => o.value === value);
 
   return (
     <div className="flex items-center gap-2">
@@ -143,12 +161,17 @@ function TemplateSwitcher({
         }}
         className="rounded-md border bg-background px-2 py-1.5 text-sm"
       >
-        <option value="zeitplan">{t("settings.template.zeitplan")}</option>
-        <option value="ads">{t("settings.template.ads")}</option>
+        {!known && <option value={value}>{t("settings.template.ads")}</option>}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
       </select>
     </div>
   );
 }
+
 
 
 function AdminPage() {
