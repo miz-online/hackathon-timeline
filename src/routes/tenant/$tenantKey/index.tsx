@@ -48,6 +48,7 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
 const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
+const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -177,10 +178,17 @@ function AdminPage() {
   });
 
   const [tab, setTab] = useState<string>(TABS[0]);
+  const [entriesShowAll, setEntriesShowAll] = useState(false);
   useEffect(() => {
     const read = () => {
       const h = window.location.hash.replace(/^#/, "");
-      if ((TABS as readonly string[]).includes(h)) setTab(h);
+      if ((TABS as readonly string[]).includes(h)) {
+        setTab(h);
+        setEntriesShowAll(false);
+      } else if ((ENTRY_HASHES as readonly string[]).includes(h)) {
+        setTab("entries");
+        setEntriesShowAll(h === "entries-all");
+      }
     };
     read();
     window.addEventListener("hashchange", read);
@@ -188,6 +196,7 @@ function AdminPage() {
   }, []);
   const changeTab = (v: string) => {
     setTab(v);
+    setEntriesShowAll(false);
     window.history.replaceState(null, "", `#${v}`);
   };
 
@@ -268,6 +277,8 @@ function AdminPage() {
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
+              graceMinutes={tenant.past_grace_minutes}
+              showExpired={entriesShowAll}
               onChange={invalidate}
             />
           </TabsContent>
@@ -342,6 +353,8 @@ function EntriesPanel({
   rooms,
   schemes,
   defaultColor,
+  graceMinutes,
+  showExpired,
   onChange,
 }: {
   tenantKey: string;
@@ -349,6 +362,8 @@ function EntriesPanel({
   rooms: RoomRow[];
   schemes: SchemeRow[];
   defaultColor: string;
+  graceMinutes: number;
+  showExpired: boolean;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -356,6 +371,13 @@ function EntriesPanel({
   const [showForm, setShowForm] = useState(false);
   const upsertFn = useServerFn(upsertEntry);
   const deleteFn = useServerFn(deleteEntry);
+
+  const now = Date.now();
+  const graceMs = (graceMinutes || 0) * 60 * 1000;
+  const visibleEntries = showExpired
+    ? entries
+    : entries.filter((e) => new Date(e.time).getTime() + graceMs >= now);
+  const expiredCount = entries.length - visibleEntries.length;
 
   const delMut = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
@@ -370,15 +392,28 @@ function EntriesPanel({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-        >
-          {t("entries.new")}
-        </Button>
+        <div className="flex items-center gap-2">
+          {expiredCount > 0 && !showExpired ? (
+            <span className="text-xs text-muted-foreground">
+              {expiredCount} {expiredCount === 1 ? t("entries.expiredSingular") : t("entries.expiredPlural")}
+            </span>
+          ) : null}
+          <a
+            href={showExpired ? "#entries" : "#entries-all"}
+            className="text-sm text-primary underline hover:text-primary/80"
+          >
+            {showExpired ? t("entries.hideExpired") : t("entries.showExpired")}
+          </a>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing(null);
+              setShowForm(true);
+            }}
+          >
+            {t("entries.new")}
+          </Button>
+        </div>
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -406,12 +441,12 @@ function EntriesPanel({
 
 
       <div className="space-y-2">
-        {entries.length === 0 ? (
+        {visibleEntries.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">
-            {t("entries.empty")}
+            {entries.length === 0 ? t("entries.empty") : t("entries.noneVisible")}
           </Card>
         ) : (
-          entries.map((e) => (
+          visibleEntries.map((e) => (
             <Card key={e.id} className="p-4 flex items-start justify-between gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <span
