@@ -1,16 +1,28 @@
 import { z } from "zod";
 
-export const IO_VERSION = 2;
+export const IO_VERSION = 3;
 
-export const SECTIONS = ["tenant", "color_schemes", "rooms", "entries", "ads", "webhooks", "logo"] as const;
+export const SECTIONS = [
+  "tenant",
+  "color_schemes",
+  "rooms",
+  "entries",
+  "ad_sets",
+  "ads",
+  "webhooks",
+  "logo",
+] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
+/** "zeitplan", "ads" (first set) or "ads:<ad set reference id>" */
+export const templateRef = z.string().min(1).max(80);
+
 export const tenantSection = z.object({
   name: z.string().min(1).max(120),
   past_grace_minutes: z.number().int().min(0).max(1440),
-  template: z.string().min(1).max(40),
+  template: templateRef,
   logo_height: z.number().int().min(16).max(400),
   accent_color: hexColor,
   ad_seconds: z.number().int().min(1).max(600),
@@ -25,7 +37,7 @@ export const colorSchemeItem = z.object({
 export const roomItem = z.object({
   id: z.string().min(1).max(60),
   name: z.string().min(1).max(120),
-  template: z.enum(["zeitplan", "ads"]).nullable().default(null),
+  template: templateRef.nullable().default(null),
   color_scheme: z.string().max(60).nullable().default(null),
 });
 
@@ -38,10 +50,18 @@ export const entryItem = z.object({
   notify: z.boolean().default(true),
 });
 
+export const adSetItem = z.object({
+  id: z.string().min(1).max(60),
+  name: z.string().min(1).max(120),
+  ad_seconds: z.number().int().min(1).max(600).default(10),
+});
+
 export const adItem = z.object({
   name: z.string().min(1).max(120),
   file: z.string().min(1).max(300),
   content_type: z.string().min(1).max(100).default("image/png"),
+  /** id of an entry in ad_sets; null falls back to the first set */
+  set: z.string().max(60).nullable().default(null),
 });
 
 export const webhookItem = z.object({
@@ -66,10 +86,12 @@ export const tenantDataSchema = z.object({
   color_schemes: z.array(colorSchemeItem).optional(),
   rooms: z.array(roomItem).optional(),
   entries: z.array(entryItem).optional(),
+  ad_sets: z.array(adSetItem).optional(),
   ads: z.array(adItem).optional(),
   webhooks: z.array(webhookItem).optional(),
   logo: logoSection.nullable().optional(),
 });
+
 
 export type TenantData = z.infer<typeof tenantDataSchema>;
 
