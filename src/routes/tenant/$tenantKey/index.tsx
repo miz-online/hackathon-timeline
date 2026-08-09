@@ -433,6 +433,13 @@ function EntriesPanel({
                       </span>
                     );
                   }
+                  if (!e.notify) {
+                    return (
+                      <span title={t("entries.notifyOff")}>
+                        <BellOff className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                    );
+                  }
                   if (isPast) {
                     return (
                       <span title={t("entries.pastUnposted")}>
