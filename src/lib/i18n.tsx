@@ -62,6 +62,9 @@ const en: Dict = {
   "entries.saving": "Saving…",
   "entries.showExpired": "Show expired entries",
   "entries.hideExpired": "Hide expired entries",
+  "entries.expiredSingular": "expired entry hidden",
+  "entries.expiredPlural": "expired entries hidden",
+  "entries.noneVisible": "No current entries. Show expired entries to see older ones.",
 
   "rooms.title": "Rooms",
   "rooms.new": "New room",
@@ -290,6 +293,9 @@ const de: Dict = {
   "entries.saving": "Speichert…",
   "entries.showExpired": "Abgelaufene Einträge anzeigen",
   "entries.hideExpired": "Abgelaufene Einträge ausblenden",
+  "entries.expiredSingular": "abgelaufener Eintrag ausgeblendet",
+  "entries.expiredPlural": "abgelaufene Einträge ausgeblendet",
+  "entries.noneVisible": "Keine aktuellen Einträge. Abgelaufene Einträge anzeigen, um ältere zu sehen.",
 
   "rooms.title": "Räume",
   "rooms.new": "Neuer Raum",
