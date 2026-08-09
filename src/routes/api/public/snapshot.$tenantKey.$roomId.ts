@@ -68,21 +68,17 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               logo_url: tenant.logo_url,
               logo_height: tenant.logo_height,
               accent_color: tenant.accent_color,
-              ad_seconds: tenant.ad_seconds,
+              ad_seconds: adSeconds,
             },
             room: {
               id: room.id,
               name: room.name,
               color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
-              template: room.template || tenant.template,
+              template: effectiveTemplate,
             },
             entries: visible,
-            ads: (ads ?? []).map((a) => ({
-              id: a.id,
-              name: a.name,
-              url: signed.get(a.id) ?? `/api/public/ad/${tenantKey}/${a.id}`,
-              content_type: a.content_type,
-            })),
+            ads,
+
 
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },
