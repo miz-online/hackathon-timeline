@@ -184,30 +184,15 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags, color_scheme_id, notify")
+      .select("id, time, title, description, tags, color_scheme_id, notify, notified_at")
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
     const entries = rows ?? [];
 
-    // Mark which entries have already been delivered to a webhook for their current time
-    const { data: deliveries } = entries.length
-      ? await supabase
-          .from("webhook_deliveries")
-          .select("entry_id, entry_time")
-          .in(
-            "entry_id",
-            entries.map((e) => e.id),
-          )
-      : { data: [] as { entry_id: string; entry_time: string }[] };
-
-    const sent = new Set(
-      (deliveries ?? []).map((d) => `${d.entry_id}|${new Date(d.entry_time).getTime()}`),
-    );
-
     return entries.map((e) => ({
       ...e,
-      sent: sent.has(`${e.id}|${new Date(e.time).getTime()}`),
+      sent: !!e.notified_at,
     }));
   });
 
