@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, BellOff, CheckCircle2, Clock } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -23,8 +23,11 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
+  updateTenantTemplate,
+
 } from "@/lib/board.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
+import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
@@ -35,13 +38,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
-const TABS = ["entries", "ads", "rooms", "colors", "settings", "io"] as const;
+const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -54,6 +60,8 @@ type EntryRow = {
   description: string;
   tags: string[];
   color_scheme_id: string | null;
+  notify: boolean;
+  sent?: boolean;
 };
 type RoomRow = {
   id: string;
@@ -65,7 +73,7 @@ type RoomRow = {
 type SchemeRow = { id: string; ref_id?: string | null; name: string; color: string };
 
 /** Editable reference id used by the import/export format. Empty = derived from the name. */
-function RefIdField({
+export function RefIdField({
   value,
   onChange,
   name,
@@ -87,6 +95,56 @@ function RefIdField({
     </div>
   );
 }
+
+/** Global display template selector — applies immediately. */
+function TemplateSwitcher({
+  tenantKey,
+  template,
+  onChange,
+}: {
+  tenantKey: string;
+  template: string;
+  onChange: () => void;
+}) {
+  const { t } = useI18n();
+  const updateFn = useServerFn(updateTenantTemplate);
+  const [value, setValue] = useState(template);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => setValue(template), [template]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {t("settings.template")}
+      </span>
+      <select
+        value={value}
+        disabled={saving}
+        onChange={async (e) => {
+          const next = e.target.value;
+          setValue(next);
+          setSaving(true);
+          try {
+            await updateFn({ data: { key: tenantKey, template: next } });
+            toast.success(t("settings.saved"));
+            onChange();
+          } catch (err) {
+            setValue(template);
+            toast.error((err as Error).message);
+          } finally {
+            setSaving(false);
+          }
+        }}
+        className="rounded-md border bg-background px-2 py-1.5 text-sm"
+      >
+        <option value="zeitplan">{t("settings.template.zeitplan")}</option>
+        <option value="ads">{t("settings.template.ads")}</option>
+      </select>
+    </div>
+  );
+}
+
 
 function AdminPage() {
   const { tenantKey } = Route.useParams();
@@ -169,7 +227,15 @@ function AdminPage() {
             </div>
             <h1 className="text-xl font-semibold">{tenant.name}</h1>
           </div>
+          <div className="flex-1 flex justify-center">
+            <TemplateSwitcher
+              tenantKey={tenantKey}
+              template={tenant.template}
+              onChange={invalidate}
+            />
+          </div>
           <div className="flex gap-2 items-center">
+
             <LanguageSwitcher />
             <Link to="/tenant/$tenantKey/rooms" params={{ tenantKey }}>
               <Button variant="outline" size="sm">
@@ -228,6 +294,16 @@ function AdminPage() {
           <TabsContent value="ads" className="space-y-4 pt-4">
             <AdsPanel tenantKey={tenantKey} onChange={invalidate} />
           </TabsContent>
+
+          <TabsContent value="messages" className="space-y-4 pt-4">
+            <WebhooksPanel
+              tenantKey={tenantKey}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
+              onChange={invalidate}
+            />
+          </TabsContent>
+
 
           <TabsContent value="settings" className="space-y-4 pt-4">
             <SettingsPanel
@@ -305,21 +381,29 @@ function EntriesPanel({
         </Button>
       </div>
 
-      {showForm ? (
-        <EntryForm
-          initial={editing}
-          rooms={rooms}
-          schemes={schemes}
-          defaultColor={defaultColor}
-          onCancel={() => setShowForm(false)}
-          onSubmit={async (entry) => {
-            await upsertFn({ data: { key: tenantKey, entry } });
-            toast.success(editing ? t("entries.updated") : t("entries.created"));
-            setShowForm(false);
-            onChange();
-          }}
-        />
-      ) : null}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
+          </DialogHeader>
+          {showForm ? (
+            <EntryForm
+              initial={editing}
+              rooms={rooms}
+              schemes={schemes}
+              defaultColor={defaultColor}
+              onCancel={() => setShowForm(false)}
+              onSubmit={async (entry) => {
+                await upsertFn({ data: { key: tenantKey, entry } });
+                toast.success(editing ? t("entries.updated") : t("entries.created"));
+                setShowForm(false);
+                onChange();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
 
       <div className="space-y-2">
         {entries.length === 0 ? (
@@ -329,14 +413,36 @@ function EntriesPanel({
         ) : (
           entries.map((e) => (
             <Card key={e.id} className="p-4 flex items-start justify-between gap-4">
-              <span
-                className="mt-1 h-4 w-4 shrink-0 rounded-full border"
-                style={{
-                  backgroundColor:
-                    schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor,
-                }}
-                title={schemes.find((s) => s.id === e.color_scheme_id)?.name ?? t("colors.default")}
-              />
+              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <span
+                  className="mt-1 h-4 w-4 rounded-full border"
+                  style={{
+                    backgroundColor:
+                      schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor,
+                  }}
+                  title={
+                    schemes.find((s) => s.id === e.color_scheme_id)?.name ?? t("colors.default")
+                  }
+                />
+                <span
+                  title={
+                    e.notify === false
+                      ? t("entries.notifyOff")
+                      : e.sent
+                        ? t("entries.sent")
+                        : t("entries.pending")
+                  }
+                >
+                  {e.notify === false ? (
+                    <BellOff className="h-4 w-4 text-muted-foreground" />
+                  ) : e.sent ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </span>
+              </div>
+
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="font-mono text-sm font-semibold">
@@ -412,6 +518,7 @@ function EntryForm({
     description: string;
     tags: string[];
     color_scheme_id: string | null;
+    notify: boolean;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -423,6 +530,7 @@ function EntryForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [selectedRooms, setSelectedRooms] = useState<string[]>(initial?.tags ?? []);
   const [schemeId, setSchemeId] = useState<string>(initial?.color_scheme_id ?? "");
+  const [notify, setNotify] = useState<boolean>(initial?.notify !== false);
   const [saving, setSaving] = useState(false);
 
   const toggleRoom = (name: string) => {
@@ -432,7 +540,8 @@ function EntryForm({
   };
 
   return (
-    <Card className="p-4 space-y-3">
+    <div className="space-y-3">
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label>{t("entries.form.time")}</Label>
@@ -513,6 +622,16 @@ function EntryForm({
         </div>
         <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
       </div>
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="notify"
+          checked={notify}
+          onCheckedChange={(c) => setNotify(c === true)}
+        />
+        <Label htmlFor="notify" className="text-sm font-normal">
+          {t("entries.form.notify")}
+        </Label>
+      </div>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
@@ -532,6 +651,7 @@ function EntryForm({
                 description: description.trim(),
                 tags,
                 color_scheme_id: schemeId || null,
+                notify,
               });
             } catch (e) {
               toast.error((e as Error).message);
@@ -543,7 +663,7 @@ function EntryForm({
           {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -592,20 +712,28 @@ function RoomsPanel({
         </Button>
       </div>
 
-      {showForm ? (
-        <RoomForm
-          initial={editing}
-          schemes={schemes}
-          defaultColor={defaultColor}
-          onCancel={() => setShowForm(false)}
-          onSubmit={async (room) => {
-            await upsertFn({ data: { key: tenantKey, room } });
-            toast.success(editing ? t("rooms.updated") : t("rooms.created"));
-            setShowForm(false);
-            onChange();
-          }}
-        />
-      ) : null}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("rooms.edit") : t("rooms.new")}</DialogTitle>
+          </DialogHeader>
+          {showForm ? (
+            <RoomForm
+              initial={editing}
+              schemes={schemes}
+              defaultColor={defaultColor}
+              onCancel={() => setShowForm(false)}
+              onSubmit={async (room) => {
+                await upsertFn({ data: { key: tenantKey, room } });
+                toast.success(editing ? t("rooms.updated") : t("rooms.created"));
+                setShowForm(false);
+                onChange();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
 
       <div className="grid gap-2 sm:grid-cols-2">
         {rooms.length === 0 ? (
@@ -693,7 +821,7 @@ function RoomForm({
   const [saving, setSaving] = useState(false);
 
   return (
-    <Card className="p-4 space-y-3">
+    <div className="space-y-3">
       <div className="space-y-1">
         <Label>{t("rooms.form.name")}</Label>
         <Input
@@ -769,7 +897,7 @@ function RoomForm({
           {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -800,7 +928,7 @@ function SettingsPanel({
   const { t, lang, setLang } = useI18n();
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
-  const [tpl, setTpl] = useState(template);
+  
   const [adSec, setAdSec] = useState(adSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
@@ -838,17 +966,6 @@ function SettingsPanel({
             value={g}
             onChange={(e) => setG(Number(e.target.value))}
           />
-        </div>
-        <div className="space-y-1">
-          <Label>{t("settings.template")}</Label>
-          <select
-            value={tpl}
-            onChange={(e) => setTpl(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="zeitplan">{t("settings.template.zeitplan")}</option>
-            <option value="ads">{t("settings.template.ads")}</option>
-          </select>
         </div>
         <div className="space-y-1">
           <Label>{t("settings.adSeconds")}</Label>
@@ -969,7 +1086,7 @@ function SettingsPanel({
                     key: tenantKey,
                     name: n,
                     past_grace_minutes: g,
-                    template: tpl,
+                    template,
                     logo_height: lh,
                     accent_color: accent,
                     ad_seconds: adSec,
@@ -1135,18 +1252,26 @@ function ColorSchemesPanel({
         <p className="text-xs text-muted-foreground">{t("colors.defaultHint")}</p>
       </Card>
 
-      {showForm ? (
-        <SchemeForm
-          initial={editing}
-          onCancel={() => setShowForm(false)}
-          onSubmit={async (scheme) => {
-            await upsertFn({ data: { key: tenantKey, scheme } });
-            toast.success(editing ? t("colors.updated") : t("colors.created"));
-            setShowForm(false);
-            onChange();
-          }}
-        />
-      ) : null}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? t("entries.edit") : t("colors.new")}</DialogTitle>
+          </DialogHeader>
+          {showForm ? (
+            <SchemeForm
+              initial={editing}
+              onCancel={() => setShowForm(false)}
+              onSubmit={async (scheme) => {
+                await upsertFn({ data: { key: tenantKey, scheme } });
+                toast.success(editing ? t("colors.updated") : t("colors.created"));
+                setShowForm(false);
+                onChange();
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
 
       <div className="grid gap-2 sm:grid-cols-2">
         {schemes.length === 0 ? (
@@ -1215,7 +1340,7 @@ function SchemeForm({
   const [saving, setSaving] = useState(false);
 
   return (
-    <Card className="p-4 space-y-3 max-w-xl">
+    <div className="space-y-3">
       <div className="space-y-1">
         <Label>{t("colors.form.name")}</Label>
         <Input
@@ -1255,7 +1380,7 @@ function SchemeForm({
           {saving ? t("entries.saving") : t("entries.save")}
         </Button>
       </div>
-    </Card>
+    </div>
   );
 }
 

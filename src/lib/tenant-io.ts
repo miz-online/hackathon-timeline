@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const IO_VERSION = 2;
 
-export const SECTIONS = ["tenant", "color_schemes", "rooms", "entries", "ads", "logo"] as const;
+export const SECTIONS = ["tenant", "color_schemes", "rooms", "entries", "ads", "webhooks", "logo"] as const;
 export type Section = (typeof SECTIONS)[number];
 
 export const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -35,12 +35,22 @@ export const entryItem = z.object({
   description: z.string().max(2000).default(""),
   rooms: z.array(z.string().min(1).max(60)).max(50).default([]),
   color_scheme: z.string().max(60).nullable().default(null),
+  notify: z.boolean().default(true),
 });
 
 export const adItem = z.object({
   name: z.string().min(1).max(120),
   file: z.string().min(1).max(300),
   content_type: z.string().min(1).max(100).default("image/png"),
+});
+
+export const webhookItem = z.object({
+  id: z.string().min(1).max(60),
+  name: z.string().min(1).max(120),
+  type: z.enum(["discord"]).default("discord"),
+  enabled: z.boolean().default(true),
+  /** Never exported (always null). When null on import the URL is not set. */
+  url: z.string().max(500).nullable().default(null),
 });
 
 export const logoSection = z.object({
@@ -57,6 +67,7 @@ export const tenantDataSchema = z.object({
   rooms: z.array(roomItem).optional(),
   entries: z.array(entryItem).optional(),
   ads: z.array(adItem).optional(),
+  webhooks: z.array(webhookItem).optional(),
   logo: logoSection.nullable().optional(),
 });
 
@@ -146,6 +157,11 @@ export const TENANT_JSON_SCHEMA = {
             type: ["string", "null"],
             description: "id of an entry in color_schemes",
           },
+          notify: {
+            type: "boolean",
+            description: "Whether to post this entry to configured webhooks at its due time",
+            default: true,
+          },
         },
       },
     },
@@ -163,6 +179,32 @@ export const TENANT_JSON_SCHEMA = {
             description: "Path of the image inside the export archive, e.g. images/ads/01-logo.png",
           },
           content_type: { type: "string" },
+        },
+      },
+    },
+    webhooks: {
+      type: "array",
+      description: "Webhook targets for automatic and manual messages. URLs are never exported.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name"],
+        properties: {
+          id: {
+            type: "string",
+            minLength: 1,
+            maxLength: 60,
+            description: "Reference id, derived from the name when not set explicitly",
+          },
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          type: { type: "string", enum: ["discord"], default: "discord" },
+          enabled: { type: "boolean", default: true },
+          url: {
+            type: ["string", "null"],
+            description:
+              "Webhook URL. Always null in exports; when null on import the URL is left unset and the webhook stays inactive.",
+            default: null,
+          },
         },
       },
     },

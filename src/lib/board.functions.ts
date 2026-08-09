@@ -8,6 +8,7 @@ import {
   type Section,
   type TenantData,
 } from "@/lib/tenant-io";
+import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
@@ -126,6 +127,22 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateTenantTemplate = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; template: string }) =>
+    z.object({ key: z.string().min(1), template: z.string().min(1).max(40) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { error } = await supabase
+      .from("tenants")
+      .update({ template: data.template })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 export const regenerateKey = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
@@ -149,6 +166,7 @@ export const deleteTenant = createServerFn({ method: "POST" })
     if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
     if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
     await supabase.from("entries").delete().eq("tenant_id", tenant.id);
+    await supabase.from("webhooks").delete().eq("tenant_id", tenant.id);
     await supabase.from("ads").delete().eq("tenant_id", tenant.id);
     await supabase.from("rooms").delete().eq("tenant_id", tenant.id);
     await supabase.from("color_schemes").delete().eq("tenant_id", tenant.id);
@@ -166,11 +184,31 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await resolveTenant(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags, color_scheme_id")
+      .select("id, time, title, description, tags, color_scheme_id, notify")
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    const entries = rows ?? [];
+
+    // Mark which entries have already been delivered to a webhook for their current time
+    const { data: deliveries } = entries.length
+      ? await supabase
+          .from("webhook_deliveries")
+          .select("entry_id, entry_time")
+          .in(
+            "entry_id",
+            entries.map((e) => e.id),
+          )
+      : { data: [] as { entry_id: string; entry_time: string }[] };
+
+    const sent = new Set(
+      (deliveries ?? []).map((d) => `${d.entry_id}|${new Date(d.entry_time).getTime()}`),
+    );
+
+    return entries.map((e) => ({
+      ...e,
+      sent: sent.has(`${e.id}|${new Date(e.time).getTime()}`),
+    }));
   });
 
 const entryInput = z.object({
@@ -180,6 +218,7 @@ const entryInput = z.object({
   description: z.string().max(2000).default(""),
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
   color_scheme_id: z.string().uuid().nullable().default(null),
+  notify: z.boolean().default(true),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
@@ -192,31 +231,33 @@ export const upsertEntry = createServerFn({ method: "POST" })
     const e = data.entry;
     if (e.id) {
       const { error } = await supabase
-        .from("entries")
-        .update({
-          time: e.time,
-          title: e.title,
-          description: e.description,
-          tags: e.tags,
-          color_scheme_id: e.color_scheme_id ?? null,
-        })
-        .eq("id", e.id)
-        .eq("tenant_id", tenantId);
-      if (error) throw new Error(error.message);
-      return { id: e.id };
-    } else {
-      const { data: row, error } = await supabase
-        .from("entries")
-        .insert({
-          tenant_id: tenantId,
-          time: e.time,
-          title: e.title,
-          description: e.description,
-          tags: e.tags,
-          color_scheme_id: e.color_scheme_id ?? null,
-        })
-        .select("id")
-        .single();
+      .from("entries")
+      .update({
+        time: e.time,
+        title: e.title,
+        description: e.description,
+        tags: e.tags,
+        color_scheme_id: e.color_scheme_id ?? null,
+        notify: e.notify,
+      })
+      .eq("id", e.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { id: e.id };
+  } else {
+    const { data: row, error } = await supabase
+      .from("entries")
+      .insert({
+        tenant_id: tenantId,
+        time: e.time,
+        title: e.title,
+        description: e.description,
+        tags: e.tags,
+        color_scheme_id: e.color_scheme_id ?? null,
+        notify: e.notify,
+      })
+      .select("id")
+      .single();
       if (error) throw new Error(error.message);
       return { id: row.id };
     }
@@ -315,6 +356,157 @@ export const deleteRoom = createServerFn({ method: "POST" })
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
     return { ok: true };
+});
+
+// ---------- webhooks ----------
+
+export const listWebhooks = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("webhooks")
+      .select("id, ref_id, name, type, enabled, url")
+      .eq("tenant_id", id)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((w) => ({
+      id: w.id,
+      ref_id: w.ref_id,
+      name: w.name,
+      type: w.type,
+      enabled: w.enabled,
+      has_url: (w.url || "").trim().length > 0,
+    }));
+  });
+
+const webhookInput = z.object({
+  id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
+  name: z.string().min(1).max(120),
+  type: z.enum(["discord"]),
+  url: z.string().max(1000).optional(),
+  enabled: z.boolean().default(true),
+});
+
+export const upsertWebhook = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; webhook: z.infer<typeof webhookInput> }) =>
+    z.object({ key: z.string().min(1), webhook: webhookInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const w = data.webhook;
+    const refId = w.ref_id?.trim() ? slugify(w.ref_id) : null;
+    const url = (w.url ?? "").trim();
+    if (w.id) {
+      const update: TablesUpdate<"webhooks"> = {
+        name: w.name,
+        type: w.type,
+        enabled: w.enabled,
+        ref_id: refId,
+      };
+      if (w.url !== undefined) update.url = url;
+      const { error } = await supabase
+        .from("webhooks")
+        .update(update)
+        .eq("id", w.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: w.id };
+    }
+    const { data: row, error } = await supabase
+      .from("webhooks")
+      .insert({
+        tenant_id: tenantId,
+        name: w.name,
+        type: w.type,
+        url,
+        enabled: w.enabled,
+        ref_id: refId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const deleteWebhook = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { error } = await supabase
+      .from("webhooks")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const testWebhook = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const { data: row, error } = await supabase
+      .from("webhooks")
+      .select("url, type")
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Webhook not found");
+    const result = await sendWebhook(row.url, row.type as WebhookType, {
+      title: `Testnachricht von ${tenant.name}`,
+      description: "This is a test message from the timeline app.",
+      color: tenant.accent_color,
+    });
+    if (!result.ok) throw new Error(result.error);
+    return { ok: true };
+  });
+
+export const sendWebhookMessage = createServerFn({ method: "POST" })
+  .inputValidator(
+    (d: {
+      key: string;
+      message: { title: string; description: string; color?: string | null };
+    }) =>
+      z
+        .object({
+          key: z.string().min(1),
+          message: z.object({
+            title: z.string().min(1).max(200),
+            description: z.string().max(2000).default(""),
+            color: z.string().max(7).nullable().default(null),
+          }),
+        })
+        .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("webhooks")
+      .select("id, name, url, type, enabled")
+      .eq("tenant_id", tenantId)
+      .eq("enabled", true);
+    if (error) throw new Error(error.message);
+    const webhooks = rows ?? [];
+    if (webhooks.length === 0) throw new Error("No active webhooks configured");
+    const results = await Promise.all(
+      webhooks.map(async (w) => {
+        const result = await sendWebhook(w.url, w.type as WebhookType, data.message);
+        return { id: w.id, name: w.name, ok: result.ok, error: result.ok ? undefined : result.error };
+      }),
+    );
+    return { results };
   });
 
 // ---------- snapshot for displays ----------
@@ -702,7 +894,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await resolveTenant(data.key);
-    const [schemes, rooms, entries, ads] = await Promise.all([
+    const [schemes, rooms, entries, ads, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -715,7 +907,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("name", { ascending: true }),
       supabase
         .from("entries")
-        .select("time, title, description, tags, color_scheme_id")
+        .select("time, title, description, tags, color_scheme_id, notify")
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
       supabase
@@ -723,6 +915,11 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .select("name, path, content_type, sort_order")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
+      supabase
+        .from("webhooks")
+        .select("id, ref_id, name, type, enabled")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: true }),
     ]);
 
     const schemeRows = schemes.data ?? [];
@@ -731,6 +928,9 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const roomIds = refIdsFor(roomRows);
     const schemeIdByUuid = new Map(schemeRows.map((s, i) => [s.id, schemeIds[i]]));
     const roomIdByName = new Map(roomRows.map((r, i) => [r.name, roomIds[i]]));
+    const webhookRows = webhooks.data ?? [];
+    const webhookIds = refIdsFor(webhookRows);
+    const webhookIdByUuid = new Map(webhookRows.map((w, i) => [w.id, webhookIds[i]]));
 
     const files: ExportedFile[] = [];
 
@@ -795,8 +995,17 @@ export const exportTenantData = createServerFn({ method: "GET" })
         description: e.description,
         rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
         color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
+        notify: e.notify,
       })),
       ads: adItems,
+      webhooks: webhookRows.map((w, idx) => ({
+        id: webhookIds[idx],
+        name: w.name,
+        type: w.type as "discord",
+        enabled: w.enabled,
+        // URLs are secrets and never exported; the key is kept so it can be filled in for import
+        url: null,
+      })),
       logo,
     };
 
@@ -970,6 +1179,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             description: e.description,
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
             color_scheme_id: schemeUuid(e.color_scheme),
+            notify: e.notify,
           };
         });
         const { error } = await supabase.from("entries").insert(rows);
@@ -977,6 +1187,43 @@ export const importTenantData = createServerFn({ method: "POST" })
         counts.entries = rows.length;
       }
     }
+
+    // ---- webhooks ----
+    if (wants("webhooks") && p.webhooks) {
+      if (replace) {
+        await supabase.from("webhooks").delete().eq("tenant_id", tenant.id);
+      }
+      const taken = new Set<string>();
+      const { data: existing } = await supabase
+        .from("webhooks")
+        .select("ref_id")
+        .eq("tenant_id", tenant.id);
+      for (const row of existing ?? []) {
+        if (row.ref_id) taken.add(row.ref_id.toLowerCase());
+      }
+      for (const w of p.webhooks) {
+        const ref = uniqueRefId(slugify(w.id) || slugify(w.name), taken, "webhook");
+        const url = typeof w.url === "string" && w.url.trim() ? w.url.trim() : null;
+        const { error } = await supabase.from("webhooks").insert({
+          tenant_id: tenant.id,
+          name: w.name,
+          type: w.type === "discord" ? "discord" : "discord",
+          // Without a URL the webhook cannot send, so it is created disabled
+          enabled: url ? w.enabled : false,
+          ref_id: ref,
+          url: url ?? "",
+        });
+        if (!error) {
+          counts.webhooks = (counts.webhooks ?? 0) + 1;
+          if (!url) {
+            warnings.push(`Webhook "${w.name}" imported without URL and left inactive.`);
+          }
+        } else {
+          warnings.push(`Webhook "${w.name}" not imported: ${error.message}`);
+        }
+      }
+    }
+
 
     // ---- ads ----
     if (wants("ads") && p.ads) {
