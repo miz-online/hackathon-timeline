@@ -413,14 +413,29 @@ function EntriesPanel({
         ) : (
           entries.map((e) => (
             <Card key={e.id} className="p-4 flex items-start justify-between gap-4">
-              <span
-                className="mt-1 h-4 w-4 shrink-0 rounded-full border"
-                style={{
-                  backgroundColor:
-                    schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor,
-                }}
-                title={schemes.find((s) => s.id === e.color_scheme_id)?.name ?? t("colors.default")}
-              />
+              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                <span
+                  className="mt-1 h-4 w-4 rounded-full border"
+                  style={{
+                    backgroundColor:
+                      schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor,
+                  }}
+                  title={
+                    schemes.find((s) => s.id === e.color_scheme_id)?.name ?? t("colors.default")
+                  }
+                />
+                {e.notify === false ? (
+                  <BellOff
+                    className="h-4 w-4 text-muted-foreground"
+                    title={t("entries.notifyOff")}
+                  />
+                ) : e.sent ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" title={t("entries.sent")} />
+                ) : (
+                  <Clock className="h-4 w-4 text-muted-foreground" title={t("entries.pending")} />
+                )}
+              </div>
+
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="font-mono text-sm font-semibold">
