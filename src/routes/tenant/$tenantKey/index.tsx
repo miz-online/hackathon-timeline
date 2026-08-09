@@ -944,8 +944,15 @@ function RoomForm({
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
         >
           <option value="">{t("rooms.form.templateGlobal")}</option>
-          <option value="zeitplan">{t("settings.template.zeitplan")}</option>
-          <option value="ads">{t("settings.template.ads")}</option>
+          {tpl && !templateOptions.some((o) => o.value === tpl) && (
+            <option value={tpl}>{t("settings.template.ads")}</option>
+          )}
+          {templateOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+
         </select>
         <p className="text-xs text-muted-foreground">{t("rooms.form.templateHint")}</p>
       </div>
