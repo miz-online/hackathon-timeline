@@ -426,7 +426,13 @@ function EntriesPanel({
                 />
                 {(() => {
                   const isPast = new Date(e.time).getTime() < Date.now();
-                  if (!e.notify && isPast) return null;
+                  if (!e.notify && isPast) {
+                    return (
+                      <span title={t("entries.pastUnposted")}>
+                        <History className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                    );
+                  }
                   return (
                     <span
                       title={
