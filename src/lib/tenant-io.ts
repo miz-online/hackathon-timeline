@@ -156,7 +156,12 @@ export const TENANT_JSON_SCHEMA = {
         properties: {
           id: { type: "string", minLength: 1, maxLength: 60, description: "Reference id" },
           name: { type: "string", minLength: 1, maxLength: 120 },
-          template: { type: ["string", "null"], enum: ["zeitplan", "ads", null] },
+          template: {
+            type: ["string", "null"],
+            description:
+              'Overrides the organization template: "zeitplan", "ads" or "ads:<ad set id>"',
+          },
+
           color_scheme: {
             type: ["string", "null"],
             description: "id of an entry in color_schemes",
