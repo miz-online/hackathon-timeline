@@ -1226,6 +1226,73 @@ export const importTenantData = createServerFn({ method: "POST" })
     const schemeUuid = (ref: string | null | undefined) =>
       ref ? (schemeUuidByRef.get(ref) ?? schemeUuidByRef.get(slugify(ref)) ?? null) : null;
 
+    // ---- ad sets ----
+    const setUuidByRef = new Map<string, string>();
+    let firstSetUuid: string | null = null;
+    const loadExistingSets = async () => {
+      const { data: existing } = await supabase
+        .from("ad_sets")
+        .select("id, ref_id, name, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true });
+      const taken = new Set<string>();
+      for (const row of existing ?? []) {
+        setUuidByRef.set(uniqueRefId(effectiveRefId(row), taken, "ads"), row.id);
+        if (!firstSetUuid) firstSetUuid = row.id;
+      }
+      return taken;
+    };
+    if (wants("ad_sets") && p.ad_sets) {
+      if (replace) {
+        const { data: oldAds } = await supabase
+          .from("ads")
+          .select("path")
+          .eq("tenant_id", tenant.id);
+        if (oldAds?.length) {
+          await supabase.storage.from("tenant-ads").remove(oldAds.map((a) => a.path));
+        }
+        await supabase.from("ad_sets").delete().eq("tenant_id", tenant.id);
+      }
+      const taken = await loadExistingSets();
+      let order = 0;
+      for (const s of p.ad_sets) {
+        const ref = uniqueRefId(slugify(s.id) || slugify(s.name), taken, "ads");
+        const { data: row, error } = await supabase
+          .from("ad_sets")
+          .insert({
+            tenant_id: tenant.id,
+            name: s.name,
+            ad_seconds: s.ad_seconds,
+            ref_id: ref,
+            sort_order: order++,
+          })
+          .select("id")
+          .single();
+        if (row) {
+          setUuidByRef.set(ref, row.id);
+          setUuidByRef.set(s.id, row.id);
+          if (!firstSetUuid) firstSetUuid = row.id;
+          counts.ad_sets = (counts.ad_sets ?? 0) + 1;
+        } else if (error) {
+          warnings.push(`Ad set "${s.name}" not imported: ${error.message}`);
+        }
+      }
+    } else {
+      await loadExistingSets();
+    }
+    const setUuid = (ref: string | null | undefined) =>
+      ref ? (setUuidByRef.get(ref) ?? setUuidByRef.get(slugify(ref)) ?? null) : null;
+    /** Maps "ads:<ref id>" back to "ads:<uuid>". */
+    const templateValue = (template: string | null | undefined, label: string): string | null => {
+      if (!template) return null;
+      if (!template.startsWith("ads:")) return template;
+      const uuid = setUuid(template.slice(4));
+      if (uuid) return `ads:${uuid}`;
+      warnings.push(`${label}: unknown ad set "${template.slice(4)}", using the first ad set`);
+      return "ads";
+    };
+
+
     // ---- rooms ----
     const roomNameByRef = new Map<string, string>();
     if (wants("rooms") && p.rooms) {
