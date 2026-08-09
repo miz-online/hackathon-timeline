@@ -872,12 +872,14 @@ function RoomForm({
   initial,
   schemes,
   defaultColor,
+  tenantKey,
   onSubmit,
   onCancel,
 }: {
   initial: RoomRow | null;
   schemes: SchemeRow[];
   defaultColor: string;
+  tenantKey: string;
   onSubmit: (room: {
     id?: string;
     ref_id: string | null;
@@ -888,11 +890,13 @@ function RoomForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const templateOptions = useTemplateOptions(tenantKey);
   const [name, setName] = useState(initial?.name ?? "");
   const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
+
 
   return (
     <div className="space-y-3">
