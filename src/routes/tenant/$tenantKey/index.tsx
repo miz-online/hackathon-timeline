@@ -424,23 +424,29 @@ function EntriesPanel({
                     schemes.find((s) => s.id === e.color_scheme_id)?.name ?? t("colors.default")
                   }
                 />
-                <span
-                  title={
-                    e.notify === false
-                      ? t("entries.notifyOff")
-                      : e.sent
-                        ? t("entries.sent")
-                        : t("entries.pending")
-                  }
-                >
-                  {e.notify === false ? (
-                    <BellOff className="h-4 w-4 text-muted-foreground" />
-                  ) : e.sent ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </span>
+                {(() => {
+                  const isPast = new Date(e.time).getTime() < Date.now();
+                  if (!e.notify && isPast) return null;
+                  return (
+                    <span
+                      title={
+                        !e.notify
+                          ? t("entries.notifyOff")
+                          : e.sent
+                            ? t("entries.sent")
+                            : t("entries.pending")
+                      }
+                    >
+                      {!e.notify ? (
+                        <BellOff className="h-4 w-4 text-muted-foreground" />
+                      ) : e.sent ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </span>
+                  );
+                })()}
               </div>
 
               <div className="space-y-1 min-w-0 flex-1">
