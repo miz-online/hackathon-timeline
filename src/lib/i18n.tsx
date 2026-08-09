@@ -209,7 +209,9 @@ const en: Dict = {
   "io.section.color_schemes": "Color schemes",
   "io.section.rooms": "Rooms",
   "io.section.entries": "Entries",
+  "io.section.ad_sets": "Ad sets",
   "io.section.ads": "Ads",
+
   "io.section.logo": "Logo",
   "io.section.webhooks": "Webhooks (without URLs)",
   "io.issues": "Issues found",
