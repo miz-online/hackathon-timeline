@@ -49,6 +49,8 @@ export const webhookItem = z.object({
   name: z.string().min(1).max(120),
   type: z.enum(["discord"]).default("discord"),
   enabled: z.boolean().default(true),
+  /** Never exported (always null). When null on import the URL is not set. */
+  url: z.string().max(500).nullable().default(null),
 });
 
 export const logoSection = z.object({
