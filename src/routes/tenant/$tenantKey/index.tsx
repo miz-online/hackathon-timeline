@@ -61,6 +61,7 @@ type EntryRow = {
   tags: string[];
   color_scheme_id: string | null;
   notify: boolean;
+  sent?: boolean;
 };
 type RoomRow = {
   id: string;
