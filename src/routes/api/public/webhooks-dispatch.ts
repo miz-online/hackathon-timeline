@@ -49,9 +49,10 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           // Entries becoming due within the checked minute window
           const { data: entries } = await supabase
             .from("entries")
-            .select("id, time, title, description, color_scheme_id, notify")
+            .select("id, time, title, description, color_scheme_id, notify, notified_at")
             .eq("tenant_id", tenant.id)
             .eq("notify", true)
+            .is("notified_at", null)
             .gt("time", windowStart.toISOString())
             .lte("time", now.toISOString());
 
@@ -68,31 +69,15 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
 
             const color = scheme?.color ?? tenant.accent_color;
 
+            let anyOk = false;
             for (const webhook of webhooks) {
-              // Deliver each entry once per webhook and entry time
-              const { data: existing } = await supabase
-                .from("webhook_deliveries")
-                .select("id")
-                .eq("webhook_id", webhook.id)
-                .eq("entry_id", entry.id)
-                .eq("entry_time", entryTime.toISOString())
-                .limit(1);
-              if (existing?.length) continue;
-
               const result = await sendWebhook(webhook.url, webhook.type as WebhookType, {
                 title: entry.title,
                 description: entry.description,
                 color,
                 time: entryTime,
               });
-
-              if (result.ok) {
-                await supabase.from("webhook_deliveries").insert({
-                  webhook_id: webhook.id,
-                  entry_id: entry.id,
-                  entry_time: entryTime.toISOString(),
-                });
-              }
+              if (result.ok) anyOk = true;
 
               results.push({
                 tenant: tenant.name,
@@ -101,6 +86,13 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 ok: result.ok,
                 error: result.ok ? undefined : result.error,
               });
+            }
+
+            if (anyOk) {
+              await supabase
+                .from("entries")
+                .update({ notified_at: new Date().toISOString() })
+                .eq("id", entry.id);
             }
           }
         }
