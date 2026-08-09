@@ -199,6 +199,12 @@ export const TENANT_JSON_SCHEMA = {
           name: { type: "string", minLength: 1, maxLength: 120 },
           type: { type: "string", enum: ["discord"], default: "discord" },
           enabled: { type: "boolean", default: true },
+          url: {
+            type: ["string", "null"],
+            description:
+              "Webhook URL. Always null in exports; when null on import the URL is left unset and the webhook stays inactive.",
+            default: null,
+          },
         },
       },
     },
