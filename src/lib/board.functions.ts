@@ -1316,7 +1316,8 @@ export const importTenantData = createServerFn({ method: "POST" })
           tenant_id: tenant.id,
           name: r.name,
           ref_id: ref,
-          template: r.template ?? null,
+          template: templateValue(r.template, `Room "${r.name}"`),
+
           color_scheme_id: schemeUuid(r.color_scheme),
         });
         if (!error) {
