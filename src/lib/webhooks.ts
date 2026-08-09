@@ -15,28 +15,27 @@ export function buildDiscordPayload(message: WebhookMessage): {
     title: string;
     description?: string;
     color?: number;
-    timestamp?: string;
     fields?: { name: string; value: string; inline?: boolean }[];
   }[];
 } {
   const colorHex = message.color ? derivePalette(message.color).base : undefined;
   const color = colorHex ? parseInt(colorHex.replace("#", ""), 16) : undefined;
 
+  const title = message.time
+    ? `${message.time.toLocaleString([], { timeStyle: "short" })}: ${message.title}`
+    : message.title;
+
   const embed: {
     title: string;
     description?: string;
     color?: number;
-    timestamp?: string;
     fields?: { name: string; value: string; inline?: boolean }[];
   } = {
-    title: message.title,
+    title,
     description: message.description || undefined,
   };
 
   if (color) embed.color = color;
-  if (message.time) {
-    embed.timestamp = message.time.toISOString();
-  }
 
   return { embeds: [embed] };
 }
