@@ -13,8 +13,7 @@ The confusing part is the admin list: it showed that entry with the "pending" cl
 
 1. **Fix the status icon precedence** in the entries list:
    - posted → check icon ("Posted")
-   - posting disabled + still in the future → bell-off icon ("Not posted to webhooks")
-   - posting disabled + in the past → history icon (never will be posted)
+   - posting disabled → bell-off icon ("Not posted to webhooks")
    - in the past, not posted → history icon
    - otherwise (future, enabled) → clock icon ("Pending")
 
