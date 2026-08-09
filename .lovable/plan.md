@@ -17,7 +17,7 @@ The confusing part is the admin list: it showed that entry with the "pending" cl
    - in the past, not posted → history icon
    - otherwise (future, enabled) → clock icon ("Pending")
 
-2. **Add a catch-up window to the dispatcher** so a single missed minute (deploy, cold start, brief outage) doesn't silently drop a post: instead of only the last 60 seconds, consider entries that became due within the last 10 minutes and are not yet marked as sent. Entries older than that stay unsent, as today.
+2. **Add a catch-up window to the dispatcher** so a single missed minute (deploy, cold start, brief outage) doesn't silently drop a post: instead of only the last 60 seconds, consider entries that became due within the tenant's `past_grace_minutes` window and are not yet marked as sent. Entries older than that stay unsent, as today.
 
 3. **Verification after the change**: create a test entry a couple of minutes in the future with posting enabled, wait for the job, and confirm the Discord message arrives and the entry flips to "Posted".
 
