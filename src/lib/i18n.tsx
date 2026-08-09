@@ -60,6 +60,8 @@ const en: Dict = {
   "entries.cancel": "Cancel",
   "entries.save": "Save",
   "entries.saving": "Saving…",
+  "entries.showExpired": "Show expired entries",
+  "entries.hideExpired": "Hide expired entries",
 
   "rooms.title": "Rooms",
   "rooms.new": "New room",
@@ -286,6 +288,8 @@ const de: Dict = {
   "entries.cancel": "Abbrechen",
   "entries.save": "Speichern",
   "entries.saving": "Speichert…",
+  "entries.showExpired": "Abgelaufene Einträge anzeigen",
+  "entries.hideExpired": "Abgelaufene Einträge ausblenden",
 
   "rooms.title": "Räume",
   "rooms.new": "Neuer Raum",

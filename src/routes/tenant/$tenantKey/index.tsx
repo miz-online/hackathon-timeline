@@ -48,6 +48,7 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 
 const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
+const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
@@ -177,10 +178,17 @@ function AdminPage() {
   });
 
   const [tab, setTab] = useState<string>(TABS[0]);
+  const [entriesShowAll, setEntriesShowAll] = useState(false);
   useEffect(() => {
     const read = () => {
       const h = window.location.hash.replace(/^#/, "");
-      if ((TABS as readonly string[]).includes(h)) setTab(h);
+      if ((TABS as readonly string[]).includes(h)) {
+        setTab(h);
+        setEntriesShowAll(false);
+      } else if ((ENTRY_HASHES as readonly string[]).includes(h)) {
+        setTab("entries");
+        setEntriesShowAll(h === "entries-all");
+      }
     };
     read();
     window.addEventListener("hashchange", read);
@@ -188,6 +196,7 @@ function AdminPage() {
   }, []);
   const changeTab = (v: string) => {
     setTab(v);
+    setEntriesShowAll(false);
     window.history.replaceState(null, "", `#${v}`);
   };
 
