@@ -459,7 +459,9 @@ const de: Dict = {
   "io.section.color_schemes": "Farbschemata",
   "io.section.rooms": "Räume",
   "io.section.entries": "Einträge",
+  "io.section.ad_sets": "Anzeigen-Sets",
   "io.section.ads": "Anzeigen",
+
   "io.section.logo": "Logo",
   "io.section.webhooks": "Webhooks (ohne URLs)",
   "io.issues": "Probleme gefunden",
