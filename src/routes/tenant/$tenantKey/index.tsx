@@ -1053,17 +1053,8 @@ function SettingsPanel({
             onChange={(e) => setG(Number(e.target.value))}
           />
         </div>
-        <div className="space-y-1">
-          <Label>{t("settings.adSeconds")}</Label>
-          <Input
-            type="number"
-            min={1}
-            max={600}
-            value={adSec}
-            onChange={(e) => setAdSec(Number(e.target.value))}
-          />
-          <p className="text-xs text-muted-foreground">{t("settings.adSecondsHint")}</p>
-        </div>
+        {/* Ad display duration is configured per ad set in the Ads tab. */}
+
         <div className="space-y-1">
           <Label>{t("settings.language")}</Label>
           <select
