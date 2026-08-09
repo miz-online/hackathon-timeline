@@ -412,6 +412,18 @@ const de: Dict = {
   "ads.confirmDelete": "Diese Anzeige löschen?",
   "ads.tooLarge": "Bild ist zu groß (max. 10 MB)",
   "ads.displayEmpty": "Keine Anzeigen konfiguriert",
+  "adSets.title": "Anzeigen-Sets",
+  "adSets.new": "Neues Set",
+  "adSets.newName": "Set",
+  "adSets.empty": "Noch keine Sets. Erstelle eines, um Anzeigen hochzuladen.",
+  "adSets.name": "Name",
+  "adSets.seconds": "Anzeigedauer (Sekunden)",
+  "adSets.save": "Set speichern",
+  "adSets.saved": "Set gespeichert",
+  "adSets.delete": "Set löschen",
+  "adSets.deleted": "Set gelöscht",
+  "adSets.confirmDelete": "Dieses Set und alle enthaltenen Anzeigen löschen?",
+
   "admin.tabs.io": "Im-/Export",
   "refId.label": "Id",
   "refId.hint":
