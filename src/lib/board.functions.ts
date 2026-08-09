@@ -985,7 +985,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await resolveTenant(data.key);
-    const [schemes, rooms, entries, ads, webhooks] = await Promise.all([
+    const [schemes, rooms, entries, adSets, ads, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -1002,8 +1002,13 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
       supabase
+        .from("ad_sets")
+        .select("id, ref_id, name, ad_seconds, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+      supabase
         .from("ads")
-        .select("name, path, content_type, sort_order")
+        .select("name, path, content_type, sort_order, ad_set_id")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
       supabase
@@ -1022,6 +1027,16 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const webhookRows = webhooks.data ?? [];
     const webhookIds = refIdsFor(webhookRows);
     const webhookIdByUuid = new Map(webhookRows.map((w, i) => [w.id, webhookIds[i]]));
+    const setRows = adSets.data ?? [];
+    const setIds = refIdsFor(setRows);
+    const setIdByUuid = new Map(setRows.map((s, i) => [s.id, setIds[i]]));
+    /** Turns "ads:<uuid>" into "ads:<ref id>" so exports stay portable. */
+    const templateRefOf = (template: string | null): string | null => {
+      if (!template) return null;
+      if (!template.startsWith("ads:")) return template;
+      const ref = setIdByUuid.get(template.slice(4));
+      return ref ? `ads:${ref}` : "ads";
+    };
 
     const files: ExportedFile[] = [];
 
@@ -1040,7 +1055,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       }
     }
 
-    const adItems: { name: string; file: string; content_type: string }[] = [];
+    const adItems: { name: string; file: string; content_type: string; set: string | null }[] = [];
     let i = 0;
     for (const a of ads.data ?? []) {
       i++;
@@ -1052,7 +1067,12 @@ export const exportTenantData = createServerFn({ method: "GET" })
         content_type: a.content_type,
         dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
       });
-      adItems.push({ name: a.name, file: path, content_type: a.content_type });
+      adItems.push({
+        name: a.name,
+        file: path,
+        content_type: a.content_type,
+        set: setIdByUuid.get(a.ad_set_id) ?? null,
+      });
     }
 
     const payload: TenantData = {
@@ -1061,7 +1081,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       tenant: {
         name: tenant.name,
         past_grace_minutes: tenant.past_grace_minutes,
-        template: tenant.template,
+        template: templateRefOf(tenant.template) ?? "zeitplan",
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
         ad_seconds: tenant.ad_seconds,
@@ -1074,10 +1094,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       rooms: roomRows.map((r, idx) => ({
         id: roomIds[idx],
         name: r.name,
-        template: (r.template === "ads" || r.template === "zeitplan" ? r.template : null) as
-          | "ads"
-          | "zeitplan"
-          | null,
+        template: templateRefOf(r.template),
         color_scheme: r.color_scheme_id ? (schemeIdByUuid.get(r.color_scheme_id) ?? null) : null,
       })),
       entries: (entries.data ?? []).map((e) => ({
@@ -1088,7 +1105,13 @@ export const exportTenantData = createServerFn({ method: "GET" })
         color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
         notify: e.notify,
       })),
+      ad_sets: setRows.map((s, idx) => ({
+        id: setIds[idx],
+        name: s.name,
+        ad_seconds: s.ad_seconds,
+      })),
       ads: adItems,
+
       webhooks: webhookRows.map((w, idx) => ({
         id: webhookIds[idx],
         name: w.name,
