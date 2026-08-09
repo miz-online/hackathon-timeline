@@ -118,7 +118,11 @@ export const TENANT_JSON_SCHEMA = {
       properties: {
         name: { type: "string", minLength: 1, maxLength: 120 },
         past_grace_minutes: { type: "integer", minimum: 0, maximum: 1440 },
-        template: { type: "string", enum: ["zeitplan", "ads"] },
+        template: {
+          type: "string",
+          description: '"zeitplan", "ads" (first ad set) or "ads:<ad set id>"',
+        },
+
         logo_height: { type: "integer", minimum: 16, maximum: 400 },
         accent_color: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
         ad_seconds: { type: "integer", minimum: 1, maximum: 600 },
