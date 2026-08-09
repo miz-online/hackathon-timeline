@@ -1183,21 +1183,27 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
       for (const w of p.webhooks) {
         const ref = uniqueRefId(slugify(w.id) || slugify(w.name), taken, "webhook");
+        const url = typeof w.url === "string" && w.url.trim() ? w.url.trim() : null;
         const { error } = await supabase.from("webhooks").insert({
           tenant_id: tenant.id,
           name: w.name,
           type: w.type === "discord" ? "discord" : "discord",
-          enabled: w.enabled,
+          // Without a URL the webhook cannot send, so it is created disabled
+          enabled: url ? w.enabled : false,
           ref_id: ref,
-          url: "",
+          url: url ?? "",
         });
         if (!error) {
           counts.webhooks = (counts.webhooks ?? 0) + 1;
+          if (!url) {
+            warnings.push(`Webhook "${w.name}" imported without URL and left inactive.`);
+          }
         } else {
           warnings.push(`Webhook "${w.name}" not imported: ${error.message}`);
         }
       }
     }
+
 
     // ---- ads ----
     if (wants("ads") && p.ads) {
