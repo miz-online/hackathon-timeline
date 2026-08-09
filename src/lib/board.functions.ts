@@ -1418,18 +1418,43 @@ export const importTenantData = createServerFn({ method: "POST" })
         }
         await supabase.from("ads").delete().eq("tenant_id", tenant.id);
       }
-      const { data: last } = await supabase
-        .from("ads")
-        .select("sort_order")
-        .eq("tenant_id", tenant.id)
-        .order("sort_order", { ascending: false })
-        .limit(1);
-      let order = (last?.[0]?.sort_order ?? -1) + 1;
+      // Ads always belong to a set; create a default one when none exists yet.
+      if (!firstSetUuid) {
+        const { data: row } = await supabase
+          .from("ad_sets")
+          .insert({ tenant_id: tenant.id, name: "Ads", ref_id: "ads", ad_seconds: 10 })
+          .select("id")
+          .single();
+        if (row) {
+          firstSetUuid = row.id;
+          setUuidByRef.set("ads", row.id);
+        }
+      }
+      const orderBySet = new Map<string, number>();
       for (const a of p.ads) {
         const file = findFile(a.file);
         if (!file) {
           warnings.push(`Ad "${a.name}": image file "${a.file}" is missing in the archive`);
           continue;
+        }
+        const setId = setUuid(a.set) ?? firstSetUuid;
+        if (!setId) {
+          warnings.push(`Ad "${a.name}": no ad set available`);
+          continue;
+        }
+        if (a.set && !setUuid(a.set)) {
+          warnings.push(`Ad "${a.name}": unknown ad set "${a.set}", added to the first set`);
+        }
+        let order = orderBySet.get(setId);
+        if (order === undefined) {
+          const { data: last } = await supabase
+            .from("ads")
+            .select("sort_order")
+            .eq("tenant_id", tenant.id)
+            .eq("ad_set_id", setId)
+            .order("sort_order", { ascending: false })
+            .limit(1);
+          order = (last?.[0]?.sort_order ?? -1) + 1;
         }
         const bytes = fromBase64(file.dataBase64);
         const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file)}`;
@@ -1442,18 +1467,21 @@ export const importTenantData = createServerFn({ method: "POST" })
         }
         const { error: insErr } = await supabase.from("ads").insert({
           tenant_id: tenant.id,
+          ad_set_id: setId,
           name: a.name,
           path,
           content_type: a.content_type || file.content_type,
-          sort_order: order++,
+          sort_order: order,
         });
         if (insErr) {
           warnings.push(`Ad "${a.name}" not imported: ${insErr.message}`);
           continue;
         }
+        orderBySet.set(setId, order + 1);
         counts.ads = (counts.ads ?? 0) + 1;
       }
     }
+
 
     // ---- logo ----
     let logoPath: string | null | undefined;
