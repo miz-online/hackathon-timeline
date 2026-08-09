@@ -23,7 +23,11 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
+  listAdSets,
+  upsertAdSet,
+  deleteAdSet,
   updateTenantTemplate,
+
 
 } from "@/lib/board.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
@@ -97,6 +101,21 @@ export function RefIdField({
   );
 }
 
+/** Template options: the schedule plus one entry per ad set. */
+export function useTemplateOptions(tenantKey: string) {
+  const { t } = useI18n();
+  const listSetsFn = useServerFn(listAdSets);
+  const setsQ = useQuery({
+    queryKey: ["adSets", tenantKey],
+    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+  });
+  const sets = setsQ.data ?? [];
+  return [
+    { value: "zeitplan", label: t("settings.template.zeitplan") },
+    ...sets.map((s) => ({ value: `ads:${s.id}`, label: `${t("settings.template.ads")}: ${s.name}` })),
+  ];
+}
+
 /** Global display template selector — applies immediately. */
 function TemplateSwitcher({
   tenantKey,
@@ -109,10 +128,13 @@ function TemplateSwitcher({
 }) {
   const { t } = useI18n();
   const updateFn = useServerFn(updateTenantTemplate);
+  const options = useTemplateOptions(tenantKey);
   const [value, setValue] = useState(template);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => setValue(template), [template]);
+
+  const known = options.some((o) => o.value === value);
 
   return (
     <div className="flex items-center gap-2">
@@ -139,12 +161,17 @@ function TemplateSwitcher({
         }}
         className="rounded-md border bg-background px-2 py-1.5 text-sm"
       >
-        <option value="zeitplan">{t("settings.template.zeitplan")}</option>
-        <option value="ads">{t("settings.template.ads")}</option>
+        {!known && <option value={value}>{t("settings.template.ads")}</option>}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
       </select>
     </div>
   );
 }
+
 
 
 function AdminPage() {
@@ -766,6 +793,7 @@ function RoomsPanel({
           </DialogHeader>
           {showForm ? (
             <RoomForm
+              tenantKey={tenantKey}
               initial={editing}
               schemes={schemes}
               defaultColor={defaultColor}
@@ -845,12 +873,14 @@ function RoomForm({
   initial,
   schemes,
   defaultColor,
+  tenantKey,
   onSubmit,
   onCancel,
 }: {
   initial: RoomRow | null;
   schemes: SchemeRow[];
   defaultColor: string;
+  tenantKey: string;
   onSubmit: (room: {
     id?: string;
     ref_id: string | null;
@@ -861,11 +891,13 @@ function RoomForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const templateOptions = useTemplateOptions(tenantKey);
   const [name, setName] = useState(initial?.name ?? "");
   const [refId, setRefId] = useState(initial?.ref_id ?? "");
   const [schemeId, setSchemeId] = useState(initial?.color_scheme_id ?? "");
   const [tpl, setTpl] = useState(initial?.template ?? "");
   const [saving, setSaving] = useState(false);
+
 
   return (
     <div className="space-y-3">
@@ -912,8 +944,15 @@ function RoomForm({
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
         >
           <option value="">{t("rooms.form.templateGlobal")}</option>
-          <option value="zeitplan">{t("settings.template.zeitplan")}</option>
-          <option value="ads">{t("settings.template.ads")}</option>
+          {tpl && !templateOptions.some((o) => o.value === tpl) && (
+            <option value={tpl}>{t("settings.template.ads")}</option>
+          )}
+          {templateOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+
         </select>
         <p className="text-xs text-muted-foreground">{t("rooms.form.templateHint")}</p>
       </div>
@@ -1014,17 +1053,8 @@ function SettingsPanel({
             onChange={(e) => setG(Number(e.target.value))}
           />
         </div>
-        <div className="space-y-1">
-          <Label>{t("settings.adSeconds")}</Label>
-          <Input
-            type="number"
-            min={1}
-            max={600}
-            value={adSec}
-            onChange={(e) => setAdSec(Number(e.target.value))}
-          />
-          <p className="text-xs text-muted-foreground">{t("settings.adSecondsHint")}</p>
-        </div>
+        {/* Ad display duration is configured per ad set in the Ads tab. */}
+
         <div className="space-y-1">
           <Label>{t("settings.language")}</Label>
           <select
@@ -1433,7 +1463,179 @@ function SchemeForm({
 
 // --------------- Ads ---------------
 
+type AdSetRow = {
+  id: string;
+  ref_id?: string | null;
+  name: string;
+  ad_seconds: number;
+  sort_order?: number;
+};
+
+/** Ad sets are fully separate; the tabs switch between them. */
 function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => void }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const listSetsFn = useServerFn(listAdSets);
+  const upsertSetFn = useServerFn(upsertAdSet);
+  const deleteSetFn = useServerFn(deleteAdSet);
+  const [activeSet, setActiveSet] = useState<string | null>(null);
+
+  const setsQ = useQuery({
+    queryKey: ["adSets", tenantKey],
+    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+  });
+  const sets: AdSetRow[] = setsQ.data ?? [];
+
+  useEffect(() => {
+    if (!sets.length) {
+      setActiveSet(null);
+      return;
+    }
+    if (!activeSet || !sets.some((s) => s.id === activeSet)) setActiveSet(sets[0].id);
+  }, [sets, activeSet]);
+
+  const current = sets.find((s) => s.id === activeSet) ?? null;
+  const refreshSets = () => {
+    qc.invalidateQueries({ queryKey: ["adSets", tenantKey] });
+    onChange();
+  };
+
+  const [name, setName] = useState("");
+  const [refId, setRefId] = useState("");
+  const [seconds, setSeconds] = useState(10);
+  useEffect(() => {
+    setName(current?.name ?? "");
+    setRefId(current?.ref_id ?? "");
+    setSeconds(current?.ad_seconds ?? 10);
+  }, [current?.id, current?.name, current?.ref_id, current?.ad_seconds]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-medium">{t("adSets.title")}</h2>
+        <Button
+          size="sm"
+          onClick={async () => {
+            try {
+              const res = await upsertSetFn({
+                data: {
+                  key: tenantKey,
+                  set: {
+                    name: `${t("adSets.newName")} ${sets.length + 1}`,
+                    ref_id: null,
+                    ad_seconds: 10,
+                  },
+                },
+              });
+              setActiveSet(res.id);
+              refreshSets();
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
+          }}
+        >
+          {t("adSets.new")}
+        </Button>
+      </div>
+
+      {sets.length === 0 ? (
+        <Card className="p-6 text-sm text-muted-foreground text-center">{t("adSets.empty")}</Card>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2 border-b pb-2">
+            {sets.map((s) => (
+              <Button
+                key={s.id}
+                size="sm"
+                variant={s.id === activeSet ? "default" : "outline"}
+                onClick={() => setActiveSet(s.id)}
+              >
+                {s.name}
+              </Button>
+            ))}
+          </div>
+
+          {current && (
+            <Card className="space-y-3 p-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label>{t("adSets.name")}</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>{t("adSets.seconds")}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={600}
+                    value={seconds}
+                    onChange={(e) => setSeconds(Number(e.target.value))}
+                  />
+                </div>
+                <RefIdField value={refId} onChange={setRefId} name={name} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await upsertSetFn({
+                        data: {
+                          key: tenantKey,
+                          set: {
+                            id: current.id,
+                            name: name.trim() || current.name,
+                            ref_id: refId.trim() || null,
+                            ad_seconds: Math.min(600, Math.max(1, seconds || 10)),
+                          },
+                        },
+                      });
+                      toast.success(t("adSets.saved"));
+                      refreshSets();
+                    } catch (e) {
+                      toast.error((e as Error).message);
+                    }
+                  }}
+                >
+                  {t("adSets.save")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    if (!confirm(t("adSets.confirmDelete"))) return;
+                    try {
+                      await deleteSetFn({ data: { key: tenantKey, id: current.id } });
+                      toast.success(t("adSets.deleted"));
+                      setActiveSet(null);
+                      refreshSets();
+                    } catch (e) {
+                      toast.error((e as Error).message);
+                    }
+                  }}
+                >
+                  {t("adSets.delete")}
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {current && <AdSetAds tenantKey={tenantKey} setId={current.id} onChange={onChange} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function AdSetAds({
+  tenantKey,
+  setId,
+  onChange,
+}: {
+  tenantKey: string;
+  setId: string;
+  onChange: () => void;
+}) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const listFn = useServerFn(listAds);
@@ -1447,12 +1649,14 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
   const [overId, setOverId] = useState<string | null>(null);
   const [order, setOrder] = useState<string[] | null>(null);
 
+  useEffect(() => setOrder(null), [setId]);
+
   const adsQ = useQuery({
-    queryKey: ["ads", tenantKey],
-    queryFn: () => listFn({ data: { key: tenantKey } }),
+    queryKey: ["ads", tenantKey, setId],
+    queryFn: () => listFn({ data: { key: tenantKey, setId } }),
   });
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["ads", tenantKey] });
+    qc.invalidateQueries({ queryKey: ["ads", tenantKey, setId] });
     onChange();
   };
 
@@ -1484,11 +1688,9 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("ads.title")}</h2>
-        <div className="flex gap-2">
-          <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-            {t("ads.upload")}
-          </Button>
-        </div>
+        <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
+          {t("ads.upload")}
+        </Button>
       </div>
       <p className="text-xs text-muted-foreground">{t("ads.hint")}</p>
 
@@ -1515,6 +1717,7 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
               await uploadFn({
                 data: {
                   key: tenantKey,
+                  setId,
                   filename: file.name,
                   contentType: file.type || "image/png",
                   dataBase64: btoa(bin),
@@ -1617,3 +1820,4 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
     </div>
   );
 }
+

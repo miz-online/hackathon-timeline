@@ -161,7 +161,9 @@ function RoomDisplay() {
     (e) => new Date(e.time).getTime() >= cutoff,
   );
 
-  if ((snapshot.room.template || snapshot.tenant.template) === "ads") {
+  const activeTemplate = snapshot.room.template || snapshot.tenant.template;
+  if (activeTemplate === "ads" || activeTemplate?.startsWith("ads:")) {
+
     return (
       <AdsTemplate
         tenantName={snapshot.tenant.name}

@@ -542,12 +542,15 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .from("color_schemes")
       .select("id, color")
       .eq("tenant_id", tenant.id);
-    const { data: ads } = await supabase
-      .from("ads")
-      .select("id, name, content_type, sort_order")
-      .eq("tenant_id", tenant.id)
-      .order("sort_order", { ascending: true });
     const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
+    const template = room.template || tenant.template;
+    const { loadAdsForTemplate } = await import("@/lib/ads.server");
+    const { ads, adSeconds } = await loadAdsForTemplate({
+      tenantId: tenant.id,
+      tenantKey: data.key,
+      template,
+      fallbackSeconds: tenant.ad_seconds,
+    });
     const withColor = (entries ?? []).map((e) => ({
       id: e.id,
       time: e.time,
@@ -564,22 +567,18 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         logo_url: tenant.logo_url,
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
-        ad_seconds: tenant.ad_seconds,
+        ad_seconds: adSeconds,
       },
       room: {
         id: room.id,
         name: room.name,
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
-        template: room.template || tenant.template,
+        template,
       },
       entries: filterVisible(withColor, room.name, tenant.past_grace_minutes),
-      ads: (ads ?? []).map((a) => ({
-        id: a.id,
-        name: a.name,
-        url: `/api/public/ad/${data.key}/${a.id}`,
-        content_type: a.content_type,
-      })),
+      ads,
     };
+
   });
 
 // ---------- color schemes ----------
@@ -692,10 +691,105 @@ export const removeTenantLogo = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- ad sets ----------
+
+export const listAdSets = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("ad_sets")
+      .select("id, ref_id, name, ad_seconds, sort_order")
+      .eq("tenant_id", id)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+const adSetInput = z.object({
+  id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
+  name: z.string().min(1).max(120),
+  ad_seconds: z.number().int().min(1).max(600).default(10),
+});
+
+export const upsertAdSet = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; set: z.infer<typeof adSetInput> }) =>
+    z.object({ key: z.string().min(1), set: adSetInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const s = data.set;
+    const refId = s.ref_id?.trim() ? slugify(s.ref_id) : null;
+    if (s.id) {
+      const { error } = await supabase
+        .from("ad_sets")
+        .update({ name: s.name, ad_seconds: s.ad_seconds, ref_id: refId })
+        .eq("id", s.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: s.id };
+    }
+    const { data: last } = await supabase
+      .from("ad_sets")
+      .select("sort_order")
+      .eq("tenant_id", tenantId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    const { data: row, error } = await supabase
+      .from("ad_sets")
+      .insert({
+        tenant_id: tenantId,
+        name: s.name,
+        ad_seconds: s.ad_seconds,
+        ref_id: refId,
+        sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const deleteAdSet = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const { data: ads } = await supabase
+      .from("ads")
+      .select("path")
+      .eq("tenant_id", tenant.id)
+      .eq("ad_set_id", data.id);
+    if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
+    const { error } = await supabase
+      .from("ad_sets")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id);
+    if (error) throw new Error(error.message);
+    // Displays pointing at the removed set fall back to the schedule template.
+    if (tenant.template === `ads:${data.id}`) {
+      await supabase.from("tenants").update({ template: "zeitplan" }).eq("id", tenant.id);
+    }
+    await supabase
+      .from("rooms")
+      .update({ template: null })
+      .eq("tenant_id", tenant.id)
+      .eq("template", `ads:${data.id}`);
+    return { ok: true };
+  });
+
 // ---------- ads ----------
 
 export const listAds = createServerFn({ method: "GET" })
-  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .inputValidator((d: { key: string; setId: string }) =>
+    z.object({ key: z.string().min(1), setId: z.string().uuid() }).parse(d),
+  )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await resolveTenant(data.key);
@@ -703,6 +797,7 @@ export const listAds = createServerFn({ method: "GET" })
       .from("ads")
       .select("id, name, content_type, sort_order, path")
       .eq("tenant_id", id)
+      .eq("ad_set_id", data.setId)
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
     const list = rows ?? [];
@@ -745,15 +840,23 @@ export const reorderAds = createServerFn({ method: "POST" })
   });
 
 export const uploadAd = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; filename: string; contentType: string; dataBase64: string }) =>
-    z
-      .object({
-        key: z.string().min(1),
-        filename: z.string().min(1).max(200),
-        contentType: z.string().regex(/^image\//),
-        dataBase64: z.string().min(1).max(14_000_000),
-      })
-      .parse(d),
+  .inputValidator(
+    (d: {
+      key: string;
+      setId: string;
+      filename: string;
+      contentType: string;
+      dataBase64: string;
+    }) =>
+      z
+        .object({
+          key: z.string().min(1),
+          setId: z.string().uuid(),
+          filename: z.string().min(1).max(200),
+          contentType: z.string().regex(/^image\//),
+          dataBase64: z.string().min(1).max(14_000_000),
+        })
+        .parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
@@ -769,6 +872,7 @@ export const uploadAd = createServerFn({ method: "POST" })
       .from("ads")
       .select("sort_order")
       .eq("tenant_id", tenant.id)
+      .eq("ad_set_id", data.setId)
       .order("sort_order", { ascending: false })
       .limit(1);
     const nextOrder = (last?.[0]?.sort_order ?? -1) + 1;
@@ -776,6 +880,7 @@ export const uploadAd = createServerFn({ method: "POST" })
       .from("ads")
       .insert({
         tenant_id: tenant.id,
+        ad_set_id: data.setId,
         name: data.filename.slice(0, 120),
         path,
         content_type: data.contentType,
@@ -786,6 +891,7 @@ export const uploadAd = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
+
 
 export const renameAd = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string; name: string }) =>
@@ -879,7 +985,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await resolveTenant(data.key);
-    const [schemes, rooms, entries, ads, webhooks] = await Promise.all([
+    const [schemes, rooms, entries, adSets, ads, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -896,8 +1002,13 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
       supabase
+        .from("ad_sets")
+        .select("id, ref_id, name, ad_seconds, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+      supabase
         .from("ads")
-        .select("name, path, content_type, sort_order")
+        .select("name, path, content_type, sort_order, ad_set_id")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
       supabase
@@ -916,6 +1027,16 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const webhookRows = webhooks.data ?? [];
     const webhookIds = refIdsFor(webhookRows);
     const webhookIdByUuid = new Map(webhookRows.map((w, i) => [w.id, webhookIds[i]]));
+    const setRows = adSets.data ?? [];
+    const setIds = refIdsFor(setRows);
+    const setIdByUuid = new Map(setRows.map((s, i) => [s.id, setIds[i]]));
+    /** Turns "ads:<uuid>" into "ads:<ref id>" so exports stay portable. */
+    const templateRefOf = (template: string | null): string | null => {
+      if (!template) return null;
+      if (!template.startsWith("ads:")) return template;
+      const ref = setIdByUuid.get(template.slice(4));
+      return ref ? `ads:${ref}` : "ads";
+    };
 
     const files: ExportedFile[] = [];
 
@@ -934,7 +1055,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       }
     }
 
-    const adItems: { name: string; file: string; content_type: string }[] = [];
+    const adItems: { name: string; file: string; content_type: string; set: string | null }[] = [];
     let i = 0;
     for (const a of ads.data ?? []) {
       i++;
@@ -946,7 +1067,12 @@ export const exportTenantData = createServerFn({ method: "GET" })
         content_type: a.content_type,
         dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
       });
-      adItems.push({ name: a.name, file: path, content_type: a.content_type });
+      adItems.push({
+        name: a.name,
+        file: path,
+        content_type: a.content_type,
+        set: setIdByUuid.get(a.ad_set_id) ?? null,
+      });
     }
 
     const payload: TenantData = {
@@ -955,7 +1081,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       tenant: {
         name: tenant.name,
         past_grace_minutes: tenant.past_grace_minutes,
-        template: tenant.template,
+        template: templateRefOf(tenant.template) ?? "zeitplan",
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
         ad_seconds: tenant.ad_seconds,
@@ -968,10 +1094,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       rooms: roomRows.map((r, idx) => ({
         id: roomIds[idx],
         name: r.name,
-        template: (r.template === "ads" || r.template === "zeitplan" ? r.template : null) as
-          | "ads"
-          | "zeitplan"
-          | null,
+        template: templateRefOf(r.template),
         color_scheme: r.color_scheme_id ? (schemeIdByUuid.get(r.color_scheme_id) ?? null) : null,
       })),
       entries: (entries.data ?? []).map((e) => ({
@@ -982,7 +1105,13 @@ export const exportTenantData = createServerFn({ method: "GET" })
         color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
         notify: e.notify,
       })),
+      ad_sets: setRows.map((s, idx) => ({
+        id: setIds[idx],
+        name: s.name,
+        ad_seconds: s.ad_seconds,
+      })),
       ads: adItems,
+
       webhooks: webhookRows.map((w, idx) => ({
         id: webhookIds[idx],
         name: w.name,
@@ -1097,6 +1226,73 @@ export const importTenantData = createServerFn({ method: "POST" })
     const schemeUuid = (ref: string | null | undefined) =>
       ref ? (schemeUuidByRef.get(ref) ?? schemeUuidByRef.get(slugify(ref)) ?? null) : null;
 
+    // ---- ad sets ----
+    const setUuidByRef = new Map<string, string>();
+    let firstSetUuid: string | null = null;
+    const loadExistingSets = async () => {
+      const { data: existing } = await supabase
+        .from("ad_sets")
+        .select("id, ref_id, name, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true });
+      const taken = new Set<string>();
+      for (const row of existing ?? []) {
+        setUuidByRef.set(uniqueRefId(effectiveRefId(row), taken, "ads"), row.id);
+        if (!firstSetUuid) firstSetUuid = row.id;
+      }
+      return taken;
+    };
+    if (wants("ad_sets") && p.ad_sets) {
+      if (replace) {
+        const { data: oldAds } = await supabase
+          .from("ads")
+          .select("path")
+          .eq("tenant_id", tenant.id);
+        if (oldAds?.length) {
+          await supabase.storage.from("tenant-ads").remove(oldAds.map((a) => a.path));
+        }
+        await supabase.from("ad_sets").delete().eq("tenant_id", tenant.id);
+      }
+      const taken = await loadExistingSets();
+      let order = 0;
+      for (const s of p.ad_sets) {
+        const ref = uniqueRefId(slugify(s.id) || slugify(s.name), taken, "ads");
+        const { data: row, error } = await supabase
+          .from("ad_sets")
+          .insert({
+            tenant_id: tenant.id,
+            name: s.name,
+            ad_seconds: s.ad_seconds,
+            ref_id: ref,
+            sort_order: order++,
+          })
+          .select("id")
+          .single();
+        if (row) {
+          setUuidByRef.set(ref, row.id);
+          setUuidByRef.set(s.id, row.id);
+          if (!firstSetUuid) firstSetUuid = row.id;
+          counts.ad_sets = (counts.ad_sets ?? 0) + 1;
+        } else if (error) {
+          warnings.push(`Ad set "${s.name}" not imported: ${error.message}`);
+        }
+      }
+    } else {
+      await loadExistingSets();
+    }
+    const setUuid = (ref: string | null | undefined) =>
+      ref ? (setUuidByRef.get(ref) ?? setUuidByRef.get(slugify(ref)) ?? null) : null;
+    /** Maps "ads:<ref id>" back to "ads:<uuid>". */
+    const templateValue = (template: string | null | undefined, label: string): string | null => {
+      if (!template) return null;
+      if (!template.startsWith("ads:")) return template;
+      const uuid = setUuid(template.slice(4));
+      if (uuid) return `ads:${uuid}`;
+      warnings.push(`${label}: unknown ad set "${template.slice(4)}", using the first ad set`);
+      return "ads";
+    };
+
+
     // ---- rooms ----
     const roomNameByRef = new Map<string, string>();
     if (wants("rooms") && p.rooms) {
@@ -1120,7 +1316,8 @@ export const importTenantData = createServerFn({ method: "POST" })
           tenant_id: tenant.id,
           name: r.name,
           ref_id: ref,
-          template: r.template ?? null,
+          template: templateValue(r.template, `Room "${r.name}"`),
+
           color_scheme_id: schemeUuid(r.color_scheme),
         });
         if (!error) {
@@ -1222,18 +1419,43 @@ export const importTenantData = createServerFn({ method: "POST" })
         }
         await supabase.from("ads").delete().eq("tenant_id", tenant.id);
       }
-      const { data: last } = await supabase
-        .from("ads")
-        .select("sort_order")
-        .eq("tenant_id", tenant.id)
-        .order("sort_order", { ascending: false })
-        .limit(1);
-      let order = (last?.[0]?.sort_order ?? -1) + 1;
+      // Ads always belong to a set; create a default one when none exists yet.
+      if (!firstSetUuid) {
+        const { data: row } = await supabase
+          .from("ad_sets")
+          .insert({ tenant_id: tenant.id, name: "Ads", ref_id: "ads", ad_seconds: 10 })
+          .select("id")
+          .single();
+        if (row) {
+          firstSetUuid = row.id;
+          setUuidByRef.set("ads", row.id);
+        }
+      }
+      const orderBySet = new Map<string, number>();
       for (const a of p.ads) {
         const file = findFile(a.file);
         if (!file) {
           warnings.push(`Ad "${a.name}": image file "${a.file}" is missing in the archive`);
           continue;
+        }
+        const setId = setUuid(a.set) ?? firstSetUuid;
+        if (!setId) {
+          warnings.push(`Ad "${a.name}": no ad set available`);
+          continue;
+        }
+        if (a.set && !setUuid(a.set)) {
+          warnings.push(`Ad "${a.name}": unknown ad set "${a.set}", added to the first set`);
+        }
+        let order = orderBySet.get(setId);
+        if (order === undefined) {
+          const { data: last } = await supabase
+            .from("ads")
+            .select("sort_order")
+            .eq("tenant_id", tenant.id)
+            .eq("ad_set_id", setId)
+            .order("sort_order", { ascending: false })
+            .limit(1);
+          order = (last?.[0]?.sort_order ?? -1) + 1;
         }
         const bytes = fromBase64(file.dataBase64);
         const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file)}`;
@@ -1246,18 +1468,21 @@ export const importTenantData = createServerFn({ method: "POST" })
         }
         const { error: insErr } = await supabase.from("ads").insert({
           tenant_id: tenant.id,
+          ad_set_id: setId,
           name: a.name,
           path,
           content_type: a.content_type || file.content_type,
-          sort_order: order++,
+          sort_order: order,
         });
         if (insErr) {
           warnings.push(`Ad "${a.name}" not imported: ${insErr.message}`);
           continue;
         }
+        orderBySet.set(setId, order + 1);
         counts.ads = (counts.ads ?? 0) + 1;
       }
     }
+
 
     // ---- logo ----
     let logoPath: string | null | undefined;
@@ -1289,7 +1514,7 @@ export const importTenantData = createServerFn({ method: "POST" })
       if (wants("tenant") && p.tenant) {
         update.name = p.tenant.name;
         update.past_grace_minutes = p.tenant.past_grace_minutes;
-        update.template = p.tenant.template;
+        update.template = templateValue(p.tenant.template, "Display template") ?? "zeitplan";
         update.logo_height = p.tenant.logo_height;
         update.accent_color = p.tenant.accent_color.toUpperCase();
         update.ad_seconds = p.tenant.ad_seconds;
