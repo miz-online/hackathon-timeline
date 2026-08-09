@@ -196,6 +196,30 @@ export const TENANT_JSON_SCHEMA = {
         },
       },
     },
+    ad_sets: {
+      type: "array",
+      description: "Ad sets; a display template selects one of them",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name"],
+        properties: {
+          id: {
+            type: "string",
+            minLength: 1,
+            maxLength: 60,
+            description: "Reference id, derived from the name when not set explicitly",
+          },
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          ad_seconds: {
+            type: "integer",
+            minimum: 1,
+            maximum: 600,
+            description: "Display duration per ad in this set",
+          },
+        },
+      },
+    },
     ads: {
       type: "array",
       description: "Images shown by the ads template, in display order",
@@ -210,9 +234,14 @@ export const TENANT_JSON_SCHEMA = {
             description: "Path of the image inside the export archive, e.g. images/ads/01-logo.png",
           },
           content_type: { type: "string" },
+          set: {
+            type: ["string", "null"],
+            description: "id of an entry in ad_sets; null uses the first set",
+          },
         },
       },
     },
+
     webhooks: {
       type: "array",
       description: "Webhook targets for automatic and manual messages. URLs are never exported.",
