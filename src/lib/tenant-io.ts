@@ -49,6 +49,8 @@ export const webhookItem = z.object({
   name: z.string().min(1).max(120),
   type: z.enum(["discord"]).default("discord"),
   enabled: z.boolean().default(true),
+  /** Never exported (always null). When null on import the URL is not set. */
+  url: z.string().max(500).nullable().default(null),
 });
 
 export const logoSection = z.object({
@@ -197,6 +199,12 @@ export const TENANT_JSON_SCHEMA = {
           name: { type: "string", minLength: 1, maxLength: 120 },
           type: { type: "string", enum: ["discord"], default: "discord" },
           enabled: { type: "boolean", default: true },
+          url: {
+            type: ["string", "null"],
+            description:
+              "Webhook URL. Always null in exports; when null on import the URL is left unset and the webhook stays inactive.",
+            default: null,
+          },
         },
       },
     },

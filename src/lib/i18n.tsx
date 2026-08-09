@@ -131,6 +131,9 @@ const en: Dict = {
   "entries.form.scheme": "Color scheme",
   "entries.form.schemeHint": "Optional. Overrides the default color for this entry only.",
   "entries.form.notify": "Post to webhooks when due",
+  "entries.notifyOff": "Not posted to webhooks",
+  "entries.sent": "Posted to webhooks",
+  "entries.pending": "Waiting to be posted",
 
   "admin.tabs.messages": "Messages",
 
@@ -355,6 +358,9 @@ const de: Dict = {
   "entries.form.scheme": "Farbschema",
   "entries.form.schemeHint": "Optional. Überschreibt die Standardfarbe nur für diesen Eintrag.",
   "entries.form.notify": "Bei Fälligkeit an Webhooks posten",
+  "entries.notifyOff": "Wird nicht an Webhooks gesendet",
+  "entries.sent": "An Webhooks gesendet",
+  "entries.pending": "Wartet auf Versand",
 
   "admin.tabs.messages": "Nachrichten",
 
