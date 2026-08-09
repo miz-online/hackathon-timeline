@@ -362,6 +362,7 @@ const de: Dict = {
   "entries.notifyOff": "Wird nicht an Webhooks gesendet",
   "entries.sent": "An Webhooks gesendet",
   "entries.pending": "Wartet auf Versand",
+  "entries.pastUnposted": "Vergangen — nicht an Webhooks gesendet",
 
   "admin.tabs.messages": "Nachrichten",
 
