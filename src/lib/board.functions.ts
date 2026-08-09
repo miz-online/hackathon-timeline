@@ -983,6 +983,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         name: w.name,
         type: w.type as "discord",
         enabled: w.enabled,
+        // URLs are secrets and never exported; the key is kept so it can be filled in for import
+        url: null,
       })),
       logo,
     };
