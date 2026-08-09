@@ -25,10 +25,6 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
         );
 
         const now = new Date();
-        const windowStart = new Date(now.getTime() - CHECK_WINDOW_MS);
-
-        const { data: tenants } = await supabase.from("tenants").select("id, name, accent_color");
-
         const results: {
           tenant: string;
           webhook: string;
@@ -36,6 +32,10 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           ok: boolean;
           error?: string;
         }[] = [];
+
+        const { data: tenants } = await supabase
+          .from("tenants")
+          .select("id, name, accent_color, past_grace_minutes");
 
         for (const tenant of tenants ?? []) {
           const { data: webhooks } = await supabase
