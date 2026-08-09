@@ -134,6 +134,7 @@ const en: Dict = {
   "entries.notifyOff": "Not posted to webhooks",
   "entries.sent": "Posted to webhooks",
   "entries.pending": "Waiting to be posted",
+  "entries.pastUnposted": "Past — not posted to webhooks",
 
   "admin.tabs.messages": "Messages",
 
