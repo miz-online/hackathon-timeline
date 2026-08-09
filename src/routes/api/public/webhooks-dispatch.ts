@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 
-const CHECK_WINDOW_MS = 60_000; // 1 minute window
+
 
 export const Route = createFileRoute("/api/public/webhooks-dispatch")({
   server: {
