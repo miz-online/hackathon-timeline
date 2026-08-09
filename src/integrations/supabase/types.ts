@@ -14,8 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_sets: {
+        Row: {
+          ad_seconds: number
+          created_at: string
+          id: string
+          name: string
+          ref_id: string | null
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ad_seconds?: number
+          created_at?: string
+          id?: string
+          name?: string
+          ref_id?: string | null
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ad_seconds?: number
+          created_at?: string
+          id?: string
+          name?: string
+          ref_id?: string | null
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_sets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ads: {
         Row: {
+          ad_set_id: string
           content_type: string
           created_at: string
           id: string
@@ -26,6 +68,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ad_set_id: string
           content_type?: string
           created_at?: string
           id?: string
@@ -36,6 +79,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ad_set_id?: string
           content_type?: string
           created_at?: string
           id?: string
@@ -46,6 +90,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ads_ad_set_id_fkey"
+            columns: ["ad_set_id"]
+            isOneToOne: false
+            referencedRelation: "ad_sets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ads_tenant_id_fkey"
             columns: ["tenant_id"]
