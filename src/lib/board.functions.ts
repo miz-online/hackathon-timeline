@@ -1514,7 +1514,7 @@ export const importTenantData = createServerFn({ method: "POST" })
       if (wants("tenant") && p.tenant) {
         update.name = p.tenant.name;
         update.past_grace_minutes = p.tenant.past_grace_minutes;
-        update.template = p.tenant.template;
+        update.template = templateValue(p.tenant.template, "Display template") ?? "zeitplan";
         update.logo_height = p.tenant.logo_height;
         update.accent_color = p.tenant.accent_color.toUpperCase();
         update.ad_seconds = p.tenant.ad_seconds;
