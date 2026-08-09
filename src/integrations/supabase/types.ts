@@ -96,6 +96,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          notified_at: string | null
           notify: boolean
           tags: string[]
           tenant_id: string
@@ -108,6 +109,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          notified_at?: string | null
           notify?: boolean
           tags?: string[]
           tenant_id: string
@@ -120,6 +122,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          notified_at?: string | null
           notify?: boolean
           tags?: string[]
           tenant_id?: string
@@ -227,45 +230,6 @@ export type Database = {
           template?: string
         }
         Relationships: []
-      }
-      webhook_deliveries: {
-        Row: {
-          entry_id: string
-          entry_time: string
-          id: string
-          sent_at: string
-          webhook_id: string
-        }
-        Insert: {
-          entry_id: string
-          entry_time: string
-          id?: string
-          sent_at?: string
-          webhook_id: string
-        }
-        Update: {
-          entry_id?: string
-          entry_time?: string
-          id?: string
-          sent_at?: string
-          webhook_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "webhook_deliveries_entry_id_fkey"
-            columns: ["entry_id"]
-            isOneToOne: false
-            referencedRelation: "entries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "webhook_deliveries_webhook_id_fkey"
-            columns: ["webhook_id"]
-            isOneToOne: false
-            referencedRelation: "webhooks"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       webhooks: {
         Row: {
