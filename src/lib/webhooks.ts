@@ -22,7 +22,7 @@ export function buildDiscordPayload(message: WebhookMessage): {
   const color = colorHex ? parseInt(colorHex.replace("#", ""), 16) : undefined;
 
   const title = message.time
-    ? `<t:${Math.floor(message.time.getTime() / 1000)}:T>: ${message.title}`
+    ? `<t:${Math.floor(message.time.getTime() / 1000)}:t>: ${message.title}`
     : message.title;
 
   const embed: {
