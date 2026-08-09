@@ -793,6 +793,7 @@ function RoomsPanel({
           </DialogHeader>
           {showForm ? (
             <RoomForm
+              tenantKey={tenantKey}
               initial={editing}
               schemes={schemes}
               defaultColor={defaultColor}
