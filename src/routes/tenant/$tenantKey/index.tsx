@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, BellOff, CheckCircle2, Clock, History } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -426,7 +426,14 @@ function EntriesPanel({
                 />
                 {(() => {
                   const isPast = new Date(e.time).getTime() < Date.now();
-                  if (isPast && !e.sent) {
+                  if (e.sent) {
+                    return (
+                      <span title={t("entries.sent")}>
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      </span>
+                    );
+                  }
+                  if (isPast) {
                     return (
                       <span title={t("entries.pastUnposted")}>
                         <History className="h-4 w-4 text-muted-foreground" />
@@ -434,22 +441,8 @@ function EntriesPanel({
                     );
                   }
                   return (
-                    <span
-                      title={
-                        !e.notify
-                          ? t("entries.notifyOff")
-                          : e.sent
-                            ? t("entries.sent")
-                            : t("entries.pending")
-                      }
-                    >
-                      {!e.notify ? (
-                        <BellOff className="h-4 w-4 text-muted-foreground" />
-                      ) : e.sent ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      ) : (
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                      )}
+                    <span title={t("entries.pending")}>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
                     </span>
                   );
                 })()}
