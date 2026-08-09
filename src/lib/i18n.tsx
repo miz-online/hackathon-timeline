@@ -131,6 +131,9 @@ const en: Dict = {
   "entries.form.scheme": "Color scheme",
   "entries.form.schemeHint": "Optional. Overrides the default color for this entry only.",
   "entries.form.notify": "Post to webhooks when due",
+  "entries.notifyOff": "Not posted to webhooks",
+  "entries.sent": "Posted to webhooks",
+  "entries.pending": "Waiting to be posted",
 
   "admin.tabs.messages": "Messages",
 
