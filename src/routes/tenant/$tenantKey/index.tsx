@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -430,6 +430,13 @@ function EntriesPanel({
                     return (
                       <span title={t("entries.sent")}>
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      </span>
+                    );
+                  }
+                  if (!e.notify) {
+                    return (
+                      <span title={t("entries.notifyOff")}>
+                        <BellOff className="h-4 w-4 text-muted-foreground" />
                       </span>
                     );
                   }

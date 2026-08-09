@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 
-const CHECK_WINDOW_MS = 60_000; // 1 minute window
+
 
 export const Route = createFileRoute("/api/public/webhooks-dispatch")({
   server: {
@@ -25,10 +25,6 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
         );
 
         const now = new Date();
-        const windowStart = new Date(now.getTime() - CHECK_WINDOW_MS);
-
-        const { data: tenants } = await supabase.from("tenants").select("id, name, accent_color");
-
         const results: {
           tenant: string;
           webhook: string;
@@ -36,6 +32,10 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           ok: boolean;
           error?: string;
         }[] = [];
+
+        const { data: tenants } = await supabase
+          .from("tenants")
+          .select("id, name, accent_color, past_grace_minutes");
 
         for (const tenant of tenants ?? []) {
           const { data: webhooks } = await supabase
@@ -45,6 +45,12 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
             .eq("enabled", true);
 
           if (!webhooks?.length) continue;
+
+          // Post entries that became due within the tenant's "now" grace window
+          // and are not yet marked as sent. This avoids missing a post due to a
+          // brief deploy/cold-start delay while still ignoring very old entries.
+          const windowMinutes = tenant.past_grace_minutes ?? 5;
+          const windowStart = new Date(now.getTime() - windowMinutes * 60_000);
 
           // Entries becoming due within the checked minute window
           const { data: entries } = await supabase
