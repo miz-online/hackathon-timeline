@@ -17,12 +17,12 @@ The confusing part is the admin list: it showed that entry with the "pending" cl
    - in the past, not posted → history icon
    - otherwise (future, enabled) → clock icon ("Pending")
 
-2. **Add a catch-up window to the dispatcher** so a single missed minute (deploy, cold start, brief outage) doesn't silently drop a post: instead of only the last 60 seconds, consider entries that became due within the last 10 minutes and are not yet marked as sent. Entries older than that stay unsent, as today.
+2. **Add a catch-up window to the dispatcher** so a single missed minute (deploy, cold start, brief outage) doesn't silently drop a post: instead of only the last 60 seconds, consider entries that became due within the tenant's `past_grace_minutes` window and are not yet marked as sent. Entries older than that stay unsent, as today.
 
 3. **Verification after the change**: create a test entry a couple of minutes in the future with posting enabled, wait for the job, and confirm the Discord message arrives and the entry flips to "Posted".
 
 ## Technical notes
 
 - `src/routes/tenant/$tenantKey/index.tsx` — icon block around the color dot; use `notify` in the precedence chain again.
-- `src/routes/api/public/webhooks-dispatch.ts` — `CHECK_WINDOW_MS` 60_000 → 600_000; the `notified_at IS NULL` filter already prevents duplicates.
+- `src/routes/api/public/webhooks-dispatch.ts` — replace the hard-coded `CHECK_WINDOW_MS` 60_000 with a window based on `tenant.past_grace_minutes` (e.g. `past_grace_minutes * 60_000`); the `notified_at IS NULL` filter already prevents duplicates.
 - No database or schema changes needed; the job, route auth and `notified_at` marker all work as intended.
