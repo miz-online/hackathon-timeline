@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { loadAdsForTemplate } from "@/lib/ads.server";
+
 
 export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")({
   server: {
@@ -35,26 +37,14 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
           .eq("tenant_id", tenant.id);
         const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
 
-        const { data: ads } = await supabaseAdmin
-          .from("ads")
-          .select("id, name, content_type, path")
-          .eq("tenant_id", tenant.id)
-          .order("sort_order", { ascending: true });
+        const effectiveTemplate = room.template || tenant.template;
+        const { ads, adSeconds } = await loadAdsForTemplate({
+          tenantId: tenant.id,
+          tenantKey,
+          template: effectiveTemplate,
+          fallbackSeconds: tenant.ad_seconds,
+        });
 
-        // Signed storage URLs so displays don't load images through this
-        // worker origin (a long-lived SSE connection can stall those).
-        const signed = new Map<string, string>();
-        if (ads?.length) {
-          const { data: urls } = await supabaseAdmin.storage
-            .from("tenant-ads")
-            .createSignedUrls(
-              ads.map((a) => a.path),
-              60 * 60 * 12,
-            );
-          (urls ?? []).forEach((u, i) => {
-            if (u.signedUrl && ads[i]) signed.set(ads[i].id, u.signedUrl);
-          });
-        }
 
 
         const cutoff = Date.now() - tenant.past_grace_minutes * 60 * 1000;
@@ -80,21 +70,17 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               logo_url: tenant.logo_url,
               logo_height: tenant.logo_height,
               accent_color: tenant.accent_color,
-              ad_seconds: tenant.ad_seconds,
+              ad_seconds: adSeconds,
             },
             room: {
               id: room.id,
               name: room.name,
               color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
-              template: room.template || tenant.template,
+              template: effectiveTemplate,
             },
             entries: visible,
-            ads: (ads ?? []).map((a) => ({
-              id: a.id,
-              name: a.name,
-              url: signed.get(a.id) ?? `/api/public/ad/${tenantKey}/${a.id}`,
-              content_type: a.content_type,
-            })),
+            ads,
+
 
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },

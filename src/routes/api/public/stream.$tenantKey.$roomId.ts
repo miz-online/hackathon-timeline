@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { loadAdsForTemplate } from "@/lib/ads.server";
+
 
 export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
   server: {
@@ -48,25 +50,13 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             .from("color_schemes")
             .select("id, color")
             .eq("tenant_id", tenantId);
-          const { data: ads } = await supabaseAdmin
-            .from("ads")
-            .select("id, name, content_type, path")
-            .eq("tenant_id", tenantId)
-            .order("sort_order", { ascending: true });
-          // Signed storage URLs so displays don't load images through this
-          // worker origin (a long-lived SSE connection can stall those).
-          const signed = new Map<string, string>();
-          if (ads?.length) {
-            const { data: urls } = await supabaseAdmin.storage
-              .from("tenant-ads")
-              .createSignedUrls(
-                ads.map((a) => a.path),
-                60 * 60 * 12,
-              );
-            (urls ?? []).forEach((u, i) => {
-              if (u.signedUrl && ads[i]) signed.set(ads[i].id, u.signedUrl);
-            });
-          }
+          const effectiveTemplate = rNow.template || tNow.template;
+          const { ads, adSeconds } = await loadAdsForTemplate({
+            tenantId,
+            tenantKey,
+            template: effectiveTemplate,
+            fallbackSeconds: tNow.ad_seconds,
+          });
 
           const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
           const cutoff = Date.now() - tNow.past_grace_minutes * 60 * 1000;
@@ -90,21 +80,17 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               logo_url: tNow.logo_url,
               logo_height: tNow.logo_height,
               accent_color: tNow.accent_color,
-              ad_seconds: tNow.ad_seconds,
+              ad_seconds: adSeconds,
             },
             room: {
               id: rNow.id,
               name: rNow.name,
               color: rNow.color_scheme_id ? (colorById.get(rNow.color_scheme_id) ?? null) : null,
-              template: rNow.template || tNow.template,
+              template: effectiveTemplate,
             },
             entries: visible,
-            ads: (ads ?? []).map((a) => ({
-              id: a.id,
-              name: a.name,
-              url: signed.get(a.id) ?? `/api/public/ad/${tenantKey}/${a.id}`,
-              content_type: a.content_type,
-            })),
+            ads,
+
 
           };
         };
