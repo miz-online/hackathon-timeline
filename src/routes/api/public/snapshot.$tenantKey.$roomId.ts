@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { loadAdsForTemplate } from "@/lib/ads.server";
+
 
 export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")({
   server: {
