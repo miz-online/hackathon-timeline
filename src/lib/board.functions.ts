@@ -692,10 +692,105 @@ export const removeTenantLogo = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- ad sets ----------
+
+export const listAdSets = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await resolveTenant(data.key);
+    const { data: rows, error } = await supabase
+      .from("ad_sets")
+      .select("id, ref_id, name, ad_seconds, sort_order")
+      .eq("tenant_id", id)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+const adSetInput = z.object({
+  id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
+  name: z.string().min(1).max(120),
+  ad_seconds: z.number().int().min(1).max(600).default(10),
+});
+
+export const upsertAdSet = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; set: z.infer<typeof adSetInput> }) =>
+    z.object({ key: z.string().min(1), set: adSetInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await resolveTenant(data.key);
+    const s = data.set;
+    const refId = s.ref_id?.trim() ? slugify(s.ref_id) : null;
+    if (s.id) {
+      const { error } = await supabase
+        .from("ad_sets")
+        .update({ name: s.name, ad_seconds: s.ad_seconds, ref_id: refId })
+        .eq("id", s.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: s.id };
+    }
+    const { data: last } = await supabase
+      .from("ad_sets")
+      .select("sort_order")
+      .eq("tenant_id", tenantId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    const { data: row, error } = await supabase
+      .from("ad_sets")
+      .insert({
+        tenant_id: tenantId,
+        name: s.name,
+        ad_seconds: s.ad_seconds,
+        ref_id: refId,
+        sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const deleteAdSet = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await resolveTenant(data.key);
+    const { data: ads } = await supabase
+      .from("ads")
+      .select("path")
+      .eq("tenant_id", tenant.id)
+      .eq("ad_set_id", data.id);
+    if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
+    const { error } = await supabase
+      .from("ad_sets")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id);
+    if (error) throw new Error(error.message);
+    // Displays pointing at the removed set fall back to the schedule template.
+    if (tenant.template === `ads:${data.id}`) {
+      await supabase.from("tenants").update({ template: "zeitplan" }).eq("id", tenant.id);
+    }
+    await supabase
+      .from("rooms")
+      .update({ template: null })
+      .eq("tenant_id", tenant.id)
+      .eq("template", `ads:${data.id}`);
+    return { ok: true };
+  });
+
 // ---------- ads ----------
 
 export const listAds = createServerFn({ method: "GET" })
-  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .inputValidator((d: { key: string; setId: string }) =>
+    z.object({ key: z.string().min(1), setId: z.string().uuid() }).parse(d),
+  )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await resolveTenant(data.key);
@@ -703,6 +798,7 @@ export const listAds = createServerFn({ method: "GET" })
       .from("ads")
       .select("id, name, content_type, sort_order, path")
       .eq("tenant_id", id)
+      .eq("ad_set_id", data.setId)
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
     const list = rows ?? [];
@@ -745,15 +841,23 @@ export const reorderAds = createServerFn({ method: "POST" })
   });
 
 export const uploadAd = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; filename: string; contentType: string; dataBase64: string }) =>
-    z
-      .object({
-        key: z.string().min(1),
-        filename: z.string().min(1).max(200),
-        contentType: z.string().regex(/^image\//),
-        dataBase64: z.string().min(1).max(14_000_000),
-      })
-      .parse(d),
+  .inputValidator(
+    (d: {
+      key: string;
+      setId: string;
+      filename: string;
+      contentType: string;
+      dataBase64: string;
+    }) =>
+      z
+        .object({
+          key: z.string().min(1),
+          setId: z.string().uuid(),
+          filename: z.string().min(1).max(200),
+          contentType: z.string().regex(/^image\//),
+          dataBase64: z.string().min(1).max(14_000_000),
+        })
+        .parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
@@ -769,6 +873,7 @@ export const uploadAd = createServerFn({ method: "POST" })
       .from("ads")
       .select("sort_order")
       .eq("tenant_id", tenant.id)
+      .eq("ad_set_id", data.setId)
       .order("sort_order", { ascending: false })
       .limit(1);
     const nextOrder = (last?.[0]?.sort_order ?? -1) + 1;
@@ -776,6 +881,7 @@ export const uploadAd = createServerFn({ method: "POST" })
       .from("ads")
       .insert({
         tenant_id: tenant.id,
+        ad_set_id: data.setId,
         name: data.filename.slice(0, 120),
         path,
         content_type: data.contentType,
@@ -786,6 +892,7 @@ export const uploadAd = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { id: row.id };
   });
+
 
 export const renameAd = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string; name: string }) =>
