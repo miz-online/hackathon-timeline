@@ -24,5 +24,5 @@ The confusing part is the admin list: it showed that entry with the "pending" cl
 ## Technical notes
 
 - `src/routes/tenant/$tenantKey/index.tsx` — icon block around the color dot; use `notify` in the precedence chain again.
-- `src/routes/api/public/webhooks-dispatch.ts` — `CHECK_WINDOW_MS` 60_000 → 600_000; the `notified_at IS NULL` filter already prevents duplicates.
+- `src/routes/api/public/webhooks-dispatch.ts` — replace the hard-coded `CHECK_WINDOW_MS` 60_000 with a window based on `tenant.past_grace_minutes` (e.g. `past_grace_minutes * 60_000`); the `notified_at IS NULL` filter already prevents duplicates.
 - No database or schema changes needed; the job, route auth and `notified_at` marker all work as intended.
