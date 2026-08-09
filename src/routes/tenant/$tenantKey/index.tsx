@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, BellOff, CheckCircle2, Clock } from "lucide-react";
+import { GripVertical, BellOff, CheckCircle2, Clock, History } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -426,7 +426,13 @@ function EntriesPanel({
                 />
                 {(() => {
                   const isPast = new Date(e.time).getTime() < Date.now();
-                  if (!e.notify && isPast) return null;
+                  if (!e.notify && isPast) {
+                    return (
+                      <span title={t("entries.pastUnposted")}>
+                        <History className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                    );
+                  }
                   return (
                     <span
                       title={
