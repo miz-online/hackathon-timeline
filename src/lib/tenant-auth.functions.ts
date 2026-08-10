@@ -23,6 +23,8 @@ const keyInput = (data: { key: string }) => z.object({ key: z.string().min(1) })
 export const getTenantAccess = createServerFn({ method: "GET" })
   .inputValidator(keyInput)
   .handler(async ({ data }) => {
+    const { setResponseHeader } = await import("@tanstack/react-start/server");
+    setResponseHeader("Cache-Control", "no-store, max-age=0");
     const tenant = await tenantByKey(data.key);
     const { isTenantUnlocked } = await import("@/lib/tenant-auth.server");
     const isProtected = !!tenant.pin_hash;
