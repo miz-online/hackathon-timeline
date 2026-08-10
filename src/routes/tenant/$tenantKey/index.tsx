@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -487,7 +487,7 @@ function LockButton({ tenantKey }: { tenantKey: string }) {
         navigate({ to: "/" });
       }}
     >
-      <Lock className="h-4 w-4" />
+      <LogOut className="h-4 w-4" />
     </Button>
   );
 }

@@ -15,7 +15,11 @@ function sessionConfig() {
     cookie: {
       httpOnly: true,
       secure: true,
-      sameSite: "lax" as const,
+      // The editor preview renders the app inside a cross-site iframe, where
+      // SameSite=Lax cookies are never sent. None + Partitioned keeps the
+      // session working both standalone and embedded.
+      sameSite: "none" as const,
+      partitioned: true,
       path: "/",
     },
   };
