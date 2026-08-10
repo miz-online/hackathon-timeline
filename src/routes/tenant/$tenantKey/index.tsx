@@ -495,7 +495,7 @@ function LockOnlyButton({ tenantKey }: { tenantKey: string }) {
   const lockFn = useServerFn(lockTenantAccess);
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="icon"
       title={t("nav.lockOnly")}
       aria-label={t("nav.lockOnly")}
@@ -520,7 +520,7 @@ function LockButton({ tenantKey }: { tenantKey: string }) {
   const lockFn = useServerFn(lockTenantAccess);
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="icon"
       title={t("nav.lock")}
       aria-label={t("nav.lock")}
@@ -1285,7 +1285,7 @@ function SettingsPanel({
   onChange: () => void;
 }) {
   const navigate = useNavigate();
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   
