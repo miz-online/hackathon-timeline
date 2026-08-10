@@ -1,0 +1,1 @@
+update public.tenants set pin_hash='pbkdf2$100000$nhHx7aFKp5GZ1tKMDN3Pnw==$aAnapVJZIzYTMTUpyS/hHw16uFZqXhV+R6Hp4/nPvso=' where pin_hash like 'pbkdf2$210000$%';
