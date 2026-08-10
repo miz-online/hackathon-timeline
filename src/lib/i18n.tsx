@@ -11,6 +11,7 @@ const en: Dict = {
   "nav.rooms": "Rooms",
   "nav.exit": "Exit",
   "nav.lock": "Lock and exit",
+  "nav.lockOnly": "Lock",
 
   "pin.gate.title": "Protected area",
   "pin.gate.blurb": "This tenant administration is protected. Enter the PIN or password.",
@@ -277,6 +278,7 @@ const de: Dict = {
   "nav.rooms": "Räume",
   "nav.exit": "Beenden",
   "nav.lock": "Sperren und beenden",
+  "nav.lockOnly": "Sperren",
 
   "pin.gate.title": "Geschützter Bereich",
   "pin.gate.blurb": "Diese Mandanten-Verwaltung ist geschützt. Bitte PIN oder Passwort eingeben.",

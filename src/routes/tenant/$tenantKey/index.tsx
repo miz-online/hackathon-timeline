@@ -39,7 +39,7 @@ import {
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
-import { isTenantLockedError, onTenantLocked } from "@/lib/tenant-lock";
+import { isTenantLockedError, onTenantLocked, notifyTenantLocked } from "@/lib/tenant-lock";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { clearStoredTenantKey } from "@/lib/tenant-storage";
@@ -349,6 +349,7 @@ function AdminPage() {
                 {t("nav.rooms")}
               </Button>
             </Link>
+            <LockOnlyButton tenantKey={tenantKey} />
             <LockButton tenantKey={tenantKey} />
           </div>
         </div>
@@ -485,6 +486,31 @@ function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () 
         </div>
       </Card>
     </div>
+  );
+}
+
+function LockOnlyButton({ tenantKey }: { tenantKey: string }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const lockFn = useServerFn(lockTenantAccess);
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      title={t("nav.lockOnly")}
+      aria-label={t("nav.lockOnly")}
+      onClick={async () => {
+        try {
+          await lockFn({ data: { key: tenantKey } });
+        } catch {
+          /* ignore */
+        }
+        notifyTenantLocked();
+        qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+      }}
+    >
+      <Lock className="h-4 w-4" />
+    </Button>
   );
 }
 
