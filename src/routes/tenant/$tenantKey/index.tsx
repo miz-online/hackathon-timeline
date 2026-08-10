@@ -442,6 +442,7 @@ function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () 
   const unlockFn = useServerFn(unlockTenantAccess);
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   return (
@@ -458,10 +459,15 @@ function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () 
             e.preventDefault();
             setBusy(true);
             setError(false);
+            setFailure(null);
             try {
               const res = await unlockFn({ data: { key: tenantKey, pin } });
-              if (res.ok) onUnlocked();
+              if (res?.ok) onUnlocked();
               else setError(true);
+            } catch (err) {
+              // Any transport/server failure must be visible, not silently swallowed.
+              console.error("[pin] unlock failed", err);
+              setFailure(err instanceof Error ? err.message : String(err));
             } finally {
               setBusy(false);
             }
@@ -478,6 +484,7 @@ function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () 
             />
           </div>
           {error && <p className="text-sm text-destructive">{t("pin.gate.error")}</p>}
+          {failure && <p className="text-sm text-destructive break-words">{failure}</p>}
           <Button type="submit" className="w-full" disabled={busy || !pin}>
             {t("pin.gate.submit")}
           </Button>

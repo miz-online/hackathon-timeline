@@ -1,7 +1,10 @@
 import { useSession } from "@tanstack/react-start/server";
 
 const MAX_AGE_SECONDS = 60 * 60 * 4; // 4 hours sliding window
-const ITERATIONS = 210_000;
+// The deployed edge runtime rejects PBKDF2 above 100k iterations, so anything
+// higher throws at runtime (while Node in dev happily computes it).
+const MAX_ITERATIONS = 100_000;
+const ITERATIONS = MAX_ITERATIONS;
 
 type TenantSession = { tenants?: string[] };
 
@@ -61,7 +64,7 @@ export async function verifyPin(pin: string, stored: string | null): Promise<boo
   const parts = stored.split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
   const iterations = Number(parts[1]);
-  if (!Number.isFinite(iterations) || iterations <= 0) return false;
+  if (!Number.isFinite(iterations) || iterations <= 0 || iterations > MAX_ITERATIONS) return false;
   const expected = fromB64(parts[3]!);
   const actual = await derive(pin, fromB64(parts[2]!), iterations);
   if (expected.length !== actual.length) return false;
