@@ -1,7 +1,10 @@
 import { useSession } from "@tanstack/react-start/server";
 
 const MAX_AGE_SECONDS = 60 * 60 * 4; // 4 hours sliding window
-const ITERATIONS = 210_000;
+// The deployed edge runtime rejects PBKDF2 above 100k iterations, so anything
+// higher throws at runtime (while Node in dev happily computes it).
+const MAX_ITERATIONS = 100_000;
+const ITERATIONS = MAX_ITERATIONS;
 
 type TenantSession = { tenants?: string[] };
 
