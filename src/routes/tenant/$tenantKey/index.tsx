@@ -495,7 +495,7 @@ function LockOnlyButton({ tenantKey }: { tenantKey: string }) {
   const lockFn = useServerFn(lockTenantAccess);
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="icon"
       title={t("nav.lockOnly")}
       aria-label={t("nav.lockOnly")}
@@ -520,7 +520,7 @@ function LockButton({ tenantKey }: { tenantKey: string }) {
   const lockFn = useServerFn(lockTenantAccess);
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="icon"
       title={t("nav.lock")}
       aria-label={t("nav.lock")}
@@ -1285,7 +1285,7 @@ function SettingsPanel({
   onChange: () => void;
 }) {
   const navigate = useNavigate();
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   
@@ -1329,17 +1329,6 @@ function SettingsPanel({
         </div>
         {/* Ad display duration is configured per ad set in the Ads tab. */}
 
-        <div className="space-y-1">
-          <Label>{t("settings.language")}</Label>
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value as "en" | "de")}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-        </div>
       </div>
 
       <div className="border-t pt-4 space-y-2">
