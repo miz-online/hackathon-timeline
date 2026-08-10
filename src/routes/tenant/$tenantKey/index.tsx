@@ -39,7 +39,7 @@ import {
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
-import { isTenantLockedError, onTenantLocked } from "@/lib/tenant-lock";
+import { isTenantLockedError, onTenantLocked, notifyTenantLocked } from "@/lib/tenant-lock";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { clearStoredTenantKey } from "@/lib/tenant-storage";
@@ -349,6 +349,7 @@ function AdminPage() {
                 {t("nav.rooms")}
               </Button>
             </Link>
+            <LockOnlyButton tenantKey={tenantKey} />
             <LockButton tenantKey={tenantKey} />
           </div>
         </div>
