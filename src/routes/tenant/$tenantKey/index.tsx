@@ -39,6 +39,7 @@ import {
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
+import { onTenantLocked } from "@/lib/tenant-lock";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { clearStoredTenantKey } from "@/lib/tenant-storage";
@@ -201,7 +202,20 @@ function AdminPage() {
     queryFn: () => getAccessFn({ data: { key: tenantKey } }),
     refetchInterval: 60_000,
   });
-  const allowed = accessQ.data ? !accessQ.data.protected || accessQ.data.unlocked : false;
+  // Any admin server fn throwing TENANT_LOCKED (expired 4h session) drops us
+  // back to the PIN gate right away, without waiting for the access poll.
+  const [forceLocked, setForceLocked] = useState(false);
+  useEffect(
+    () =>
+      onTenantLocked(() => {
+        setForceLocked(true);
+        qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+      }),
+    [qc, tenantKey],
+  );
+
+  const allowed =
+    !forceLocked && (accessQ.data ? !accessQ.data.protected || accessQ.data.unlocked : false);
 
   const tenantQ = useQuery({
     queryKey: ["tenant", tenantKey],
@@ -273,6 +287,7 @@ function AdminPage() {
       <PinGate
         tenantKey={tenantKey}
         onUnlocked={() => {
+          setForceLocked(false);
           qc.invalidateQueries({ queryKey: ["access", tenantKey] });
         }}
       />
