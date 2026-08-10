@@ -484,6 +484,7 @@ function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () 
             />
           </div>
           {error && <p className="text-sm text-destructive">{t("pin.gate.error")}</p>}
+          {failure && <p className="text-sm text-destructive break-words">{failure}</p>}
           <Button type="submit" className="w-full" disabled={busy || !pin}>
             {t("pin.gate.submit")}
           </Button>
