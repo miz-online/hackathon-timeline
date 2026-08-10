@@ -41,16 +41,35 @@ type TenantRow = {
 const TENANT_COLS =
   "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds";
 
-async function resolveTenant(key: string): Promise<TenantRow> {
+async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
   const { data, error } = await supabase
     .from("tenants")
-    .select(TENANT_COLS)
+    .select(`${TENANT_COLS}, pin_hash`)
     .eq("key", key)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Unknown tenant key");
   return data;
+}
+
+/** Public read of tenant settings (no admin session required). */
+async function resolveTenant(key: string): Promise<TenantRow> {
+  const { pin_hash: _pin, ...rest } = await resolveTenantRaw(key);
+  return rest;
+}
+
+/**
+ * Admin-scoped tenant resolution: when the tenant has a PIN set, a valid
+ * admin session cookie is required. Enforced server-side for every admin fn.
+ */
+async function requireTenantAdmin(key: string): Promise<TenantRow> {
+  const { pin_hash, ...rest } = await resolveTenantRaw(key);
+  if (pin_hash) {
+    const { isTenantUnlocked } = await import("@/lib/tenant-auth.server");
+    if (!(await isTenantUnlocked(rest.id))) throw new Error("TENANT_LOCKED");
+  }
+  return rest;
 }
 
 function filterVisible<T extends { time: string; tags: string[] }>(
@@ -67,16 +86,33 @@ function filterVisible<T extends { time: string; tags: string[] }>(
 
 // ---------- tenant ----------
 
-export const createTenant = createServerFn({ method: "POST" }).handler(async () => {
-  const supabase = await getAdmin();
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const key = generateKey();
-    const { data, error } = await supabase.from("tenants").insert({ key }).select("key").single();
-    if (!error && data) return { key: data.key };
-    if (error && !error.message.includes("duplicate")) throw new Error(error.message);
-  }
-  throw new Error("Could not generate unique tenant key");
-});
+export const createTenant = createServerFn({ method: "POST" })
+  .inputValidator((d?: { pin?: string }) => z.object({ pin: z.string().optional() }).parse(d ?? {}))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const pin = data.pin?.trim();
+    const pin_hash = pin
+      ? await (await import("@/lib/tenant-auth.server")).hashPin(pin)
+      : null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const key = generateKey();
+      const { data: row, error } = await supabase
+        .from("tenants")
+        .insert({ key, pin_hash })
+        .select("id, key")
+        .single();
+      if (!error && row) {
+        if (pin_hash) {
+          const { markTenantUnlocked } = await import("@/lib/tenant-auth.server");
+          await markTenantUnlocked(row.id);
+        }
+        return { key: row.key };
+      }
+      if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    }
+    throw new Error("Could not generate unique tenant key");
+  });
+
 
 export const getTenant = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
@@ -111,7 +147,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("tenants")
       .update({
@@ -133,7 +169,7 @@ export const updateTenantTemplate = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("tenants")
       .update({ template: data.template })
@@ -147,7 +183,7 @@ export const regenerateKey = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     for (let attempt = 0; attempt < 5; attempt++) {
       const newKey = generateKey();
       const { error } = await supabase.from("tenants").update({ key: newKey }).eq("id", id);
@@ -161,7 +197,7 @@ export const deleteTenant = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const { data: ads } = await supabase.from("ads").select("path").eq("tenant_id", tenant.id);
     if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
     if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
@@ -181,7 +217,7 @@ export const listEntries = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
       .select("id, time, title, description, tags, color_scheme_id, notify, notified_at")
@@ -212,7 +248,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const e = data.entry;
     if (e.id) {
       const { error } = await supabase
@@ -254,7 +290,7 @@ export const deleteEntry = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("entries")
       .delete()
@@ -270,7 +306,7 @@ export const listRooms = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("rooms")
       .select("id, ref_id, name, color_scheme_id, template")
@@ -294,7 +330,7 @@ export const upsertRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const r = data.room;
     const refId = r.ref_id?.trim() ? slugify(r.ref_id) : null;
     if (r.id) {
@@ -333,7 +369,7 @@ export const deleteRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("rooms")
       .delete()
@@ -349,7 +385,7 @@ export const listWebhooks = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("webhooks")
       .select("id, ref_id, name, type, enabled, url")
@@ -381,7 +417,7 @@ export const upsertWebhook = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const w = data.webhook;
     const refId = w.ref_id?.trim() ? slugify(w.ref_id) : null;
     const url = (w.url ?? "").trim();
@@ -423,7 +459,7 @@ export const deleteWebhook = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("webhooks")
       .delete()
@@ -439,7 +475,7 @@ export const testWebhook = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const { data: row, error } = await supabase
       .from("webhooks")
       .select("url, type")
@@ -476,7 +512,7 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("webhooks")
       .select("id, name, url, type, enabled")
@@ -587,7 +623,7 @@ export const listColorSchemes = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("color_schemes")
       .select("id, ref_id, name, color")
@@ -610,7 +646,7 @@ export const upsertColorScheme = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const s = { ...data.scheme, color: data.scheme.color.toUpperCase() };
     const refId = s.ref_id?.trim() ? slugify(s.ref_id) : null;
     if (s.id) {
@@ -637,7 +673,7 @@ export const deleteColorScheme = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("color_schemes")
       .delete()
@@ -662,7 +698,7 @@ export const uploadTenantLogo = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const binary = Uint8Array.from(atob(data.dataBase64), (c) => c.charCodeAt(0));
     const ext = (data.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
     const path = `${tenant.id}/logo-${Date.now()}.${ext}`;
@@ -682,7 +718,7 @@ export const removeTenantLogo = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     if (tenant.logo_url) {
       await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
     }
@@ -697,7 +733,7 @@ export const listAdSets = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("ad_sets")
       .select("id, ref_id, name, ad_seconds, sort_order")
@@ -720,7 +756,7 @@ export const upsertAdSet = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const s = data.set;
     const refId = s.ref_id?.trim() ? slugify(s.ref_id) : null;
     if (s.id) {
@@ -759,7 +795,7 @@ export const deleteAdSet = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const { data: ads } = await supabase
       .from("ads")
       .select("path")
@@ -792,7 +828,7 @@ export const listAds = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await resolveTenant(data.key);
+    const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("ads")
       .select("id, name, content_type, sort_order, path")
@@ -828,7 +864,7 @@ export const reorderAds = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     for (let i = 0; i < data.ids.length; i++) {
       await supabase
         .from("ads")
@@ -860,7 +896,7 @@ export const uploadAd = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const binary = Uint8Array.from(atob(data.dataBase64), (c) => c.charCodeAt(0));
     const ext = (data.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
     const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -901,7 +937,7 @@ export const renameAd = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { error } = await supabase
       .from("ads")
       .update({ name: data.name })
@@ -923,7 +959,7 @@ export const moveAd = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { data: rows } = await supabase
       .from("ads")
       .select("id, sort_order")
@@ -944,7 +980,7 @@ export const deleteAd = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id: tenantId } = await resolveTenant(data.key);
+    const { id: tenantId } = await requireTenantAdmin(data.key);
     const { data: ad } = await supabase
       .from("ads")
       .select("path")
@@ -984,7 +1020,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const [schemes, rooms, entries, adSets, ads, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
@@ -1153,7 +1189,7 @@ export const importTenantData = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const tenant = await resolveTenant(data.key);
+    const tenant = await requireTenantAdmin(data.key);
     const p = data.data;
     const replace = data.mode === "replace";
     const wants = (s: Section) => data.sections.includes(s);
