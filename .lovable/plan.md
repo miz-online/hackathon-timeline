@@ -8,7 +8,7 @@ Die Admin-Ansicht eines Tenants kann optional mit einer PIN bzw. einem Passwort 
 - Ist eine PIN gesetzt, zeigt die Admin-Ansicht eine Sperr-Karte mit einem Eingabefeld (beliebige Länge, Passwort-Feld) und Fehlermeldung bei falscher Eingabe.
 - Nach korrekter Eingabe wird der Zugang in einem verschlüsselten, httpOnly-Cookie hinterlegt: 4 Stunden gültig, und bei jeder Admin-Seiten- oder Admin-Serveraktion automatisch wieder auf 4 Stunden verlängert (Sliding Expiry). Nach 4 Stunden Inaktivität ist erneut eine Eingabe nötig.
 - Der Cookie gilt pro Tenant; mehrere Tenants können gleichzeitig freigeschaltet sein.
-- Ein „Sperren“-Link im Admin-Header hebt die Freischaltung sofort auf.
+- An der Stelle, an der heute „Exit“ im Admin-Header steht, wird dieser durch einen Sperren-Button mit Schloss-Icon ersetzt. Der Button sperrt die aktuelle Tenant-Freischaltung und verlässt den Tenant.
 
 ## Änderung im Admin-Bereich
 
