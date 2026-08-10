@@ -86,16 +86,33 @@ function filterVisible<T extends { time: string; tags: string[] }>(
 
 // ---------- tenant ----------
 
-export const createTenant = createServerFn({ method: "POST" }).handler(async () => {
-  const supabase = await getAdmin();
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const key = generateKey();
-    const { data, error } = await supabase.from("tenants").insert({ key }).select("key").single();
-    if (!error && data) return { key: data.key };
-    if (error && !error.message.includes("duplicate")) throw new Error(error.message);
-  }
-  throw new Error("Could not generate unique tenant key");
-});
+export const createTenant = createServerFn({ method: "POST" })
+  .inputValidator((d?: { pin?: string }) => z.object({ pin: z.string().optional() }).parse(d ?? {}))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const pin = data.pin?.trim();
+    const pin_hash = pin
+      ? await (await import("@/lib/tenant-auth.server")).hashPin(pin)
+      : null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const key = generateKey();
+      const { data: row, error } = await supabase
+        .from("tenants")
+        .insert({ key, pin_hash })
+        .select("id, key")
+        .single();
+      if (!error && row) {
+        if (pin_hash) {
+          const { markTenantUnlocked } = await import("@/lib/tenant-auth.server");
+          await markTenantUnlocked(row.id);
+        }
+        return { key: row.key };
+      }
+      if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    }
+    throw new Error("Could not generate unique tenant key");
+  });
+
 
 export const getTenant = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
