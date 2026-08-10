@@ -64,7 +64,7 @@ export async function verifyPin(pin: string, stored: string | null): Promise<boo
   const parts = stored.split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") return false;
   const iterations = Number(parts[1]);
-  if (!Number.isFinite(iterations) || iterations <= 0) return false;
+  if (!Number.isFinite(iterations) || iterations <= 0 || iterations > MAX_ITERATIONS) return false;
   const expected = fromB64(parts[3]!);
   const actual = await derive(pin, fromB64(parts[2]!), iterations);
   if (expected.length !== actual.length) return false;
