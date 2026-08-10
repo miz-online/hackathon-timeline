@@ -184,25 +184,35 @@ function AdminPage() {
   const listRoomsFn = useServerFn(listRooms);
   const listSchemesFn = useServerFn(listColorSchemes);
 
+  // Keep the admin view in sync with changes made elsewhere (other admins,
+  // webhook dispatch, ...). Open dialogs keep their own local state, so a
+  // background refetch never overwrites what is being edited.
+  const live = { refetchInterval: 10_000, refetchOnWindowFocus: true } as const;
+
   const tenantQ = useQuery({
     queryKey: ["tenant", tenantKey],
     queryFn: () => getTenantFn({ data: { key: tenantKey } }),
+    ...live,
   });
   const entriesQ = useQuery({
     queryKey: ["entries", tenantKey],
     queryFn: () => listEntriesFn({ data: { key: tenantKey } }),
     enabled: !!tenantQ.data,
+    ...live,
   });
   const roomsQ = useQuery({
     queryKey: ["rooms", tenantKey],
     queryFn: () => listRoomsFn({ data: { key: tenantKey } }),
     enabled: !!tenantQ.data,
+    ...live,
   });
   const schemesQ = useQuery({
     queryKey: ["schemes", tenantKey],
     queryFn: () => listSchemesFn({ data: { key: tenantKey } }),
     enabled: !!tenantQ.data,
+    ...live,
   });
+
 
   const [tab, setTab] = useState<string>(TABS[0]);
   const [entriesShowAll, setEntriesShowAll] = useState(false);
