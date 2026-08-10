@@ -1428,6 +1428,7 @@ function SettingsPanel({
         </div>
         <div className="pt-2">
           <Button
+            size="sm"
             disabled={saving}
             onClick={async () => {
               setSaving(true);
