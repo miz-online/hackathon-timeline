@@ -409,7 +409,14 @@ function EntriesPanel({
   const upsertFn = useServerFn(upsertEntry);
   const deleteFn = useServerFn(deleteEntry);
 
-  const now = Date.now();
+  // Re-evaluate the expiry window every second so entries disappear on their own.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const now = nowTick;
   const graceMs = (graceMinutes || 0) * 60 * 1000;
   const visibleEntries = showExpired
     ? entries
@@ -427,20 +434,28 @@ function EntriesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-        <div className="flex items-center gap-2">
-          {expiredCount > 0 && !showExpired ? (
-            <span className="text-xs text-muted-foreground">
-              {expiredCount} {expiredCount === 1 ? t("entries.expiredSingular") : t("entries.expiredPlural")}
-            </span>
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <h2 className="text-lg font-medium">{t("entries.title")}</h2>
+          {showExpired ? (
+            <a
+              href="#entries"
+              className="text-sm text-primary underline hover:text-primary/80"
+            >
+              {t("entries.hideExpired")}
+            </a>
+          ) : expiredCount > 0 ? (
+            <a
+              href="#entries-all"
+              className="text-sm text-primary underline hover:text-primary/80"
+            >
+              {expiredCount === 1
+                ? t("entries.showExpiredCountOne")
+                : t("entries.showExpiredCount", { count: expiredCount })}
+            </a>
           ) : null}
-          <a
-            href={showExpired ? "#entries" : "#entries-all"}
-            className="text-sm text-primary underline hover:text-primary/80"
-          >
-            {showExpired ? t("entries.hideExpired") : t("entries.showExpired")}
-          </a>
+        </div>
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
             onClick={() => {
@@ -487,7 +502,12 @@ function EntriesPanel({
             <Card key={e.id} className="p-4 flex items-start justify-between gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <span
-                  className="mt-1 h-4 w-4 rounded-full border"
+                  className={`mt-1 h-4 w-4 rounded-full border ${
+                    new Date(e.time).getTime() <= now &&
+                    new Date(e.time).getTime() + graceMs >= now
+                      ? "animate-pulse"
+                      : ""
+                  }`}
                   style={{
                     backgroundColor:
                       schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor,
@@ -497,7 +517,7 @@ function EntriesPanel({
                   }
                 />
                 {(() => {
-                  const isPast = new Date(e.time).getTime() < Date.now();
+                  const isPast = new Date(e.time).getTime() < now;
                   if (e.sent) {
                     return (
                       <span title={t("entries.sent")}>
