@@ -543,7 +543,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<RoomSnapshot> => {
     const supabase = await getAdmin();
-    const tenant = await requireTenantAdmin(data.key);
+    const tenant = await resolveTenant(data.key);
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
       .select("id, name, color_scheme_id, template")
