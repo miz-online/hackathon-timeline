@@ -1,0 +1,1 @@
+update public.tenants set pin_hash='pbkdf2$210000$q+JRq/ogjhqqhhpf5ey9Sg==$isMRcp5+QoDiHazKLxbg1VU6sFuv0vOsAxnKWT62DC8=' where id='81f25f19-ebff-4ab1-bba4-a8f266b87b42';

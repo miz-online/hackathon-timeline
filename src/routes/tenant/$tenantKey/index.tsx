@@ -293,6 +293,9 @@ function AdminPage() {
         tenantKey={tenantKey}
         onUnlocked={() => {
           setForceLocked(false);
+          // Trust the successful unlock immediately: a cached/stale GET of the
+          // access check must not bounce the user back to the PIN screen.
+          qc.setQueryData(["access", tenantKey], { protected: true, unlocked: true });
           qc.invalidateQueries({ queryKey: ["access", tenantKey] });
         }}
       />
