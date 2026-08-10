@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -30,9 +30,16 @@ import {
 
 
 } from "@/lib/board.functions";
+import {
+  getTenantAccess,
+  unlockTenantAccess,
+  lockTenantAccess,
+  setTenantPin,
+} from "@/lib/tenant-auth.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
+import { isTenantLockedError, onTenantLocked, notifyTenantLocked } from "@/lib/tenant-lock";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { clearStoredTenantKey } from "@/lib/tenant-storage";
@@ -187,29 +194,56 @@ function AdminPage() {
   // Keep the admin view in sync with changes made elsewhere (other admins,
   // webhook dispatch, ...). Open dialogs keep their own local state, so a
   // background refetch never overwrites what is being edited.
-  const live = { refetchInterval: 10_000, refetchOnWindowFocus: true } as const;
+  const live = {
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    // Don't burn retries on a locked session — surface it to the gate at once.
+    retry: (count: number, error: unknown) => !isTenantLockedError(error) && count < 2,
+  } as const;
+
+  const getAccessFn = useServerFn(getTenantAccess);
+  const accessQ = useQuery({
+    queryKey: ["access", tenantKey],
+    queryFn: () => getAccessFn({ data: { key: tenantKey } }),
+    refetchInterval: 60_000,
+  });
+  // Any admin server fn throwing TENANT_LOCKED (expired 4h session) drops us
+  // back to the PIN gate right away, without waiting for the access poll.
+  const [forceLocked, setForceLocked] = useState(false);
+  useEffect(
+    () =>
+      onTenantLocked(() => {
+        setForceLocked(true);
+        qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+      }),
+    [qc, tenantKey],
+  );
+
+  const allowed =
+    !forceLocked && (accessQ.data ? !accessQ.data.protected || accessQ.data.unlocked : false);
 
   const tenantQ = useQuery({
     queryKey: ["tenant", tenantKey],
     queryFn: () => getTenantFn({ data: { key: tenantKey } }),
+    enabled: allowed,
     ...live,
   });
   const entriesQ = useQuery({
     queryKey: ["entries", tenantKey],
     queryFn: () => listEntriesFn({ data: { key: tenantKey } }),
-    enabled: !!tenantQ.data,
+    enabled: allowed && !!tenantQ.data,
     ...live,
   });
   const roomsQ = useQuery({
     queryKey: ["rooms", tenantKey],
     queryFn: () => listRoomsFn({ data: { key: tenantKey } }),
-    enabled: !!tenantQ.data,
+    enabled: allowed && !!tenantQ.data,
     ...live,
   });
   const schemesQ = useQuery({
     queryKey: ["schemes", tenantKey],
     queryFn: () => listSchemesFn({ data: { key: tenantKey } }),
-    enabled: !!tenantQ.data,
+    enabled: allowed && !!tenantQ.data,
     ...live,
   });
 
@@ -237,6 +271,36 @@ function AdminPage() {
     window.history.replaceState(null, "", `#${v}`);
   };
 
+  if (accessQ.isLoading) {
+    return <div className="p-8 text-sm text-muted-foreground">{t("admin.loading")}</div>;
+  }
+  if (accessQ.error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <Card className="p-6 max-w-md space-y-3 text-center">
+          <h2 className="text-lg font-semibold">{t("admin.unknown")}</h2>
+          <p className="text-sm text-muted-foreground">{t("admin.unknownBlurb")}</p>
+          <Link to="/" className="text-sm underline">
+            {t("admin.backStart")}
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+  if (!allowed) {
+    return (
+      <PinGate
+        tenantKey={tenantKey}
+        onUnlocked={() => {
+          setForceLocked(false);
+          // Trust the successful unlock immediately: a cached/stale GET of the
+          // access check must not bounce the user back to the PIN screen.
+          qc.setQueryData(["access", tenantKey], { protected: true, unlocked: true });
+          qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+        }}
+      />
+    );
+  }
   if (tenantQ.isLoading) {
     return <div className="p-8 text-sm text-muted-foreground">{t("admin.loading")}</div>;
   }
@@ -288,11 +352,8 @@ function AdminPage() {
                 {t("nav.rooms")}
               </Button>
             </Link>
-            <Link to="/">
-              <Button variant="ghost" size="sm">
-                {t("nav.exit")}
-              </Button>
-            </Link>
+            <LockOnlyButton tenantKey={tenantKey} />
+            <LockButton tenantKey={tenantKey} />
           </div>
         </div>
       </header>
@@ -372,6 +433,199 @@ function AdminPage() {
           </TabsContent>
         </Tabs>
       </main>
+    </div>
+  );
+}
+
+function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () => void }) {
+  const { t } = useI18n();
+  const unlockFn = useServerFn(unlockTenantAccess);
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <Card className="p-6 w-full max-w-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <Lock className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-lg font-semibold">{t("pin.gate.title")}</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">{t("pin.gate.blurb")}</p>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError(false);
+            setFailure(null);
+            try {
+              const res = await unlockFn({ data: { key: tenantKey, pin } });
+              if (res?.ok) onUnlocked();
+              else setError(true);
+            } catch (err) {
+              // Any transport/server failure must be visible, not silently swallowed.
+              console.error("[pin] unlock failed", err);
+              setFailure(err instanceof Error ? err.message : String(err));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <div className="space-y-1">
+            <Label>{t("pin.gate.label")}</Label>
+            <Input
+              type="password"
+              value={pin}
+              autoFocus
+              autoComplete="current-password"
+              onChange={(e) => setPin(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{t("pin.gate.error")}</p>}
+          {failure && <p className="text-sm text-destructive break-words">{failure}</p>}
+          <Button type="submit" className="w-full" disabled={busy || !pin}>
+            {t("pin.gate.submit")}
+          </Button>
+        </form>
+        <div className="text-center">
+          <Link to="/" className="text-xs underline text-muted-foreground">
+            {t("admin.backStart")}
+          </Link>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function LockOnlyButton({ tenantKey }: { tenantKey: string }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const lockFn = useServerFn(lockTenantAccess);
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      title={t("nav.lockOnly")}
+      aria-label={t("nav.lockOnly")}
+      onClick={async () => {
+        try {
+          await lockFn({ data: { key: tenantKey } });
+        } catch {
+          /* ignore */
+        }
+        notifyTenantLocked();
+        qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+      }}
+    >
+      <Lock className="h-4 w-4" />
+    </Button>
+  );
+}
+
+function LockButton({ tenantKey }: { tenantKey: string }) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const lockFn = useServerFn(lockTenantAccess);
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      title={t("nav.lock")}
+      aria-label={t("nav.lock")}
+      onClick={async () => {
+        try {
+          await lockFn({ data: { key: tenantKey } });
+        } catch {
+          /* ignore */
+        }
+        navigate({ to: "/" });
+      }}
+    >
+      <LogOut className="h-4 w-4" />
+    </Button>
+  );
+}
+
+function PinCard({ tenantKey }: { tenantKey: string }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const getAccessFn = useServerFn(getTenantAccess);
+  const setPinFn = useServerFn(setTenantPin);
+  const accessQ = useQuery({
+    queryKey: ["access", tenantKey],
+    queryFn: () => getAccessFn({ data: { key: tenantKey } }),
+  });
+  const isProtected = !!accessQ.data?.protected;
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [repeat, setRepeat] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="border-t pt-4 space-y-3">
+      <div className="font-medium">{t("pin.card.title")}</div>
+      <p className="text-xs text-muted-foreground">
+        {isProtected ? t("pin.card.active") : t("pin.card.inactive")}
+      </p>
+      {isProtected && (
+        <div className="space-y-1">
+          <Label>{t("pin.card.current")}</Label>
+          <Input
+            type="password"
+            value={current}
+            autoComplete="current-password"
+            onChange={(e) => setCurrent(e.target.value)}
+          />
+        </div>
+      )}
+      <div className="space-y-1">
+        <Label>{t("pin.card.new")}</Label>
+        <Input
+          type="password"
+          value={next}
+          autoComplete="new-password"
+          onChange={(e) => setNext(e.target.value)}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label>{t("pin.card.repeat")}</Label>
+        <Input
+          type="password"
+          value={repeat}
+          autoComplete="new-password"
+          onChange={(e) => setRepeat(e.target.value)}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">{t("pin.card.hint")}</p>
+      <Button
+        size="sm"
+        disabled={saving}
+        onClick={async () => {
+          if (next !== repeat) {
+            toast.error(t("pin.card.mismatch"));
+            return;
+          }
+          setSaving(true);
+          try {
+            await setPinFn({
+              data: { key: tenantKey, currentPin: current || undefined, newPin: next },
+            });
+            setCurrent("");
+            setNext("");
+            setRepeat("");
+            toast.success(t("pin.card.saved"));
+            qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        {t("pin.card.save")}
+      </Button>
     </div>
   );
 }
@@ -1041,7 +1295,7 @@ function SettingsPanel({
   onChange: () => void;
 }) {
   const navigate = useNavigate();
-  const { t, lang, setLang } = useI18n();
+  const { t } = useI18n();
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   
@@ -1085,17 +1339,6 @@ function SettingsPanel({
         </div>
         {/* Ad display duration is configured per ad set in the Ads tab. */}
 
-        <div className="space-y-1">
-          <Label>{t("settings.language")}</Label>
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value as "en" | "de")}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-        </div>
       </div>
 
       <div className="border-t pt-4 space-y-2">
@@ -1184,6 +1427,7 @@ function SettingsPanel({
         </div>
         <div className="pt-2">
           <Button
+            size="sm"
             disabled={saving}
             onClick={async () => {
               setSaving(true);
@@ -1228,6 +1472,8 @@ function SettingsPanel({
           </Button>
         </div>
       </div>
+
+      <PinCard tenantKey={tenantKey} />
 
       <div className="border-t pt-4 space-y-2">
         <div className="font-medium text-destructive">{t("settings.dangerTitle")}</div>

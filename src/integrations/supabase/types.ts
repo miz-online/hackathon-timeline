@@ -254,6 +254,7 @@ export type Database = {
           logo_url: string | null
           name: string
           past_grace_minutes: number
+          pin_hash: string | null
           template: string
         }
         Insert: {
@@ -266,6 +267,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           past_grace_minutes?: number
+          pin_hash?: string | null
           template?: string
         }
         Update: {
@@ -278,6 +280,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           past_grace_minutes?: number
+          pin_hash?: string | null
           template?: string
         }
         Relationships: []

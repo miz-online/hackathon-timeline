@@ -25,6 +25,7 @@ function Index() {
   const [key, setKey] = useState("");
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [pin, setPin] = useState("");
 
   useEffect(() => {
     const stored = getStoredTenantKey();
@@ -34,7 +35,7 @@ function Index() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      const res = await create();
+      const res = await create({ data: { pin: pin.trim() || undefined } });
       setStoredTenantKey(res.key);
       setNewKey(res.key);
     } finally {
@@ -106,6 +107,15 @@ function Index() {
             <Card className="p-6 space-y-4">
               <h2 className="text-lg font-semibold">{t("home.createTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("home.createBlurb")}</p>
+              <div className="space-y-1 text-left">
+                <label className="text-sm font-medium">{t("home.pin")}</label>
+                <Input
+                  type="password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
               <Button onClick={handleCreate} disabled={creating} className="w-full">
                 {creating ? t("home.creating") : t("home.create")}
               </Button>

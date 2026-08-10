@@ -1,0 +1,1 @@
+update public.tenants set pin_hash = null where id='81f25f19-ebff-4ab1-bba4-a8f266b87b42';
