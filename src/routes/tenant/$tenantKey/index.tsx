@@ -488,6 +488,31 @@ function PinGate({ tenantKey, onUnlocked }: { tenantKey: string; onUnlocked: () 
   );
 }
 
+function LockOnlyButton({ tenantKey }: { tenantKey: string }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const lockFn = useServerFn(lockTenantAccess);
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      title={t("nav.lockOnly")}
+      aria-label={t("nav.lockOnly")}
+      onClick={async () => {
+        try {
+          await lockFn({ data: { key: tenantKey } });
+        } catch {
+          /* ignore */
+        }
+        notifyTenantLocked();
+        qc.invalidateQueries({ queryKey: ["access", tenantKey] });
+      }}
+    >
+      <Lock className="h-4 w-4" />
+    </Button>
+  );
+}
+
 function LockButton({ tenantKey }: { tenantKey: string }) {
   const { t } = useI18n();
   const navigate = useNavigate();
