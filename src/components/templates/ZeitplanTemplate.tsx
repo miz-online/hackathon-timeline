@@ -283,7 +283,7 @@ export function ZeitplanTemplate({
                     >
                       {inGrace ? (
                         <>
-                          <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
+                          <div style={{ fontSize: "var(--time-size)", whiteSpace: "nowrap" }}>{t("display.now")}</div>
                           {endMs != null ? (
                           <div
                             style={{
@@ -300,7 +300,7 @@ export function ZeitplanTemplate({
                         </>
                       ) : showRelative ? (
                         <>
-                          <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700 }}>
+                          <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700, whiteSpace: "nowrap" }}>
                             {t("display.inMinutes", { minutes: Math.max(1, diffMin) })}
                           </div>
 
@@ -320,7 +320,7 @@ export function ZeitplanTemplate({
                         </>
                       ) : (
                         <>
-                          <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
+                          <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)", whiteSpace: "nowrap" }}>
                             {formatTime(e.time)}
                           </div>
                           {endMs != null ? (
