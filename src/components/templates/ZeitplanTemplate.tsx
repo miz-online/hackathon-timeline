@@ -103,7 +103,7 @@ export function ZeitplanTemplate({
           --list-gap: clamp(12px, 1.4vw, 20px);
           --entry-min-h: calc(2 * var(--entry-v-pad) + var(--entry-gap) + var(--title-size) * 1.2 + var(--desc-size) * 1.35);
           --entry-radius: calc((var(--entry-min-h) + 8px) / 2);
-          --time-width: clamp(120px, 12vw, 170px);
+          --time-width: clamp(170px, 15vw, 220px);
           --time-pad-top: calc((var(--entry-min-h) - var(--time-size) * 1.1) / 2);
         }
         .zp-entry {
@@ -283,7 +283,7 @@ export function ZeitplanTemplate({
                     >
                       {inGrace ? (
                         <>
-                          <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
+                          <div style={{ fontSize: "var(--time-size)", whiteSpace: "nowrap" }}>{t("display.now")}</div>
                           {endMs != null ? (
                           <div
                             style={{
@@ -300,7 +300,7 @@ export function ZeitplanTemplate({
                         </>
                       ) : showRelative ? (
                         <>
-                          <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700 }}>
+                          <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700, whiteSpace: "nowrap" }}>
                             {t("display.inMinutes", { minutes: Math.max(1, diffMin) })}
                           </div>
 
@@ -320,7 +320,7 @@ export function ZeitplanTemplate({
                         </>
                       ) : (
                         <>
-                          <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
+                          <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)", whiteSpace: "nowrap" }}>
                             {formatTime(e.time)}
                           </div>
                           {endMs != null ? (
