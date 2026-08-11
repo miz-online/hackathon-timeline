@@ -68,6 +68,7 @@ export const Route = createFileRoute("/tenant/$tenantKey/")({
 type EntryRow = {
   id: string;
   time: string;
+  end_time?: string | null;
   title: string;
   description: string;
   tags: string[];
