@@ -285,16 +285,17 @@ export function ZeitplanTemplate({
                         <>
                           <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
                           {endMs != null ? (
-                            <div
-                              style={{
-                                fontSize: "clamp(12px, 1.2vw, 16px)",
-                                opacity: 0.7,
-                                fontWeight: 500,
-                                marginTop: 2,
-                              }}
-                            >
-                              {t("display.untilTime", { time: formatTime(e.end_time!) })}
-                            </div>
+                          <div
+                            style={{
+                              fontSize: "clamp(12px, 1.2vw, 16px)",
+                              opacity: 0.7,
+                              fontWeight: 500,
+                              marginTop: 2,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t("display.untilTime", { time: formatTime(e.end_time!) })}
+                          </div>
                           ) : null}
                         </>
                       ) : showRelative ? (
@@ -309,6 +310,7 @@ export function ZeitplanTemplate({
                               opacity: 0.7,
                               fontWeight: 500,
                               marginTop: 2,
+                              whiteSpace: "nowrap",
                             }}
                           >
                             {endMs != null
@@ -328,6 +330,7 @@ export function ZeitplanTemplate({
                                 opacity: 0.7,
                                 fontWeight: 500,
                                 marginTop: 2,
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {formatTime(e.end_time!)}
