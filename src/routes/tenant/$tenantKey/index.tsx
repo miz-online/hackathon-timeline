@@ -767,7 +767,7 @@ function EntriesPanel({
             {showDay ? (
               <div className="flex items-center gap-3 pt-2 first:pt-0">
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {new Date(e.time).toLocaleDateString([], {
+                  {new Date(e.time).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", {
                     weekday: "short",
                     day: "2-digit",
                     month: "2-digit",
