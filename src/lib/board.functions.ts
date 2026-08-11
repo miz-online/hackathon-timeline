@@ -1146,6 +1146,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       })),
       entries: (entries.data ?? []).map((e) => ({
         time: e.time,
+        end_time: e.end_time,
         title: e.title,
         description: e.description,
         rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
