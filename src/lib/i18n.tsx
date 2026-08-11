@@ -340,6 +340,7 @@ const de: Dict = {
   "entries.updated": "Eintrag aktualisiert",
   "entries.form.time": "Zeit",
   "entries.form.endTime": "Endzeit (optional)",
+  "entries.form.clearEnd": "Endzeit löschen",
   "entries.form.title": "Titel",
   "entries.form.titlePh": "Begrüßung der Teilnehmer:innen",
   "entries.form.description": "Beschreibung (optional)",
