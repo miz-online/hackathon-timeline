@@ -279,6 +279,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       .insert({
         tenant_id: tenantId,
         time: e.time,
+        end_time: e.end_time ?? null,
         title: e.title,
         description: e.description,
         tags: e.tags,
