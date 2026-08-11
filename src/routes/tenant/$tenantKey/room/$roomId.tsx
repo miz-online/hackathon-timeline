@@ -156,9 +156,12 @@ function RoomDisplay() {
     );
   }
 
-  const cutoff = Date.now() - snapshot.tenant.past_grace_minutes * 60 * 1000;
-  const visible: Entry[] = snapshot.entries.filter(
-    (e) => new Date(e.time).getTime() >= cutoff,
+  const now = Date.now();
+  const cutoff = now - snapshot.tenant.past_grace_minutes * 60 * 1000;
+  const visible: Entry[] = snapshot.entries.filter((e) =>
+    e.end_time
+      ? new Date(e.end_time).getTime() >= now
+      : new Date(e.time).getTime() >= cutoff,
   );
 
   const activeTemplate = snapshot.room.template || snapshot.tenant.template;

@@ -72,14 +72,20 @@ async function requireTenantAdmin(key: string): Promise<TenantRow> {
   return rest;
 }
 
-function filterVisible<T extends { time: string; tags: string[] }>(
+function filterVisible<T extends { time: string; tags: string[]; end_time?: string | null }>(
   entries: T[],
   roomName: string,
   graceMinutes: number,
 ): T[] {
-  const cutoff = Date.now() - graceMinutes * 60 * 1000;
+  const now = Date.now();
   return entries
-    .filter((e) => new Date(e.time).getTime() >= cutoff)
+    .filter((e) => {
+      // With an end time, the entry is visible until that end time.
+      // Without one, it stays visible for the configured grace period after start.
+      if (e.end_time) return new Date(e.end_time).getTime() >= now;
+      const cutoff = now - graceMinutes * 60 * 1000;
+      return new Date(e.time).getTime() >= cutoff;
+    })
     .filter((e) => e.tags.length === 0 || e.tags.includes(roomName))
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
@@ -220,7 +226,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags, color_scheme_id, notify, notified_at")
+      .select("id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at")
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
@@ -235,6 +241,7 @@ export const listEntries = createServerFn({ method: "GET" })
 const entryInput = z.object({
   id: z.string().uuid().optional(),
   time: z.string().min(1),
+  end_time: z.string().min(1).nullable().optional(),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).default(""),
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
@@ -255,6 +262,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       .from("entries")
       .update({
         time: e.time,
+        end_time: e.end_time ?? null,
         title: e.title,
         description: e.description,
         tags: e.tags,
@@ -271,6 +279,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       .insert({
         tenant_id: tenantId,
         time: e.time,
+        end_time: e.end_time ?? null,
         title: e.title,
         description: e.description,
         tags: e.tags,
@@ -546,6 +555,7 @@ export type RoomSnapshot = {
   entries: {
     id: string;
     time: string;
+    end_time: string | null;
     title: string;
     description: string;
     tags: string[];
@@ -571,7 +581,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     if (!room) throw new Error("Unknown room");
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags, color_scheme_id")
+      .select("id, time, end_time, title, description, tags, color_scheme_id")
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
     const { data: schemes } = await supabase
@@ -590,6 +600,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const withColor = (entries ?? []).map((e) => ({
       id: e.id,
       time: e.time,
+      end_time: e.end_time,
       title: e.title,
       description: e.description,
       tags: e.tags,
@@ -1034,7 +1045,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("name", { ascending: true }),
       supabase
         .from("entries")
-        .select("time, title, description, tags, color_scheme_id, notify")
+        .select("time, end_time, title, description, tags, color_scheme_id, notify")
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
       supabase
@@ -1135,6 +1146,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       })),
       entries: (entries.data ?? []).map((e) => ({
         time: e.time,
+        end_time: e.end_time,
         title: e.title,
         description: e.description,
         rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
@@ -1393,6 +1405,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           return {
             tenant_id: tenant.id,
             time: e.time,
+            end_time: e.end_time ?? null,
             title: e.title,
             description: e.description,
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),

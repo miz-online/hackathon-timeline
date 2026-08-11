@@ -146,6 +146,7 @@ export type Database = {
           color_scheme_id: string | null
           created_at: string
           description: string
+          end_time: string | null
           id: string
           notified_at: string | null
           notify: boolean
@@ -159,6 +160,7 @@ export type Database = {
           color_scheme_id?: string | null
           created_at?: string
           description: string
+          end_time?: string | null
           id?: string
           notified_at?: string | null
           notify?: boolean
@@ -172,6 +174,7 @@ export type Database = {
           color_scheme_id?: string | null
           created_at?: string
           description?: string
+          end_time?: string | null
           id?: string
           notified_at?: string | null
           notify?: boolean

@@ -7,6 +7,7 @@ import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 type Entry = {
   id: string;
   time: string;
+  end_time?: string | null;
   title: string;
   description: string;
   tags: string[];
@@ -223,8 +224,9 @@ export function ZeitplanTemplate({
             <AnimatePresence initial={false} mode="popLayout">
               {entries.map((e) => {
                 const entryMs = new Date(e.time).getTime();
+                const endMs = e.end_time ? new Date(e.end_time).getTime() : null;
                 const diffMin = Math.ceil((entryMs - now) / 60000);
-                const inGrace = entryMs <= now;
+                const inGrace = entryMs <= now && (endMs == null || endMs > now);
                 const showRelative = !inGrace && diffMin < 15;
                 const delays = getDelays(e.id);
                 const p = e.color ? derivePalette(e.color) : defaultPalette;
@@ -280,7 +282,21 @@ export function ZeitplanTemplate({
                       }}
                     >
                       {inGrace ? (
-                        <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
+                        <>
+                          <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
+                          {endMs != null ? (
+                            <div
+                              style={{
+                                fontSize: "clamp(12px, 1.2vw, 16px)",
+                                opacity: 0.7,
+                                fontWeight: 500,
+                                marginTop: 2,
+                              }}
+                            >
+                              {t("display.untilTime", { time: formatTime(e.end_time!) })}
+                            </div>
+                          ) : null}
+                        </>
                       ) : showRelative ? (
                         <>
                           <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700 }}>
@@ -295,13 +311,29 @@ export function ZeitplanTemplate({
                               marginTop: 2,
                             }}
                           >
-                            {formatTime(e.time)}
+                            {endMs != null
+                              ? `${formatTime(e.time)} - ${formatTime(e.end_time!)}`
+                              : formatTime(e.time)}
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
-                          {formatTime(e.time)}
-                        </div>
+                        <>
+                          <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
+                            {formatTime(e.time)}
+                          </div>
+                          {endMs != null ? (
+                            <div
+                              style={{
+                                fontSize: "clamp(12px, 1.2vw, 16px)",
+                                opacity: 0.7,
+                                fontWeight: 500,
+                                marginTop: 2,
+                              }}
+                            >
+                              {formatTime(e.end_time!)}
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </div>
                     <div

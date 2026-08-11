@@ -43,6 +43,7 @@ export const roomItem = z.object({
 
 export const entryItem = z.object({
   time: z.string().min(1),
+  end_time: z.string().min(1).nullable().default(null),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).default(""),
   rooms: z.array(z.string().min(1).max(60)).max(50).default([]),
@@ -177,6 +178,12 @@ export const TENANT_JSON_SCHEMA = {
         required: ["time", "title"],
         properties: {
           time: { type: "string", format: "date-time" },
+          end_time: {
+            type: ["string", "null"],
+            format: "date-time",
+            description:
+              "Optional end time. When set, the entry stays visible until this time instead of the global grace period.",
+          },
           title: { type: "string", minLength: 1, maxLength: 200 },
           description: { type: "string", maxLength: 2000 },
           rooms: {

@@ -44,7 +44,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           if (!tNow || !rNow) return null;
           const { data: entries } = await supabaseAdmin
             .from("entries")
-            .select("id, time, title, description, tags, color_scheme_id")
+            .select("id, time, end_time, title, description, tags, color_scheme_id")
             .eq("tenant_id", tenantId);
           const { data: schemes } = await supabaseAdmin
             .from("color_schemes")
@@ -59,14 +59,20 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           });
 
           const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
-          const cutoff = Date.now() - tNow.past_grace_minutes * 60 * 1000;
+          const now = Date.now();
+          const cutoff = now - tNow.past_grace_minutes * 60 * 1000;
           const visible = (entries ?? [])
-            .filter((e) => new Date(e.time).getTime() >= cutoff)
+            .filter((e) =>
+              e.end_time
+                ? new Date(e.end_time).getTime() >= now
+                : new Date(e.time).getTime() >= cutoff,
+            )
             .filter((e) => e.tags.length === 0 || e.tags.includes(rNow.name))
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
             .map((e) => ({
               id: e.id,
               time: e.time,
+              end_time: e.end_time,
               title: e.title,
               description: e.description,
               tags: e.tags,

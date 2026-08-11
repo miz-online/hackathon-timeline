@@ -68,6 +68,7 @@ export const Route = createFileRoute("/tenant/$tenantKey/")({
 type EntryRow = {
   id: string;
   time: string;
+  end_time?: string | null;
   title: string;
   description: string;
   tags: string[];
@@ -674,7 +675,10 @@ function EntriesPanel({
   const graceMs = (graceMinutes || 0) * 60 * 1000;
   const visibleEntries = showExpired
     ? entries
-    : entries.filter((e) => new Date(e.time).getTime() + graceMs >= now);
+    : entries.filter((e) => {
+        if (e.end_time) return new Date(e.end_time).getTime() >= now;
+        return new Date(e.time).getTime() + graceMs >= now;
+      });
   const expiredCount = entries.length - visibleEntries.length;
 
   const delMut = useMutation({
@@ -758,7 +762,9 @@ function EntriesPanel({
                 <span
                   className={`mt-1 h-4 w-4 rounded-full border ${
                     new Date(e.time).getTime() <= now &&
-                    new Date(e.time).getTime() + graceMs >= now
+                    (e.end_time
+                      ? new Date(e.end_time).getTime() >= now
+                      : new Date(e.time).getTime() + graceMs >= now)
                       ? "animate-pulse"
                       : ""
                   }`}
@@ -808,6 +814,9 @@ function EntriesPanel({
                       dateStyle: "short",
                       timeStyle: "short",
                     })}
+                    {e.end_time
+                      ? ` – ${new Date(e.end_time).toLocaleString([], { timeStyle: "short" })}`
+                      : ""}
                   </span>
                   {e.tags.length === 0 ? (
                     <span className="text-xs italic text-muted-foreground">
@@ -872,6 +881,7 @@ function EntryForm({
   onSubmit: (entry: {
     id?: string;
     time: string;
+    end_time?: string | null;
     title: string;
     description: string;
     tags: string[];
@@ -883,6 +893,9 @@ function EntryForm({
   const { t } = useI18n();
   const [time, setTime] = useState(
     initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
+  );
+  const [endTime, setEndTime] = useState<string | null>(
+    initial?.end_time ? toLocalInput(initial.end_time) : null,
   );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -904,6 +917,14 @@ function EntryForm({
         <div className="space-y-1">
           <Label>{t("entries.form.time")}</Label>
           <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label>{t("entries.form.endTime")}</Label>
+          <Input
+            type="datetime-local"
+            value={endTime ?? ""}
+            onChange={(e) => setEndTime(e.target.value || null)}
+          />
         </div>
         <div className="space-y-1">
           <Label>{t("entries.form.title")}</Label>
@@ -999,12 +1020,18 @@ function EntryForm({
           onClick={async () => {
             setSaving(true);
             try {
+              const startMs = new Date(time).getTime();
+              const endMs = endTime ? new Date(endTime).getTime() : null;
+              if (endMs != null && endMs <= startMs) {
+                throw new Error(t("entries.form.endTimeAfterStart"));
+              }
               // Drop any selected room names that no longer exist
               const validNames = new Set(rooms.map((r) => r.name));
               const tags = selectedRooms.filter((n) => validNames.has(n));
               await onSubmit({
                 id: initial?.id,
                 time: new Date(time).toISOString(),
+                end_time: endMs != null ? new Date(endTime!).toISOString() : null,
                 title: title.trim(),
                 description: description.trim(),
                 tags,
