@@ -881,6 +881,7 @@ function EntryForm({
   onSubmit: (entry: {
     id?: string;
     time: string;
+    end_time?: string | null;
     title: string;
     description: string;
     tags: string[];
