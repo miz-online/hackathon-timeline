@@ -70,6 +70,7 @@ const en: Dict = {
   "entries.created": "Entry created",
   "entries.updated": "Entry updated",
   "entries.form.time": "Time",
+  "entries.form.endTime": "End time (optional)",
   "entries.form.title": "Title",
   "entries.form.titlePh": "Begrüßung der Teilnehmer:innen",
   "entries.form.description": "Description (optional)",
