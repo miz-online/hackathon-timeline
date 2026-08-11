@@ -333,7 +333,7 @@ export function ZeitplanTemplate({
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {formatTime(e.end_time!)}
+                              {t("display.untilTime", { time: formatTime(e.end_time!) })}
                             </div>
                           ) : null}
                         </>
