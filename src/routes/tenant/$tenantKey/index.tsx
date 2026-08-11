@@ -926,7 +926,7 @@ function EntryForm({
             onChange={(e) => setEndTime(e.target.value || null)}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 sm:col-span-2">
           <Label>{t("entries.form.title")}</Label>
           <Input
             value={title}
