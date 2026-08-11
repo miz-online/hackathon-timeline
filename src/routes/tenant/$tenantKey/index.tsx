@@ -911,7 +911,9 @@ function EntryForm({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="flex max-h-full flex-col overflow-hidden gap-3">
+      <div className="space-y-3 overflow-y-auto pr-1">
+
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
