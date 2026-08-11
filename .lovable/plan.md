@@ -17,7 +17,7 @@ Add an optional end time to time entries. When set, it controls how long the ent
 **Room display (Zeitplan template), time column**
 - More than 15 min away: start `hh:mm` on top, end `hh:mm` below in the smaller dimmed style.
 - Less than 15 min away: `in 5 min` on top, subtitle `hh:mm - hh:mm` (start - end).
-- Currently running (NOW): `NOW` / `JETZT` on top, subtitle `bis hh:mm` ("until hh:mm" in English).
+- Currently running (NOW): `NOW` / `JETZT` on top, subtitle `bis hh:mm` ("till hh:mm" in English).
 - Entries without end time look exactly as today.
 
 **Import / Export**
