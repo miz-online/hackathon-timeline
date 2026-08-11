@@ -940,7 +940,7 @@ function EntryForm({
 
   return (
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
-      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1">
+      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-3 py-2">
 
 
       <div className="grid gap-3 sm:grid-cols-2">
