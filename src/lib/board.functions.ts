@@ -72,14 +72,21 @@ async function requireTenantAdmin(key: string): Promise<TenantRow> {
   return rest;
 }
 
-function filterVisible<T extends { time: string; tags: string[] }>(
+function filterVisible<T extends { time: string; tags: string[]; end_time?: string | null }>(
   entries: T[],
   roomName: string,
   graceMinutes: number,
 ): T[] {
   const cutoff = Date.now() - graceMinutes * 60 * 1000;
   return entries
-    .filter((e) => new Date(e.time).getTime() >= cutoff)
+    .filter((e) => {
+      const hideAt = e.end_time ? new Date(e.end_time).getTime() : new Date(e.time).getTime() + cutoff + new Date(e.time).getTime() - new Date(e.time).getTime();
+      // effective hide time: end_time if present, else start + grace
+      const effHide = e.end_time
+        ? new Date(e.end_time).getTime()
+        : new Date(e.time).getTime() + graceMinutes * 60 * 1000;
+      return effHide >= Date.now() - 1 && (e.end_time ? true : new Date(e.time).getTime() >= cutoff);
+    })
     .filter((e) => e.tags.length === 0 || e.tags.includes(roomName))
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
