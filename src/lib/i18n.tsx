@@ -556,9 +556,19 @@ function detectInitial(): Lang {
   if (typeof window === "undefined") return "en";
   const saved = window.localStorage.getItem(STORAGE_KEY);
   if (saved === "en" || saved === "de") return saved;
-  const nav = window.navigator?.language?.toLowerCase() ?? "";
-  return nav.startsWith("de") ? "de" : "en";
+  const prefs =
+    window.navigator?.languages && window.navigator.languages.length
+      ? window.navigator.languages
+      : [window.navigator?.language ?? ""];
+  // Pick the first browser preference that we support, in order.
+  for (const raw of prefs) {
+    const code = String(raw || "").toLowerCase();
+    if (code.startsWith("en")) return "en";
+    if (code.startsWith("de")) return "de";
+  }
+  return "en";
 }
+
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
