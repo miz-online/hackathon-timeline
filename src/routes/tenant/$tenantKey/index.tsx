@@ -894,6 +894,9 @@ function EntryForm({
   const [time, setTime] = useState(
     initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
   );
+  const [endTime, setEndTime] = useState<string | null>(
+    initial?.end_time ? toLocalInput(initial.end_time) : null,
+  );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [selectedRooms, setSelectedRooms] = useState<string[]>(initial?.tags ?? []);
