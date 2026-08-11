@@ -1013,7 +1013,8 @@ function EntryForm({
           {t("entries.form.notify")}
         </Label>
       </div>
-      <div className="flex gap-2 justify-end">
+      </div>
+      <div className="flex gap-2 justify-end shrink-0 border-t pt-3 bg-background">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
         </Button>
