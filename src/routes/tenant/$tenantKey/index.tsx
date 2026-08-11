@@ -1013,7 +1013,7 @@ function EntryForm({
         </div>
 
         {/* Right column (2): title, description, rooms */}
-        <div className="col-span-2 space-y-3">
+        <div className="col-span-1 sm:col-span-2 space-y-3">
           <div className="space-y-1">
             <Label>{t("entries.form.title")}</Label>
             <Input
