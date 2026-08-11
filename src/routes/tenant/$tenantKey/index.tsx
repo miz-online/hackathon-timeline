@@ -942,125 +942,129 @@ function EntryForm({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
-      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-3 py-2">
-
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label>{t("entries.form.time")}</Label>
-          <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t("entries.form.endTime")}</Label>
-          <div className="flex items-center gap-1">
-            <Input
-              type="time"
-              value={endTime ?? ""}
-              onChange={(e) => setEndTime(e.target.value || null)}
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+        {/* Left column (1): time, end time, color scheme, posting option */}
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>{t("entries.form.time")}</Label>
+            <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>{t("entries.form.endTime")}</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                type="time"
+                value={endTime ?? ""}
+                onChange={(e) => setEndTime(e.target.value || null)}
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    disabled={!endTime}
+                    onClick={() => setEndTime(null)}
+                    aria-label={t("entries.form.clearEnd")}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("entries.form.clearEnd")}</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>{t("entries.form.scheme")}</Label>
+            <div className="flex items-center gap-2">
+              <span
+                className="h-6 w-6 shrink-0 rounded-full border"
+                style={{
+                  backgroundColor: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+                }}
+              />
+              <select
+                value={schemeId}
+                onChange={(e) => setSchemeId(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">{t("colors.default")}</option>
+                {schemes.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="notify"
+              checked={notify}
+              onCheckedChange={(c) => setNotify(c === true)}
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  disabled={!endTime}
-                  onClick={() => setEndTime(null)}
-                  aria-label={t("entries.form.clearEnd")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("entries.form.clearEnd")}</TooltipContent>
-            </Tooltip>
+            <Label htmlFor="notify" className="text-sm font-normal">
+              {t("entries.form.notify")}
+            </Label>
           </div>
         </div>
 
-        <div className="space-y-1 sm:col-span-2">
-          <Label>{t("entries.form.title")}</Label>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t("entries.form.titlePh")}
-          />
+        {/* Right column (2): title, description, rooms */}
+        <div className="col-span-1 sm:col-span-2 space-y-3">
+          <div className="space-y-1">
+            <Label>{t("entries.form.title")}</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t("entries.form.titlePh")}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>{t("entries.form.description")}</Label>
+            <Textarea
+              rows={5}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t("entries.form.descriptionPh")}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("entries.form.rooms")}</Label>
+            <div className="flex flex-wrap gap-2">
+              {rooms.length === 0 ? (
+                <span className="text-xs italic text-muted-foreground">{t("entries.allRooms")}</span>
+              ) : (
+                rooms.map((r) => {
+                  const active = selectedRooms.includes(r.name);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleRoom(r.name)}
+                      className={
+                        "px-3 py-1 rounded-full border text-sm transition " +
+                        (active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-input hover:bg-accent")
+                      }
+                    >
+                      {r.name}
+                    </button>
+                  );
+                })
+              )}
+              {rooms.length > 0 && selectedRooms.length === 0 ? (
+                <span className="px-3 py-1 rounded-full border border-dashed text-xs italic text-muted-foreground">
+                  {t("entries.allRooms")}
+                </span>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
+          </div>
         </div>
-      </div>
-      <div className="space-y-1">
-        <Label>{t("entries.form.description")}</Label>
-        <Textarea
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder={t("entries.form.descriptionPh")}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>{t("entries.form.rooms")}</Label>
-        <div className="flex flex-wrap gap-2">
-          {rooms.length === 0 ? (
-            <span className="text-xs italic text-muted-foreground">{t("entries.allRooms")}</span>
-          ) : (
-            rooms.map((r) => {
-              const active = selectedRooms.includes(r.name);
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => toggleRoom(r.name)}
-                  className={
-                    "px-3 py-1 rounded-full border text-sm transition " +
-                    (active
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-input hover:bg-accent")
-                  }
-                >
-                  {r.name}
-                </button>
-              );
-            })
-          )}
-          {rooms.length > 0 && selectedRooms.length === 0 ? (
-            <span className="px-3 py-1 rounded-full border border-dashed text-xs italic text-muted-foreground">
-              {t("entries.allRooms")}
-            </span>
-          ) : null}
-        </div>
-        <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
-      </div>
-      <div className="space-y-1">
-        <Label>{t("entries.form.scheme")}</Label>
-        <div className="flex items-center gap-2">
-          <span
-            className="h-6 w-6 shrink-0 rounded-full border"
-            style={{
-              backgroundColor: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
-            }}
-          />
-          <select
-            value={schemeId}
-            onChange={(e) => setSchemeId(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">{t("colors.default")}</option>
-            {schemes.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="notify"
-          checked={notify}
-          onCheckedChange={(c) => setNotify(c === true)}
-        />
-        <Label htmlFor="notify" className="text-sm font-normal">
-          {t("entries.form.notify")}
-        </Label>
       </div>
       </div>
       <div className="flex gap-2 justify-end shrink-0 border-t px-3 pt-3 bg-background">
