@@ -943,7 +943,7 @@ function EntryForm({
     <TooltipProvider delayDuration={200}>
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
-      <div className="grid gap-4 grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         {/* Left column (1): time, end time, color scheme, posting option */}
         <div className="space-y-3">
           <div className="space-y-1">
