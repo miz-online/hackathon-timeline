@@ -1056,7 +1056,7 @@ function EntryForm({
         </Label>
       </div>
       </div>
-      <div className="flex gap-2 justify-end shrink-0 border-t pt-3 bg-background">
+      <div className="flex gap-2 justify-end shrink-0 border-t px-3 pt-3 bg-background">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
         </Button>
