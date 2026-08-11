@@ -241,6 +241,7 @@ export const listEntries = createServerFn({ method: "GET" })
 const entryInput = z.object({
   id: z.string().uuid().optional(),
   time: z.string().min(1),
+  end_time: z.string().min(1).nullable().optional(),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).default(""),
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
