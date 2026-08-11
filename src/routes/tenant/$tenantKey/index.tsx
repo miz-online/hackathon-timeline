@@ -894,8 +894,15 @@ function EntryForm({
   const [time, setTime] = useState(
     initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
   );
+  // end time is time-only (hh:mm); its date always comes from the start time's date
   const [endTime, setEndTime] = useState<string | null>(
-    initial?.end_time ? toLocalInput(initial.end_time) : null,
+    initial?.end_time
+      ? (() => {
+          const d = new Date(initial.end_time!);
+          const p = (n: number) => n.toString().padStart(2, "0");
+          return `${p(d.getHours())}:${p(d.getMinutes())}`;
+        })()
+      : null,
   );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
