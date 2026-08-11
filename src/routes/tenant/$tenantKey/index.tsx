@@ -756,8 +756,27 @@ function EntriesPanel({
             {entries.length === 0 ? t("entries.empty") : t("entries.noneVisible")}
           </Card>
         ) : (
-          visibleEntries.map((e) => (
-            <Card key={e.id} className="p-4 flex items-start justify-between gap-4">
+          visibleEntries.map((e, idx) => {
+            const dayKey = new Date(e.time).toDateString();
+            const prevDayKey =
+              idx > 0 ? new Date(visibleEntries[idx - 1].time).toDateString() : null;
+            const showDay = dayKey !== prevDayKey;
+            return (
+            <div key={e.id} className="space-y-2">
+            {showDay ? (
+              <div className="flex items-center gap-3 pt-2 first:pt-0">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {new Date(e.time).toLocaleDateString([], {
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })}
+                </span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            ) : null}
+            <Card className="p-4 flex items-start justify-between gap-4">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <span
                   className={`mt-1 h-4 w-4 rounded-full border ${
