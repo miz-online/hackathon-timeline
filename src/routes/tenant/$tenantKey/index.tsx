@@ -814,6 +814,9 @@ function EntriesPanel({
                       dateStyle: "short",
                       timeStyle: "short",
                     })}
+                    {e.end_time
+                      ? ` – ${new Date(e.end_time).toLocaleString([], { timeStyle: "short" })}`
+                      : ""}
                   </span>
                   {e.tags.length === 0 ? (
                     <span className="text-xs italic text-muted-foreground">
