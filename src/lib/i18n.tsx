@@ -438,6 +438,7 @@ const de: Dict = {
   "display.reconnecting": "Neu verbinden…",
   "display.inMinutes": "in {minutes} min",
   "display.now": "JETZT",
+  "display.untilTime": "bis {time}",
   "admin.tabs.ads": "Anzeigen",
   "settings.template.ads": "Anzeigen (Bild-Slideshow)",
   "settings.adSeconds": "Anzeigedauer je Anzeige (Sekunden)",
