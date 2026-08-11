@@ -940,6 +940,7 @@ function EntryForm({
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
       <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-3 py-2">
 
