@@ -957,17 +957,22 @@ function EntryForm({
               value={endTime ?? ""}
               onChange={(e) => setEndTime(e.target.value || null)}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              disabled={!endTime}
-              onClick={() => setEndTime(null)}
-              aria-label={t("entries.cancel")}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  disabled={!endTime}
+                  onClick={() => setEndTime(null)}
+                  aria-label={t("entries.form.clearEnd")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("entries.form.clearEnd")}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
