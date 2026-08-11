@@ -226,7 +226,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags, color_scheme_id, notify, notified_at")
+      .select("id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at")
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
