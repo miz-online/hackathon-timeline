@@ -158,11 +158,15 @@ function RoomDisplay() {
 
   const now = Date.now();
   const cutoff = now - snapshot.tenant.past_grace_minutes * 60 * 1000;
-  const visible: Entry[] = snapshot.entries.filter((e) =>
-    e.end_time
-      ? new Date(e.end_time).getTime() >= now
-      : new Date(e.time).getTime() >= cutoff,
-  );
+  const todayKey = new Date().toDateString();
+  const visible: Entry[] = snapshot.entries
+    // Only today's entries belong on the room timeline.
+    .filter((e) => new Date(e.time).toDateString() === todayKey)
+    .filter((e) =>
+      e.end_time
+        ? new Date(e.end_time).getTime() >= now
+        : new Date(e.time).getTime() >= cutoff,
+    );
 
   const activeTemplate = snapshot.room.template || snapshot.tenant.template;
   if (activeTemplate === "ads" || activeTemplate?.startsWith("ads:")) {
