@@ -878,7 +878,9 @@ function EntriesPanel({
                 </Button>
               </div>
             </Card>
-          ))
+            </div>
+            );
+          })
         )}
       </div>
     </div>
