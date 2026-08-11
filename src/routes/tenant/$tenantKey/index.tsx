@@ -916,6 +916,14 @@ function EntryForm({
           <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <div className="space-y-1">
+          <Label>{t("entries.form.endTime")}</Label>
+          <Input
+            type="datetime-local"
+            value={endTime ?? ""}
+            onChange={(e) => setEndTime(e.target.value || null)}
+          />
+        </div>
+        <div className="space-y-1">
           <Label>{t("entries.form.title")}</Label>
           <Input
             value={title}
