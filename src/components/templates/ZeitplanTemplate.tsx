@@ -330,6 +330,7 @@ export function ZeitplanTemplate({
                                 opacity: 0.7,
                                 fontWeight: 500,
                                 marginTop: 2,
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {formatTime(e.end_time!)}
