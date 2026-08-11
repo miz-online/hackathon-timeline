@@ -77,15 +77,14 @@ function filterVisible<T extends { time: string; tags: string[]; end_time?: stri
   roomName: string,
   graceMinutes: number,
 ): T[] {
-  const cutoff = Date.now() - graceMinutes * 60 * 1000;
+  const now = Date.now();
   return entries
     .filter((e) => {
-      const hideAt = e.end_time ? new Date(e.end_time).getTime() : new Date(e.time).getTime() + cutoff + new Date(e.time).getTime() - new Date(e.time).getTime();
-      // effective hide time: end_time if present, else start + grace
-      const effHide = e.end_time
-        ? new Date(e.end_time).getTime()
-        : new Date(e.time).getTime() + graceMinutes * 60 * 1000;
-      return effHide >= Date.now() - 1 && (e.end_time ? true : new Date(e.time).getTime() >= cutoff);
+      // With an end time, the entry is visible until that end time.
+      // Without one, it stays visible for the configured grace period after start.
+      if (e.end_time) return new Date(e.end_time).getTime() >= now;
+      const cutoff = now - graceMinutes * 60 * 1000;
+      return new Date(e.time).getTime() >= cutoff;
     })
     .filter((e) => e.tags.length === 0 || e.tags.includes(roomName))
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
