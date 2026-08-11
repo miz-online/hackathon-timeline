@@ -282,7 +282,21 @@ export function ZeitplanTemplate({
                       }}
                     >
                       {inGrace ? (
-                        <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
+                        <>
+                          <div style={{ fontSize: "var(--time-size)" }}>{t("display.now")}</div>
+                          {endMs != null ? (
+                            <div
+                              style={{
+                                fontSize: "clamp(12px, 1.2vw, 16px)",
+                                opacity: 0.7,
+                                fontWeight: 500,
+                                marginTop: 2,
+                              }}
+                            >
+                              {t("display.untilTime", { time: formatTime(e.end_time!) })}
+                            </div>
+                          ) : null}
+                        </>
                       ) : showRelative ? (
                         <>
                           <div style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 700 }}>
@@ -297,13 +311,29 @@ export function ZeitplanTemplate({
                               marginTop: 2,
                             }}
                           >
-                            {formatTime(e.time)}
+                            {endMs != null
+                              ? `${formatTime(e.time)} - ${formatTime(e.end_time!)}`
+                              : formatTime(e.time)}
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
-                          {formatTime(e.time)}
-                        </div>
+                        <>
+                          <div style={{ fontSize: "clamp(18px, 2.1vw, 28px)" }}>
+                            {formatTime(e.time)}
+                          </div>
+                          {endMs != null ? (
+                            <div
+                              style={{
+                                fontSize: "clamp(12px, 1.2vw, 16px)",
+                                opacity: 0.7,
+                                fontWeight: 500,
+                                marginTop: 2,
+                              }}
+                            >
+                              {formatTime(e.end_time!)}
+                            </div>
+                          ) : null}
+                        </>
                       )}
                     </div>
                     <div
