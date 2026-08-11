@@ -44,7 +44,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           if (!tNow || !rNow) return null;
           const { data: entries } = await supabaseAdmin
             .from("entries")
-            .select("id, time, title, description, tags, color_scheme_id")
+            .select("id, time, end_time, title, description, tags, color_scheme_id")
             .eq("tenant_id", tenantId);
           const { data: schemes } = await supabaseAdmin
             .from("color_schemes")
