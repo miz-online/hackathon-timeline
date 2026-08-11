@@ -1,0 +1,1 @@
+ALTER TABLE public.entries ADD COLUMN end_time timestamp with time zone;
