@@ -675,7 +675,10 @@ function EntriesPanel({
   const graceMs = (graceMinutes || 0) * 60 * 1000;
   const visibleEntries = showExpired
     ? entries
-    : entries.filter((e) => new Date(e.time).getTime() + graceMs >= now);
+    : entries.filter((e) => {
+        if (e.end_time) return new Date(e.end_time).getTime() >= now;
+        return new Date(e.time).getTime() + graceMs >= now;
+      });
   const expiredCount = entries.length - visibleEntries.length;
 
   const delMut = useMutation({
