@@ -727,7 +727,7 @@ function EntriesPanel({
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
           </DialogHeader>
