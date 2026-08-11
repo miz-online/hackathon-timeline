@@ -659,7 +659,7 @@ function EntriesPanel({
   showExpired: boolean;
   onChange: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const upsertFn = useServerFn(upsertEntry);
