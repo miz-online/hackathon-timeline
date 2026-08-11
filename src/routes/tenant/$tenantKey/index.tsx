@@ -950,12 +950,26 @@ function EntryForm({
         </div>
         <div className="space-y-1">
           <Label>{t("entries.form.endTime")}</Label>
-          <Input
-            type="time"
-            value={endTime ?? ""}
-            onChange={(e) => setEndTime(e.target.value || null)}
-          />
+          <div className="flex items-center gap-1">
+            <Input
+              type="time"
+              value={endTime ?? ""}
+              onChange={(e) => setEndTime(e.target.value || null)}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              disabled={!endTime}
+              onClick={() => setEndTime(null)}
+              aria-label={t("entries.cancel")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+
         <div className="space-y-1 sm:col-span-2">
           <Label>{t("entries.form.title")}</Label>
           <Input
