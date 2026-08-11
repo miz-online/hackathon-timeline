@@ -338,6 +338,7 @@ const de: Dict = {
   "entries.created": "Eintrag angelegt",
   "entries.updated": "Eintrag aktualisiert",
   "entries.form.time": "Zeit",
+  "entries.form.endTime": "Endzeit (optional)",
   "entries.form.title": "Titel",
   "entries.form.titlePh": "Begrüßung der Teilnehmer:innen",
   "entries.form.description": "Beschreibung (optional)",
