@@ -1108,6 +1108,7 @@ function EntryForm({
         </Button>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
 
