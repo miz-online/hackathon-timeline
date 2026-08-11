@@ -581,7 +581,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     if (!room) throw new Error("Unknown room");
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
-      .select("id, time, title, description, tags, color_scheme_id")
+      .select("id, time, end_time, title, description, tags, color_scheme_id")
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
     const { data: schemes } = await supabase
