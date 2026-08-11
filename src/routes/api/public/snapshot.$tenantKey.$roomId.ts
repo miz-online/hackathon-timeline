@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const { data: entries } = await supabaseAdmin
           .from("entries")
-          .select("id, time, title, description, tags, color_scheme_id")
+          .select("id, time, end_time, title, description, tags, color_scheme_id")
           .eq("tenant_id", tenant.id);
 
         const { data: schemes } = await supabaseAdmin
