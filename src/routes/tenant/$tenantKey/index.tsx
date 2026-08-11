@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -727,7 +727,7 @@ function EntriesPanel({
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden">
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:p-3">
           <DialogHeader>
             <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
           </DialogHeader>
@@ -940,7 +940,7 @@ function EntryForm({
 
   return (
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
-      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1">
+      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-3 py-2">
 
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -950,12 +950,26 @@ function EntryForm({
         </div>
         <div className="space-y-1">
           <Label>{t("entries.form.endTime")}</Label>
-          <Input
-            type="time"
-            value={endTime ?? ""}
-            onChange={(e) => setEndTime(e.target.value || null)}
-          />
+          <div className="flex items-center gap-1">
+            <Input
+              type="time"
+              value={endTime ?? ""}
+              onChange={(e) => setEndTime(e.target.value || null)}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              disabled={!endTime}
+              onClick={() => setEndTime(null)}
+              aria-label={t("entries.cancel")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
+
         <div className="space-y-1 sm:col-span-2">
           <Label>{t("entries.form.title")}</Label>
           <Input
@@ -1042,7 +1056,7 @@ function EntryForm({
         </Label>
       </div>
       </div>
-      <div className="flex gap-2 justify-end shrink-0 border-t pt-3 bg-background">
+      <div className="flex gap-2 justify-end shrink-0 border-t px-3 pt-3 bg-background">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
         </Button>
