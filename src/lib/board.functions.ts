@@ -1405,6 +1405,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           return {
             tenant_id: tenant.id,
             time: e.time,
+            end_time: e.end_time ?? null,
             title: e.title,
             description: e.description,
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
