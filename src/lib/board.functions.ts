@@ -600,6 +600,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const withColor = (entries ?? []).map((e) => ({
       id: e.id,
       time: e.time,
+      end_time: e.end_time,
       title: e.title,
       description: e.description,
       tags: e.tags,
