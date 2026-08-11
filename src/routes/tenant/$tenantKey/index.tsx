@@ -894,8 +894,15 @@ function EntryForm({
   const [time, setTime] = useState(
     initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
   );
+  // end time is time-only (hh:mm); its date always comes from the start time's date
   const [endTime, setEndTime] = useState<string | null>(
-    initial?.end_time ? toLocalInput(initial.end_time) : null,
+    initial?.end_time
+      ? (() => {
+          const d = new Date(initial.end_time!);
+          const p = (n: number) => n.toString().padStart(2, "0");
+          return `${p(d.getHours())}:${p(d.getMinutes())}`;
+        })()
+      : null,
   );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -923,7 +930,7 @@ function EntryForm({
         <div className="space-y-1">
           <Label>{t("entries.form.endTime")}</Label>
           <Input
-            type="datetime-local"
+            type="time"
             value={endTime ?? ""}
             onChange={(e) => setEndTime(e.target.value || null)}
           />
@@ -1024,9 +1031,16 @@ function EntryForm({
             setSaving(true);
             try {
               const startMs = new Date(time).getTime();
-              const endMs = endTime ? new Date(endTime).getTime() : null;
-              if (endMs != null && endMs <= startMs) {
-                throw new Error(t("entries.form.endTimeAfterStart"));
+              // Build end from the start time's date plus the entered hh:mm.
+              // If that would be at or before the start (crossing midnight),
+              // auto-roll to the next day.
+              let endMs: number | null = null;
+              if (endTime) {
+                const [eh, em] = endTime.split(":").map(Number);
+                const end = new Date(startMs);
+                end.setHours(eh, em, 0, 0);
+                if (end.getTime() <= startMs) end.setDate(end.getDate() + 1);
+                endMs = end.getTime();
               }
               // Drop any selected room names that no longer exist
               const validNames = new Set(rooms.map((r) => r.name));
@@ -1034,7 +1048,7 @@ function EntryForm({
               await onSubmit({
                 id: initial?.id,
                 time: new Date(time).toISOString(),
-                end_time: endMs != null ? new Date(endTime!).toISOString() : null,
+                end_time: endMs != null ? new Date(endMs).toISOString() : null,
                 title: title.trim(),
                 description: description.trim(),
                 tags,
