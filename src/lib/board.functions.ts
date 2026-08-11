@@ -555,6 +555,7 @@ export type RoomSnapshot = {
   entries: {
     id: string;
     time: string;
+    end_time: string | null;
     title: string;
     description: string;
     tags: string[];
