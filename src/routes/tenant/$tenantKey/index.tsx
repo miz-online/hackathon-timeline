@@ -930,7 +930,7 @@ function EntryForm({
         <div className="space-y-1">
           <Label>{t("entries.form.endTime")}</Label>
           <Input
-            type="datetime-local"
+            type="time"
             value={endTime ?? ""}
             onChange={(e) => setEndTime(e.target.value || null)}
           />
