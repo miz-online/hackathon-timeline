@@ -43,6 +43,7 @@ export const roomItem = z.object({
 
 export const entryItem = z.object({
   time: z.string().min(1),
+  end_time: z.string().min(1).nullable().default(null),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).default(""),
   rooms: z.array(z.string().min(1).max(60)).max(50).default([]),
