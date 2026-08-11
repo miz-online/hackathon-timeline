@@ -727,7 +727,7 @@ function EntriesPanel({
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
           </DialogHeader>
@@ -911,7 +911,9 @@ function EntryForm({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
+      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1">
+
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
@@ -1011,7 +1013,8 @@ function EntryForm({
           {t("entries.form.notify")}
         </Label>
       </div>
-      <div className="flex gap-2 justify-end">
+      </div>
+      <div className="flex gap-2 justify-end shrink-0 border-t pt-3 bg-background">
         <Button variant="ghost" onClick={onCancel} disabled={saving}>
           {t("entries.cancel")}
         </Button>
