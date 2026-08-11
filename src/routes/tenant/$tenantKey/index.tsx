@@ -1020,12 +1020,18 @@ function EntryForm({
           onClick={async () => {
             setSaving(true);
             try {
+              const startMs = new Date(time).getTime();
+              const endMs = endTime ? new Date(endTime).getTime() : null;
+              if (endMs != null && endMs <= startMs) {
+                throw new Error(t("entries.form.endTimeAfterStart"));
+              }
               // Drop any selected room names that no longer exist
               const validNames = new Set(rooms.map((r) => r.name));
               const tags = selectedRooms.filter((n) => validNames.has(n));
               await onSubmit({
                 id: initial?.id,
                 time: new Date(time).toISOString(),
+                end_time: endMs != null ? new Date(endTime!).toISOString() : null,
                 title: title.trim(),
                 description: description.trim(),
                 tags,
