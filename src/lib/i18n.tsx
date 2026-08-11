@@ -169,6 +169,7 @@ const en: Dict = {
   "display.reconnecting": "Reconnecting…",
   "display.inMinutes": "in {minutes} min",
   "display.now": "NOW",
+  "display.untilTime": "till {time}",
   "admin.tabs.ads": "Ads",
   "settings.template.ads": "Ads (image slideshow)",
   "settings.adSeconds": "Ad display time (seconds)",
