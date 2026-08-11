@@ -54,6 +54,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
@@ -939,6 +940,7 @@ function EntryForm({
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="flex flex-1 min-h-0 flex-col overflow-hidden gap-3">
       <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-3 py-2">
 
@@ -956,17 +958,22 @@ function EntryForm({
               value={endTime ?? ""}
               onChange={(e) => setEndTime(e.target.value || null)}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="shrink-0"
-              disabled={!endTime}
-              onClick={() => setEndTime(null)}
-              aria-label={t("entries.cancel")}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  disabled={!endTime}
+                  onClick={() => setEndTime(null)}
+                  aria-label={t("entries.form.clearEnd")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("entries.form.clearEnd")}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -1101,6 +1108,7 @@ function EntryForm({
         </Button>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
 
