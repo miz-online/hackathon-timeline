@@ -762,7 +762,9 @@ function EntriesPanel({
                 <span
                   className={`mt-1 h-4 w-4 rounded-full border ${
                     new Date(e.time).getTime() <= now &&
-                    new Date(e.time).getTime() + graceMs >= now
+                    (e.end_time
+                      ? new Date(e.end_time).getTime() >= now
+                      : new Date(e.time).getTime() + graceMs >= now)
                       ? "animate-pulse"
                       : ""
                   }`}
