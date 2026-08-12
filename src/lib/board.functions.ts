@@ -256,7 +256,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { data: rows, error } = await supabase
       .from("entries")
       .select(
-        "id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity",
+        "id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin",
       )
       .eq("tenant_id", id)
       .order("time", { ascending: true });
@@ -283,6 +283,7 @@ const entryInput = z.object({
   background_align: z.enum(ENTRY_BG_ALIGNMENTS).default("right-top"),
   background_height: z.number().int().min(8).max(2000).default(80),
   background_opacity: z.number().int().min(0).max(100).default(100),
+  background_margin: z.number().int().min(0).max(500).default(0),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
@@ -304,6 +305,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       background_align: e.background_align,
       background_height: e.background_height,
       background_opacity: e.background_opacity,
+      background_margin: e.background_margin,
     };
     if (e.id) {
       const { error } = await supabase
@@ -678,6 +680,7 @@ export type RoomSnapshot = {
     background_align: EntryBgAlign;
     background_height: number;
     background_opacity: number;
+    background_margin: number;
   }[];
 
   ads: { id: string; name: string; url: string; content_type: string }[];
@@ -701,7 +704,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
       .select(
-        "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity",
+        "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin",
       )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
@@ -730,6 +733,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       background_align: (e.background_align ?? "right-top") as EntryBgAlign,
       background_height: e.background_height ?? 80,
       background_opacity: e.background_opacity ?? 100,
+      background_margin: e.background_margin ?? 0,
     }));
 
     return {
@@ -1172,7 +1176,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       supabase
         .from("entries")
         .select(
-          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity",
+          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin",
         )
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
@@ -1283,6 +1287,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         background_align: (e.background_align ?? "right-top") as EntryBgAlign,
         background_height: e.background_height ?? 80,
         background_opacity: e.background_opacity ?? 100,
+        background_margin: e.background_margin ?? 0,
       });
     }
 
@@ -1572,6 +1577,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           background_align: string;
           background_height: number;
           background_opacity: number;
+          background_margin: number;
         }[] = [];
         for (const e of p.entries) {
           for (const ref of e.rooms) {
@@ -1617,6 +1623,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             background_align: e.background_align,
             background_height: e.background_height,
             background_opacity: e.background_opacity,
+            background_margin: e.background_margin,
           });
         }
         const { error } = await supabase.from("entries").insert(rows);
