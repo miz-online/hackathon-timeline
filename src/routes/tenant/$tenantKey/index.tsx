@@ -1140,7 +1140,7 @@ function EntryForm({
               }}
             />
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-              {/* left: preview, upload/download/remove, opacity */}
+              {/* left: preview, upload/download/remove, tint */}
               <div className="space-y-2">
                 <div className="flex gap-3 items-start">
                   <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
@@ -1207,48 +1207,6 @@ function EntryForm({
                     ) : null}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">
-                    {t("entries.form.bgOpacity")}: {bgOpacity}%
-                  </Label>
-                  <Input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={bgOpacity}
-                    onChange={(e) => setBgOpacity(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              {/* right: alignment, size, margin */}
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">{t("entries.form.bgAlign")}</Label>
-                  <select
-                    value={bgAlign}
-                    onChange={(e) => setBgAlign(e.target.value as EntryBgAlign)}
-                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    {ENTRY_BG_ALIGNMENTS.map((a) => (
-                      <option key={a} value={a}>
-                        {t(`entries.form.bgAlign.${a}`)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {bgAlign === "right-top" || bgAlign === "right-bottom" ? (
-                  <div className="space-y-1">
-                    <Label className="text-xs">{t("entries.form.bgHeight")}</Label>
-                    <Input
-                      type="number"
-                      min={8}
-                      max={2000}
-                      value={bgHeight}
-                      onChange={(e) => setBgHeight(Number(e.target.value) || 8)}
-                    />
-                  </div>
-                ) : null}
                 {tintable ? (
                   <div className="space-y-1">
                     <Label className="text-xs">{t("entries.form.bgTint")}</Label>
@@ -1286,6 +1244,48 @@ function EntryForm({
                     <p className="text-xs text-muted-foreground">
                       {t("entries.form.bgTintHint")}
                     </p>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* right: opacity, alignment, size, margin */}
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    {t("entries.form.bgOpacity")}: {bgOpacity}%
+                  </Label>
+                  <Input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={bgOpacity}
+                    onChange={(e) => setBgOpacity(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("entries.form.bgAlign")}</Label>
+                  <select
+                    value={bgAlign}
+                    onChange={(e) => setBgAlign(e.target.value as EntryBgAlign)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    {ENTRY_BG_ALIGNMENTS.map((a) => (
+                      <option key={a} value={a}>
+                        {t(`entries.form.bgAlign.${a}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {bgAlign === "right-top" || bgAlign === "right-bottom" ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgHeight")}</Label>
+                    <Input
+                      type="number"
+                      min={8}
+                      max={2000}
+                      value={bgHeight}
+                      onChange={(e) => setBgHeight(Number(e.target.value) || 8)}
+                    />
                   </div>
                 ) : null}
                 {bgAlign !== "fill" ? (
