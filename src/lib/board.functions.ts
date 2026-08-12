@@ -1171,9 +1171,12 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("name", { ascending: true }),
       supabase
         .from("entries")
-        .select("time, end_time, title, description, tags, color_scheme_id, notify")
+        .select(
+          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity",
+        )
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
+
       supabase
         .from("ad_sets")
         .select("id, ref_id, name, ad_seconds, sort_order")
