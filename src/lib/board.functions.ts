@@ -1547,10 +1547,19 @@ export const importTenantData = createServerFn({ method: "POST" })
     // ---- entries ----
     if (wants("entries") && p.entries) {
       if (replace) {
+        const { data: old } = await supabase
+          .from("entries")
+          .select("background_path")
+          .eq("tenant_id", tenant.id);
+        const oldPaths = (old ?? []).map((o) => o.background_path).filter(Boolean) as string[];
+        if (oldPaths.length) {
+          await supabase.storage.from(ENTRY_BG_BUCKET).remove(oldPaths);
+        }
         await supabase.from("entries").delete().eq("tenant_id", tenant.id);
       }
       if (p.entries.length) {
-        const rows = p.entries.map((e) => {
+        const rows: Record<string, unknown>[] = [];
+        for (const e of p.entries) {
           for (const ref of e.rooms) {
             if (!roomNameByRef.get(ref)) {
               warnings.push(`Entry "${e.title}": unknown room "${ref}"`);
@@ -1559,7 +1568,28 @@ export const importTenantData = createServerFn({ method: "POST" })
           if (e.color_scheme && !schemeUuid(e.color_scheme)) {
             warnings.push(`Entry "${e.title}": unknown color scheme "${e.color_scheme}"`);
           }
-          return {
+          let bgPath: string | null = null;
+          let bgType: string | null = null;
+          if (e.background) {
+            const file = fileByPath.get(e.background.file);
+            if (!file) {
+              warnings.push(`Entry "${e.title}": background file "${e.background.file}" missing`);
+            } else {
+              const bytes = fromBase64(file.dataBase64);
+              const contentType = e.background.content_type || file.content_type || "image/png";
+              const path = `${tenant.id}/entry-import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(e.background.file)}`;
+              const { error: upErr } = await supabase.storage
+                .from(ENTRY_BG_BUCKET)
+                .upload(path, bytes, { contentType, upsert: true });
+              if (upErr) {
+                warnings.push(`Entry "${e.title}": background upload failed — ${upErr.message}`);
+              } else {
+                bgPath = path;
+                bgType = contentType;
+              }
+            }
+          }
+          rows.push({
             tenant_id: tenant.id,
             time: e.time,
             end_time: e.end_time ?? null,
@@ -1568,13 +1598,19 @@ export const importTenantData = createServerFn({ method: "POST" })
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
             color_scheme_id: schemeUuid(e.color_scheme),
             notify: e.notify,
-          };
-        });
+            background_path: bgPath,
+            background_content_type: bgType,
+            background_align: e.background_align,
+            background_height: e.background_height,
+            background_opacity: e.background_opacity,
+          });
+        }
         const { error } = await supabase.from("entries").insert(rows);
         if (error) throw new Error(error.message);
         counts.entries = rows.length;
       }
     }
+
 
     // ---- webhooks ----
     if (wants("webhooks") && p.webhooks) {
