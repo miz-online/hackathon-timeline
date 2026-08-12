@@ -1308,15 +1308,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         template: templateRefOf(r.template),
         color_scheme: r.color_scheme_id ? (schemeIdByUuid.get(r.color_scheme_id) ?? null) : null,
       })),
-      entries: (entries.data ?? []).map((e) => ({
-        time: e.time,
-        end_time: e.end_time,
-        title: e.title,
-        description: e.description,
-        rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
-        color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
-        notify: e.notify,
-      })),
+      entries: entryItems,
+
       ad_sets: setRows.map((s, idx) => ({
         id: setIds[idx],
         name: s.name,
