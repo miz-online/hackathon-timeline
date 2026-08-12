@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2 } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -1125,47 +1125,72 @@ function EntryForm({
               }}
             />
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-              {/* left: preview, upload, opacity */}
+              {/* left: preview, upload/download/remove, opacity */}
               <div className="space-y-2">
-                <div className="aspect-video w-full overflow-hidden rounded-md border bg-muted">
-                  {previewSrc ? (
-                    <img src={previewSrc} alt="" className="h-full w-full object-contain" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                      {t("entries.form.bgNone")}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => bgInputRef.current?.click()}
-                  >
-                    {t("entries.form.bgUpload")}
-                  </Button>
-                  {bgUrl && !bgRemoved ? (
-                    <Button type="button" size="sm" variant="outline" asChild>
-                      <a href={bgUrl} download target="_blank" rel="noreferrer">
-                        {t("entries.form.bgDownload")}
-                      </a>
-                    </Button>
-                  ) : null}
-                  {previewSrc ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setBgFile(null);
-                        setBgPreview(null);
-                        setBgRemoved(true);
-                      }}
-                    >
-                      {t("entries.form.bgRemove")}
-                    </Button>
-                  ) : null}
+                <div className="flex gap-3 items-start">
+                  <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
+                    {previewSrc ? (
+                      <img src={previewSrc} alt="" className="h-full w-full object-contain" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                        {t("entries.form.bgNone")}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => bgInputRef.current?.click()}
+                          aria-label={t("entries.form.bgUpload")}
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("entries.form.bgUpload")}</TooltipContent>
+                    </Tooltip>
+                    {bgUrl && !bgRemoved ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            asChild
+                            aria-label={t("entries.form.bgDownload")}
+                          >
+                            <a href={bgUrl} download target="_blank" rel="noreferrer">
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("entries.form.bgDownload")}</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    {previewSrc ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setBgFile(null);
+                              setBgPreview(null);
+                              setBgRemoved(true);
+                            }}
+                            aria-label={t("entries.form.bgRemove")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("entries.form.bgRemove")}</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">
