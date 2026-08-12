@@ -1251,6 +1251,41 @@ export const exportTenantData = createServerFn({ method: "GET" })
       });
     }
 
+    const entryItems: TenantData["entries"] = [];
+    let entryIdx = 0;
+    for (const e of entries.data ?? []) {
+      entryIdx++;
+      let background: { file: string; content_type: string } | null = null;
+      if (e.background_path) {
+        const { data: file } = await supabase.storage
+          .from(ENTRY_BG_BUCKET)
+          .download(e.background_path);
+        if (file) {
+          const path = `images/entries/${String(entryIdx).padStart(2, "0")}-${slugify(e.title) || "entry"}.${extOf(e.background_path)}`;
+          const content_type = e.background_content_type || file.type || "image/png";
+          files.push({
+            path,
+            content_type,
+            dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
+          });
+          background = { file: path, content_type };
+        }
+      }
+      entryItems.push({
+        time: e.time,
+        end_time: e.end_time,
+        title: e.title,
+        description: e.description,
+        rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
+        color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
+        notify: e.notify,
+        background,
+        background_align: (e.background_align ?? "right-top") as EntryBgAlign,
+        background_height: e.background_height ?? 80,
+        background_opacity: e.background_opacity ?? 100,
+      });
+    }
+
     const payload: TenantData = {
       version: IO_VERSION,
       exported_at: new Date().toISOString(),
