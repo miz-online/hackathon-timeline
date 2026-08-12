@@ -90,7 +90,28 @@ function filterVisible<T extends { time: string; tags: string[]; end_time?: stri
     .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
 
+// ---------- entry background images ----------
+
+export const ENTRY_BG_BUCKET = "tenant-entry-backgrounds";
+
+export const ENTRY_BG_ALIGNMENTS = [
+  "right-top",
+  "right-bottom",
+  "right-stretch",
+  "fill",
+  "time",
+] as const;
+export type EntryBgAlign = (typeof ENTRY_BG_ALIGNMENTS)[number];
+
+/** Stable public URL for an entry background; changes whenever the file changes. */
+function entryBgUrl(tenantKey: string, entryId: string, path: string | null): string | null {
+  if (!path) return null;
+  const v = path.split("/").pop() ?? "1";
+  return `/api/public/entry-bg/${encodeURIComponent(tenantKey)}/${entryId}?v=${encodeURIComponent(v)}`;
+}
+
 // ---------- tenant ----------
+
 
 export const createTenant = createServerFn({ method: "POST" })
   .inputValidator((d?: { pin?: string }) => z.object({ pin: z.string().optional() }).parse(d ?? {}))
@@ -206,6 +227,13 @@ export const deleteTenant = createServerFn({ method: "POST" })
     const tenant = await requireTenantAdmin(data.key);
     const { data: ads } = await supabase.from("ads").select("path").eq("tenant_id", tenant.id);
     if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
+    const { data: bgs } = await supabase
+      .from("entries")
+      .select("background_path")
+      .eq("tenant_id", tenant.id)
+      .not("background_path", "is", null);
+    const bgPaths = (bgs ?? []).map((e) => e.background_path).filter((p): p is string => !!p);
+    if (bgPaths.length) await supabase.storage.from(ENTRY_BG_BUCKET).remove(bgPaths);
     if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
     await supabase.from("entries").delete().eq("tenant_id", tenant.id);
     await supabase.from("webhooks").delete().eq("tenant_id", tenant.id);
@@ -217,6 +245,7 @@ export const deleteTenant = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+
 // ---------- entries ----------
 
 export const listEntries = createServerFn({ method: "GET" })
@@ -226,7 +255,9 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("entries")
-      .select("id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at")
+      .select(
+        "id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity",
+      )
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
@@ -235,6 +266,8 @@ export const listEntries = createServerFn({ method: "GET" })
     return entries.map((e) => ({
       ...e,
       sent: !!e.notified_at,
+      background_url: entryBgUrl(data.key, e.id, e.background_path),
+      background_align: (e.background_align ?? "right-top") as EntryBgAlign,
     }));
   });
 
@@ -247,6 +280,9 @@ const entryInput = z.object({
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
   color_scheme_id: z.string().uuid().nullable().default(null),
   notify: z.boolean().default(true),
+  background_align: z.enum(ENTRY_BG_ALIGNMENTS).default("right-top"),
+  background_height: z.number().int().min(8).max(2000).default(80),
+  background_opacity: z.number().int().min(0).max(100).default(100),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
@@ -257,40 +293,108 @@ export const upsertEntry = createServerFn({ method: "POST" })
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
     const e = data.entry;
+    const common = {
+      time: e.time,
+      end_time: e.end_time ?? null,
+      title: e.title,
+      description: e.description,
+      tags: e.tags,
+      color_scheme_id: e.color_scheme_id ?? null,
+      notify: e.notify,
+      background_align: e.background_align,
+      background_height: e.background_height,
+      background_opacity: e.background_opacity,
+    };
     if (e.id) {
       const { error } = await supabase
-      .from("entries")
-      .update({
-        time: e.time,
-        end_time: e.end_time ?? null,
-        title: e.title,
-        description: e.description,
-        tags: e.tags,
-        color_scheme_id: e.color_scheme_id ?? null,
-        notify: e.notify,
-      })
-      .eq("id", e.id)
-      .eq("tenant_id", tenantId);
-    if (error) throw new Error(error.message);
-    return { id: e.id };
-  } else {
+        .from("entries")
+        .update(common)
+        .eq("id", e.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: e.id };
+    }
     const { data: row, error } = await supabase
       .from("entries")
-      .insert({
-        tenant_id: tenantId,
-        time: e.time,
-        end_time: e.end_time ?? null,
-        title: e.title,
-        description: e.description,
-        tags: e.tags,
-        color_scheme_id: e.color_scheme_id ?? null,
-        notify: e.notify,
-      })
+      .insert({ tenant_id: tenantId, ...common })
       .select("id")
       .single();
-      if (error) throw new Error(error.message);
-      return { id: row.id };
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+
+export const uploadEntryBackground = createServerFn({ method: "POST" })
+  .inputValidator(
+    (d: {
+      key: string;
+      id: string;
+      filename: string;
+      contentType: string;
+      dataBase64: string;
+    }) =>
+      z
+        .object({
+          key: z.string().min(1),
+          id: z.string().uuid(),
+          filename: z.string().min(1).max(200),
+          contentType: z.string().regex(/^image\//),
+          dataBase64: z.string().min(1).max(14_000_000),
+        })
+        .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const { data: existing } = await supabase
+      .from("entries")
+      .select("background_path")
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    if (!existing) throw new Error("Unknown entry");
+    const binary = Uint8Array.from(atob(data.dataBase64), (c) => c.charCodeAt(0));
+    const ext = (data.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
+    const path = `${tenant.id}/entry-${data.id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from(ENTRY_BG_BUCKET)
+      .upload(path, binary, { contentType: data.contentType, upsert: true });
+    if (upErr) throw new Error(upErr.message);
+    const { error } = await supabase
+      .from("entries")
+      .update({ background_path: path, background_content_type: data.contentType })
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id);
+    if (error) throw new Error(error.message);
+    if (existing.background_path && existing.background_path !== path) {
+      await supabase.storage.from(ENTRY_BG_BUCKET).remove([existing.background_path]);
     }
+    return { url: entryBgUrl(data.key, data.id, path) };
+  });
+
+export const removeEntryBackground = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const { data: existing } = await supabase
+      .from("entries")
+      .select("background_path")
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    if (existing?.background_path) {
+      await supabase.storage.from(ENTRY_BG_BUCKET).remove([existing.background_path]);
+    }
+    const { error } = await supabase
+      .from("entries")
+      .update({ background_path: null, background_content_type: null })
+      .eq("id", data.id)
+      .eq("tenant_id", tenant.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const deleteEntry = createServerFn({ method: "POST" })
@@ -300,6 +404,15 @@ export const deleteEntry = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
+    const { data: existing } = await supabase
+      .from("entries")
+      .select("background_path")
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (existing?.background_path) {
+      await supabase.storage.from(ENTRY_BG_BUCKET).remove([existing.background_path]);
+    }
     const { error } = await supabase
       .from("entries")
       .delete()
@@ -307,6 +420,7 @@ export const deleteEntry = createServerFn({ method: "POST" })
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
     return { ok: true };
+
   });
 
 // ---------- rooms ----------
@@ -560,7 +674,12 @@ export type RoomSnapshot = {
     description: string;
     tags: string[];
     color: string | null;
+    background_url: string | null;
+    background_align: EntryBgAlign;
+    background_height: number;
+    background_opacity: number;
   }[];
+
   ads: { id: string; name: string; url: string; content_type: string }[];
 };
 
@@ -581,7 +700,9 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     if (!room) throw new Error("Unknown room");
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
-      .select("id, time, end_time, title, description, tags, color_scheme_id")
+      .select(
+        "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity",
+      )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
     const { data: schemes } = await supabase
@@ -605,7 +726,12 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       description: e.description,
       tags: e.tags,
       color: e.color_scheme_id ? (colorById.get(e.color_scheme_id) ?? null) : null,
+      background_url: entryBgUrl(data.key, e.id, e.background_path),
+      background_align: (e.background_align ?? "right-top") as EntryBgAlign,
+      background_height: e.background_height ?? 80,
+      background_opacity: e.background_opacity ?? 100,
     }));
+
     return {
       tenant: {
         name: tenant.name,
@@ -1045,9 +1171,12 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("name", { ascending: true }),
       supabase
         .from("entries")
-        .select("time, end_time, title, description, tags, color_scheme_id, notify")
+        .select(
+          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity",
+        )
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
+
       supabase
         .from("ad_sets")
         .select("id, ref_id, name, ad_seconds, sort_order")
@@ -1122,6 +1251,41 @@ export const exportTenantData = createServerFn({ method: "GET" })
       });
     }
 
+    const entryItems: TenantData["entries"] = [];
+    let entryIdx = 0;
+    for (const e of entries.data ?? []) {
+      entryIdx++;
+      let background: { file: string; content_type: string } | null = null;
+      if (e.background_path) {
+        const { data: file } = await supabase.storage
+          .from(ENTRY_BG_BUCKET)
+          .download(e.background_path);
+        if (file) {
+          const path = `images/entries/${String(entryIdx).padStart(2, "0")}-${slugify(e.title) || "entry"}.${extOf(e.background_path)}`;
+          const content_type = e.background_content_type || file.type || "image/png";
+          files.push({
+            path,
+            content_type,
+            dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
+          });
+          background = { file: path, content_type };
+        }
+      }
+      entryItems.push({
+        time: e.time,
+        end_time: e.end_time,
+        title: e.title,
+        description: e.description,
+        rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
+        color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
+        notify: e.notify,
+        background,
+        background_align: (e.background_align ?? "right-top") as EntryBgAlign,
+        background_height: e.background_height ?? 80,
+        background_opacity: e.background_opacity ?? 100,
+      });
+    }
+
     const payload: TenantData = {
       version: IO_VERSION,
       exported_at: new Date().toISOString(),
@@ -1144,15 +1308,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         template: templateRefOf(r.template),
         color_scheme: r.color_scheme_id ? (schemeIdByUuid.get(r.color_scheme_id) ?? null) : null,
       })),
-      entries: (entries.data ?? []).map((e) => ({
-        time: e.time,
-        end_time: e.end_time,
-        title: e.title,
-        description: e.description,
-        rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
-        color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
-        notify: e.notify,
-      })),
+      entries: entryItems,
+
       ad_sets: setRows.map((s, idx) => ({
         id: setIds[idx],
         name: s.name,
@@ -1390,10 +1547,33 @@ export const importTenantData = createServerFn({ method: "POST" })
     // ---- entries ----
     if (wants("entries") && p.entries) {
       if (replace) {
+        const { data: old } = await supabase
+          .from("entries")
+          .select("background_path")
+          .eq("tenant_id", tenant.id);
+        const oldPaths = (old ?? []).map((o) => o.background_path).filter(Boolean) as string[];
+        if (oldPaths.length) {
+          await supabase.storage.from(ENTRY_BG_BUCKET).remove(oldPaths);
+        }
         await supabase.from("entries").delete().eq("tenant_id", tenant.id);
       }
       if (p.entries.length) {
-        const rows = p.entries.map((e) => {
+        const rows: {
+          tenant_id: string;
+          time: string;
+          end_time: string | null;
+          title: string;
+          description: string;
+          tags: string[];
+          color_scheme_id: string | null;
+          notify: boolean;
+          background_path: string | null;
+          background_content_type: string | null;
+          background_align: string;
+          background_height: number;
+          background_opacity: number;
+        }[] = [];
+        for (const e of p.entries) {
           for (const ref of e.rooms) {
             if (!roomNameByRef.get(ref)) {
               warnings.push(`Entry "${e.title}": unknown room "${ref}"`);
@@ -1402,7 +1582,28 @@ export const importTenantData = createServerFn({ method: "POST" })
           if (e.color_scheme && !schemeUuid(e.color_scheme)) {
             warnings.push(`Entry "${e.title}": unknown color scheme "${e.color_scheme}"`);
           }
-          return {
+          let bgPath: string | null = null;
+          let bgType: string | null = null;
+          if (e.background) {
+            const file = fileByPath.get(e.background.file);
+            if (!file) {
+              warnings.push(`Entry "${e.title}": background file "${e.background.file}" missing`);
+            } else {
+              const bytes = fromBase64(file.dataBase64);
+              const contentType = e.background.content_type || file.content_type || "image/png";
+              const path = `${tenant.id}/entry-import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(e.background.file)}`;
+              const { error: upErr } = await supabase.storage
+                .from(ENTRY_BG_BUCKET)
+                .upload(path, bytes, { contentType, upsert: true });
+              if (upErr) {
+                warnings.push(`Entry "${e.title}": background upload failed — ${upErr.message}`);
+              } else {
+                bgPath = path;
+                bgType = contentType;
+              }
+            }
+          }
+          rows.push({
             tenant_id: tenant.id,
             time: e.time,
             end_time: e.end_time ?? null,
@@ -1411,13 +1612,19 @@ export const importTenantData = createServerFn({ method: "POST" })
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
             color_scheme_id: schemeUuid(e.color_scheme),
             notify: e.notify,
-          };
-        });
+            background_path: bgPath,
+            background_content_type: bgType,
+            background_align: e.background_align,
+            background_height: e.background_height,
+            background_opacity: e.background_opacity,
+          });
+        }
         const { error } = await supabase.from("entries").insert(rows);
         if (error) throw new Error(error.message);
         counts.entries = rows.length;
       }
     }
+
 
     // ---- webhooks ----
     if (wants("webhooks") && p.webhooks) {
