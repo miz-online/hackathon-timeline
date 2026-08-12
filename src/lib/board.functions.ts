@@ -103,6 +103,16 @@ export const ENTRY_BG_ALIGNMENTS = [
 ] as const;
 export type EntryBgAlign = (typeof ENTRY_BG_ALIGNMENTS)[number];
 
+/** Palette roles a transparent image (PNG/SVG) can be recolored with. */
+export const ENTRY_BG_TINTS = ["base", "deep", "peak", "highlight", "onBase"] as const;
+export type EntryBgTint = (typeof ENTRY_BG_TINTS)[number];
+
+/** Only images with an alpha channel can be tinted. */
+export function supportsTint(contentType?: string | null): boolean {
+  const c = (contentType ?? "").toLowerCase();
+  return c.includes("png") || c.includes("svg") || c.includes("webp") || c.includes("gif");
+}
+
 /** Stable public URL for an entry background; changes whenever the file changes. */
 function entryBgUrl(tenantKey: string, entryId: string, path: string | null): string | null {
   if (!path) return null;
@@ -256,7 +266,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { data: rows, error } = await supabase
       .from("entries")
       .select(
-        "id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin",
+        "id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
       )
       .eq("tenant_id", id)
       .order("time", { ascending: true });
@@ -268,6 +278,7 @@ export const listEntries = createServerFn({ method: "GET" })
       sent: !!e.notified_at,
       background_url: entryBgUrl(data.key, e.id, e.background_path),
       background_align: (e.background_align ?? "right-top") as EntryBgAlign,
+      background_tint: (e.background_tint ?? null) as EntryBgTint | null,
     }));
   });
 
@@ -284,6 +295,7 @@ const entryInput = z.object({
   background_height: z.number().int().min(8).max(2000).default(80),
   background_opacity: z.number().int().min(0).max(100).default(100),
   background_margin: z.number().int().min(0).max(500).default(0),
+  background_tint: z.enum(ENTRY_BG_TINTS).nullable().default(null),
 });
 
 export const upsertEntry = createServerFn({ method: "POST" })
@@ -306,6 +318,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       background_height: e.background_height,
       background_opacity: e.background_opacity,
       background_margin: e.background_margin,
+      background_tint: e.background_tint ?? null,
     };
     if (e.id) {
       const { error } = await supabase
@@ -681,6 +694,7 @@ export type RoomSnapshot = {
     background_height: number;
     background_opacity: number;
     background_margin: number;
+    background_tint: EntryBgTint | null;
   }[];
 
   ads: { id: string; name: string; url: string; content_type: string }[];
@@ -704,7 +718,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
       .select(
-        "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin",
+        "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
       )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
@@ -734,6 +748,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       background_height: e.background_height ?? 80,
       background_opacity: e.background_opacity ?? 100,
       background_margin: e.background_margin ?? 0,
+      background_tint: (e.background_tint ?? null) as EntryBgTint | null,
     }));
 
     return {
@@ -1176,7 +1191,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       supabase
         .from("entries")
         .select(
-          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin",
+          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
         )
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
@@ -1288,6 +1303,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         background_height: e.background_height ?? 80,
         background_opacity: e.background_opacity ?? 100,
         background_margin: e.background_margin ?? 0,
+        background_tint: (e.background_tint ?? null) as EntryBgTint | null,
       });
     }
 
@@ -1578,6 +1594,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           background_height: number;
           background_opacity: number;
           background_margin: number;
+          background_tint: string | null;
         }[] = [];
         for (const e of p.entries) {
           for (const ref of e.rooms) {
@@ -1624,6 +1641,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             background_height: e.background_height,
             background_opacity: e.background_opacity,
             background_margin: e.background_margin,
+            background_tint: e.background_tint ?? null,
           });
         }
         const { error } = await supabase.from("entries").insert(rows);

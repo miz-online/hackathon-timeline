@@ -30,6 +30,8 @@ import {
   uploadEntryBackground,
   removeEntryBackground,
   ENTRY_BG_ALIGNMENTS,
+  ENTRY_BG_TINTS,
+  supportsTint,
   type EntryBgAlign,
 } from "@/lib/board.functions";
 
@@ -84,6 +86,8 @@ type EntryRow = {
   background_height?: number | null;
   background_opacity?: number | null;
   background_margin?: number | null;
+  background_tint?: (typeof ENTRY_BG_TINTS)[number] | null;
+  background_content_type?: string | null;
 };
 
 type RoomRow = {
@@ -933,6 +937,7 @@ function EntryForm({
     background_height: number;
     background_opacity: number;
     background_margin: number;
+    background_tint: (typeof ENTRY_BG_TINTS)[number] | null;
   }) => Promise<string>;
   onCancel: () => void;
 }) {
@@ -964,6 +969,9 @@ function EntryForm({
   const [bgHeight, setBgHeight] = useState<number>(initial?.background_height ?? 80);
   const [bgOpacity, setBgOpacity] = useState<number>(initial?.background_opacity ?? 100);
   const [bgMargin, setBgMargin] = useState<number>(initial?.background_margin ?? 0);
+  const [bgTint, setBgTint] = useState<(typeof ENTRY_BG_TINTS)[number] | null>(
+    initial?.background_tint ?? null,
+  );
   const [bgUrl, setBgUrl] = useState<string | null>(initial?.background_url ?? null);
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [bgPreview, setBgPreview] = useState<string | null>(null);
@@ -971,6 +979,13 @@ function EntryForm({
   const bgInputRef = useRef<HTMLInputElement>(null);
 
   const previewSrc = bgPreview ?? (bgRemoved ? null : bgUrl);
+  const entryPalette = derivePalette(
+    schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+  );
+  // only images with an alpha channel (PNG/SVG/WebP/GIF) can be recolored
+  const tintable =
+    !!previewSrc &&
+    supportsTint(bgFile ? bgFile.type : (initial?.background_content_type ?? null));
 
 
   const toggleRoom = (name: string) => {
@@ -1234,6 +1249,45 @@ function EntryForm({
                     />
                   </div>
                 ) : null}
+                {tintable ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgTint")}</Label>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-6 w-6 shrink-0 rounded border"
+                        style={{
+                          backgroundColor: bgTint
+                            ? entryPalette[bgTint]
+                            : "transparent",
+                          backgroundImage: bgTint
+                            ? undefined
+                            : "linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%)",
+                          backgroundSize: "8px 8px",
+                          backgroundPosition: "0 0, 4px 4px",
+                        }}
+                      />
+                      <select
+                        value={bgTint ?? ""}
+                        onChange={(e) =>
+                          setBgTint(
+                            (e.target.value || null) as (typeof ENTRY_BG_TINTS)[number] | null,
+                          )
+                        }
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">{t("entries.form.bgTintNone")}</option>
+                        {ENTRY_BG_TINTS.map((tint) => (
+                          <option key={tint} value={tint}>
+                            {t(`entries.form.bgTint.${tint}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t("entries.form.bgTintHint")}
+                    </p>
+                  </div>
+                ) : null}
                 {bgAlign !== "fill" ? (
                   <div className="space-y-1">
                     <Label className="text-xs">{t("entries.form.bgMargin")}</Label>
@@ -1292,6 +1346,7 @@ function EntryForm({
                 background_height: bgHeight,
                 background_opacity: bgOpacity,
                 background_margin: bgMargin,
+                background_tint: bgTint,
               });
               if (bgRemoved && !bgFile) {
                 await removeBgFn({ data: { key: tenantKey, id } });
