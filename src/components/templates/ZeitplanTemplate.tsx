@@ -16,6 +16,7 @@ type Entry = {
   background_align?: "right-top" | "right-bottom" | "right-stretch" | "fill" | "time" | null;
   background_height?: number | null;
   background_opacity?: number | null;
+  background_margin?: number | null;
 };
 
 
