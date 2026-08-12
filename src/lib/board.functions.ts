@@ -103,6 +103,16 @@ export const ENTRY_BG_ALIGNMENTS = [
 ] as const;
 export type EntryBgAlign = (typeof ENTRY_BG_ALIGNMENTS)[number];
 
+/** Palette roles a transparent image (PNG/SVG) can be recolored with. */
+export const ENTRY_BG_TINTS = ["base", "deep", "peak", "highlight", "onBase"] as const;
+export type EntryBgTint = (typeof ENTRY_BG_TINTS)[number];
+
+/** Only images with an alpha channel can be tinted. */
+export function supportsTint(contentType?: string | null): boolean {
+  const c = (contentType ?? "").toLowerCase();
+  return c.includes("png") || c.includes("svg") || c.includes("webp") || c.includes("gif");
+}
+
 /** Stable public URL for an entry background; changes whenever the file changes. */
 function entryBgUrl(tenantKey: string, entryId: string, path: string | null): string | null {
   if (!path) return null;
