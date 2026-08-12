@@ -17,7 +17,49 @@ type Entry = {
   background_height?: number | null;
   background_opacity?: number | null;
   background_margin?: number | null;
+  background_tint?: "base" | "deep" | "peak" | "highlight" | "onBase" | null;
 };
+
+/**
+ * Renders an entry image, optionally recolored with a palette color.
+ * Tinting uses a CSS mask so the image's alpha channel keeps its shape.
+ */
+function EntryImage({
+  src,
+  tintColor,
+  style,
+  imgStyle,
+}: {
+  src: string;
+  tintColor?: string | null;
+  style: CSSProperties;
+  imgStyle?: CSSProperties;
+}) {
+  if (!tintColor) {
+    return <img src={src} alt="" aria-hidden style={{ ...style, ...imgStyle, pointerEvents: "none" }} />;
+  }
+  return (
+    <span style={{ ...style, display: "inline-block", pointerEvents: "none" }}>
+      <img src={src} alt="" aria-hidden style={{ ...imgStyle, display: "block", opacity: 0 }} />
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: tintColor,
+          WebkitMaskImage: `url("${src}")`,
+          maskImage: `url("${src}")`,
+          WebkitMaskSize: style.objectFit === "cover" ? "cover" : "contain",
+          maskSize: style.objectFit === "cover" ? "cover" : "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+        }}
+      />
+    </span>
+  );
+}
 
 
 const ANIM_EPOCH = Date.now();
@@ -252,6 +294,7 @@ export function ZeitplanTemplate({
                 const bgH = e.background_height ?? 80;
                 const bgOpacity = (e.background_opacity ?? 100) / 100;
                 const bgM = e.background_margin ?? 0;
+                const bgTint = e.background_tint ? p[e.background_tint] : null;
                 const bgStyle: CSSProperties | null = !bg
                   ? null
                   : bgAlign === "fill"
@@ -374,17 +417,17 @@ export function ZeitplanTemplate({
                         </>
                       )}
                       {bg && bgAlign === "time" ? (
-                        <img
+                        <EntryImage
                           src={bg}
-                          alt=""
+                          tintColor={bgTint}
                           style={{
+                            position: "relative",
                             width: `calc(100% - ${bgM * 2}px)`,
-                            height: "auto",
                             marginTop: 8 + bgM,
                             marginBottom: bgM,
                             opacity: bgOpacity,
-                            objectFit: "contain",
                           }}
+                          imgStyle={{ width: "100%", height: "auto", objectFit: "contain" }}
                         />
                       ) : null}
                     </div>
@@ -401,11 +444,15 @@ export function ZeitplanTemplate({
                       }}
                     >
                       {bg && bgAlign !== "time" && bgStyle ? (
-                        <img
+                        <EntryImage
                           src={bg}
-                          alt=""
-                          aria-hidden
-                          style={{ ...bgStyle, opacity: bgOpacity, pointerEvents: "none" }}
+                          tintColor={bgTint}
+                          style={{ ...bgStyle, opacity: bgOpacity }}
+                          imgStyle={{
+                            width: bgStyle.width === "100%" ? "100%" : "auto",
+                            height: "100%",
+                            objectFit: bgAlign === "fill" ? "cover" : "contain",
+                          }}
                         />
                       ) : null}
 
