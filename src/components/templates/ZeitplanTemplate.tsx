@@ -408,6 +408,8 @@ export function ZeitplanTemplate({
 
                       <div
                         style={{
+                          position: "relative",
+                          zIndex: 1,
                           fontWeight: 700,
                           fontSize: "clamp(16px, 1.8vw, 25px)",
                           color: "#1f2937",
@@ -419,6 +421,8 @@ export function ZeitplanTemplate({
                       {e.description ? (
                         <div
                           style={{
+                            position: "relative",
+                            zIndex: 1,
                             fontStyle: "italic",
                             color: "#6b7280",
                             fontSize: "clamp(13px, 1.15vw, 16px)",
@@ -429,6 +433,7 @@ export function ZeitplanTemplate({
                           {e.description}
                         </div>
                       ) : null}
+
                     </div>
                   </motion.div>
                 );
