@@ -45,7 +45,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           const { data: entries } = await supabaseAdmin
             .from("entries")
             .select(
-              "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity",
+              "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin",
             )
             .eq("tenant_id", tenantId);
 
@@ -86,6 +86,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               background_align: e.background_align ?? "right-top",
               background_height: e.background_height ?? 80,
               background_opacity: e.background_opacity ?? 100,
+              background_margin: e.background_margin ?? 0,
             }));
 
           return {

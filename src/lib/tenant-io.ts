@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const IO_VERSION = 3;
+export const IO_VERSION = 4;
 
 export const SECTIONS = [
   "tenant",
@@ -58,6 +58,7 @@ export const entryItem = z.object({
     .default("right-top"),
   background_height: z.number().int().min(8).max(2000).default(80),
   background_opacity: z.number().int().min(0).max(100).default(100),
+  background_margin: z.number().int().min(0).max(500).default(0),
 });
 
 

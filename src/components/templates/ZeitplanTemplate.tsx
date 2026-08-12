@@ -16,6 +16,7 @@ type Entry = {
   background_align?: "right-top" | "right-bottom" | "right-stretch" | "fill" | "time" | null;
   background_height?: number | null;
   background_opacity?: number | null;
+  background_margin?: number | null;
 };
 
 
@@ -250,6 +251,7 @@ export function ZeitplanTemplate({
                 const bgAlign = e.background_align ?? "right-top";
                 const bgH = e.background_height ?? 80;
                 const bgOpacity = (e.background_opacity ?? 100) / 100;
+                const bgM = e.background_margin ?? 0;
                 const bgStyle: CSSProperties | null = !bg
                   ? null
                   : bgAlign === "fill"
@@ -263,15 +265,15 @@ export function ZeitplanTemplate({
                     : bgAlign === "right-stretch"
                       ? {
                           position: "absolute",
-                          top: 0,
-                          bottom: 0,
-                          right: 0,
-                          height: "100%",
+                          top: bgM,
+                          bottom: bgM,
+                          right: bgM,
+                          height: `calc(100% - ${bgM * 2}px)`,
                           width: "auto",
                         }
                       : bgAlign === "right-bottom"
-                        ? { position: "absolute", bottom: 0, right: 0, height: `${bgH}px`, width: "auto" }
-                        : { position: "absolute", top: 0, right: 0, height: `${bgH}px`, width: "auto" };
+                        ? { position: "absolute", bottom: bgM, right: bgM, height: `${bgH}px`, width: "auto" }
+                        : { position: "absolute", top: bgM, right: bgM, height: `${bgH}px`, width: "auto" };
 
 
 
@@ -376,9 +378,10 @@ export function ZeitplanTemplate({
                           src={bg}
                           alt=""
                           style={{
-                            width: "100%",
+                            width: `calc(100% - ${bgM * 2}px)`,
                             height: "auto",
-                            marginTop: 8,
+                            marginTop: 8 + bgM,
+                            marginBottom: bgM,
                             opacity: bgOpacity,
                             objectFit: "contain",
                           }}

@@ -172,6 +172,8 @@ const en: Dict = {
   "entries.form.bgAlign.time": "Below the time",
   "entries.form.bgHeight": "Image height (px)",
   "entries.form.bgOpacity": "Opacity",
+  "entries.form.bgMargin": "Margin (px)",
+  "entries.form.bgMarginHint": "Distance from the entry edges.",
 
   "entries.notifyOff": "Not posted to webhooks",
   "entries.sent": "Posted to webhooks",
@@ -457,6 +459,8 @@ const de: Dict = {
   "entries.form.bgAlign.time": "Unter der Zeit",
   "entries.form.bgHeight": "Bildhöhe (px)",
   "entries.form.bgOpacity": "Deckkraft",
+  "entries.form.bgMargin": "Abstand (px)",
+  "entries.form.bgMarginHint": "Abstand zu den Rändern des Eintrags.",
 
   "entries.notifyOff": "Wird nicht an Webhooks gesendet",
   "entries.sent": "An Webhooks gesendet",

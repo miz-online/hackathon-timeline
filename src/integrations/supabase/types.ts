@@ -146,6 +146,7 @@ export type Database = {
           background_align: string
           background_content_type: string | null
           background_height: number
+          background_margin: number
           background_opacity: number
           background_path: string | null
           color_scheme_id: string | null
@@ -165,6 +166,7 @@ export type Database = {
           background_align?: string
           background_content_type?: string | null
           background_height?: number
+          background_margin?: number
           background_opacity?: number
           background_path?: string | null
           color_scheme_id?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           background_align?: string
           background_content_type?: string | null
           background_height?: number
+          background_margin?: number
           background_opacity?: number
           background_path?: string | null
           color_scheme_id?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.entries ADD COLUMN IF NOT EXISTS background_margin int NOT NULL DEFAULT 0;
