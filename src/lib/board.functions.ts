@@ -278,6 +278,7 @@ export const listEntries = createServerFn({ method: "GET" })
       sent: !!e.notified_at,
       background_url: entryBgUrl(data.key, e.id, e.background_path),
       background_align: (e.background_align ?? "right-top") as EntryBgAlign,
+      background_tint: (e.background_tint ?? null) as EntryBgTint | null,
     }));
   });
 
@@ -747,7 +748,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       background_height: e.background_height ?? 80,
       background_opacity: e.background_opacity ?? 100,
       background_margin: e.background_margin ?? 0,
-      background_tint: e.background_tint ?? null,
+      background_tint: (e.background_tint ?? null) as EntryBgTint | null,
     }));
 
     return {
