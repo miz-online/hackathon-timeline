@@ -1047,103 +1047,6 @@ function EntryForm({
               {t("entries.form.notify")}
             </Label>
           </div>
-
-          {/* Background image */}
-          <div className="space-y-2 border-t pt-3">
-            <Label>{t("entries.form.bg")}</Label>
-            <div className="aspect-video w-full overflow-hidden rounded-md border bg-muted">
-              {previewSrc ? (
-                <img src={previewSrc} alt="" className="h-full w-full object-contain" />
-              ) : (
-                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-                  {t("entries.form.bgNone")}
-                </div>
-              )}
-            </div>
-            <input
-              ref={bgInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (!f) return;
-                setBgFile(f);
-                setBgRemoved(false);
-                setBgPreview(URL.createObjectURL(f));
-              }}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => bgInputRef.current?.click()}
-              >
-                {t("entries.form.bgUpload")}
-              </Button>
-              {bgUrl && !bgRemoved ? (
-                <Button type="button" size="sm" variant="outline" asChild>
-                  <a href={bgUrl} download target="_blank" rel="noreferrer">
-                    {t("entries.form.bgDownload")}
-                  </a>
-                </Button>
-              ) : null}
-              {previewSrc ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setBgFile(null);
-                    setBgPreview(null);
-                    setBgRemoved(true);
-                  }}
-                >
-                  {t("entries.form.bgRemove")}
-                </Button>
-              ) : null}
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">{t("entries.form.bgAlign")}</Label>
-              <select
-                value={bgAlign}
-                onChange={(e) => setBgAlign(e.target.value as EntryBgAlign)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                {ENTRY_BG_ALIGNMENTS.map((a) => (
-                  <option key={a} value={a}>
-                    {t(`entries.form.bgAlign.${a}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {bgAlign === "right-top" || bgAlign === "right-bottom" ? (
-              <div className="space-y-1">
-                <Label className="text-xs">{t("entries.form.bgHeight")}</Label>
-                <Input
-                  type="number"
-                  min={8}
-                  max={2000}
-                  value={bgHeight}
-                  onChange={(e) => setBgHeight(Number(e.target.value) || 8)}
-                />
-              </div>
-            ) : null}
-            <div className="space-y-1">
-              <Label className="text-xs">
-                {t("entries.form.bgOpacity")}: {bgOpacity}%
-              </Label>
-              <Input
-                type="range"
-                min={0}
-                max={100}
-                value={bgOpacity}
-                onChange={(e) => setBgOpacity(Number(e.target.value))}
-              />
-            </div>
-          </div>
         </div>
 
 
@@ -1166,6 +1069,128 @@ function EntryForm({
               placeholder={t("entries.form.descriptionPh")}
             />
           </div>
+
+          {/* Background image */}
+          <div className="space-y-2 border-t pt-3">
+            <Label>{t("entries.form.bg")}</Label>
+            <input
+              ref={bgInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                setBgFile(f);
+                setBgRemoved(false);
+                setBgPreview(URL.createObjectURL(f));
+              }}
+            />
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+              {/* left: preview, upload, opacity */}
+              <div className="space-y-2">
+                <div className="aspect-video w-full overflow-hidden rounded-md border bg-muted">
+                  {previewSrc ? (
+                    <img src={previewSrc} alt="" className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                      {t("entries.form.bgNone")}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => bgInputRef.current?.click()}
+                  >
+                    {t("entries.form.bgUpload")}
+                  </Button>
+                  {bgUrl && !bgRemoved ? (
+                    <Button type="button" size="sm" variant="outline" asChild>
+                      <a href={bgUrl} download target="_blank" rel="noreferrer">
+                        {t("entries.form.bgDownload")}
+                      </a>
+                    </Button>
+                  ) : null}
+                  {previewSrc ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setBgFile(null);
+                        setBgPreview(null);
+                        setBgRemoved(true);
+                      }}
+                    >
+                      {t("entries.form.bgRemove")}
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    {t("entries.form.bgOpacity")}: {bgOpacity}%
+                  </Label>
+                  <Input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={bgOpacity}
+                    onChange={(e) => setBgOpacity(Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              {/* right: alignment, size, margin */}
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("entries.form.bgAlign")}</Label>
+                  <select
+                    value={bgAlign}
+                    onChange={(e) => setBgAlign(e.target.value as EntryBgAlign)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    {ENTRY_BG_ALIGNMENTS.map((a) => (
+                      <option key={a} value={a}>
+                        {t(`entries.form.bgAlign.${a}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {bgAlign === "right-top" || bgAlign === "right-bottom" ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgHeight")}</Label>
+                    <Input
+                      type="number"
+                      min={8}
+                      max={2000}
+                      value={bgHeight}
+                      onChange={(e) => setBgHeight(Number(e.target.value) || 8)}
+                    />
+                  </div>
+                ) : null}
+                {bgAlign !== "fill" ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgMargin")}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={500}
+                      value={bgMargin}
+                      onChange={(e) => setBgMargin(Math.max(0, Number(e.target.value) || 0))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("entries.form.bgMarginHint")}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>{t("entries.form.rooms")}</Label>
             <div className="flex flex-wrap gap-2">
