@@ -378,9 +378,10 @@ export function ZeitplanTemplate({
                           src={bg}
                           alt=""
                           style={{
-                            width: "100%",
+                            width: `calc(100% - ${bgM * 2}px)`,
                             height: "auto",
-                            marginTop: 8,
+                            marginTop: 8 + bgM,
+                            marginBottom: bgM,
                             opacity: bgOpacity,
                             objectFit: "contain",
                           }}

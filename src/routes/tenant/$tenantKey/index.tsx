@@ -83,6 +83,7 @@ type EntryRow = {
   background_align?: EntryBgAlign | null;
   background_height?: number | null;
   background_opacity?: number | null;
+  background_margin?: number | null;
 };
 
 type RoomRow = {
@@ -931,6 +932,7 @@ function EntryForm({
     background_align: EntryBgAlign;
     background_height: number;
     background_opacity: number;
+    background_margin: number;
   }) => Promise<string>;
   onCancel: () => void;
 }) {
@@ -961,6 +963,7 @@ function EntryForm({
   );
   const [bgHeight, setBgHeight] = useState<number>(initial?.background_height ?? 80);
   const [bgOpacity, setBgOpacity] = useState<number>(initial?.background_opacity ?? 100);
+  const [bgMargin, setBgMargin] = useState<number>(initial?.background_margin ?? 0);
   const [bgUrl, setBgUrl] = useState<string | null>(initial?.background_url ?? null);
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [bgPreview, setBgPreview] = useState<string | null>(null);
@@ -1263,6 +1266,7 @@ function EntryForm({
                 background_align: bgAlign,
                 background_height: bgHeight,
                 background_opacity: bgOpacity,
+                background_margin: bgMargin,
               });
               if (bgRemoved && !bgFile) {
                 await removeBgFn({ data: { key: tenantKey, id } });
