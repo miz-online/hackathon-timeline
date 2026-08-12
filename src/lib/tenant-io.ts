@@ -59,6 +59,10 @@ export const entryItem = z.object({
   background_height: z.number().int().min(8).max(2000).default(80),
   background_opacity: z.number().int().min(0).max(100).default(100),
   background_margin: z.number().int().min(0).max(500).default(0),
+  background_tint: z
+    .enum(["base", "deep", "peak", "highlight", "onBase"])
+    .nullable()
+    .default(null),
 });
 
 
