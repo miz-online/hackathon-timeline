@@ -1073,6 +1073,40 @@ function EntryForm({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>{t("entries.form.rooms")}</Label>
+            <div className="flex flex-wrap gap-2">
+              {rooms.length === 0 ? (
+                <span className="text-xs italic text-muted-foreground">{t("entries.allRooms")}</span>
+              ) : (
+                rooms.map((r) => {
+                  const active = selectedRooms.includes(r.name);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleRoom(r.name)}
+                      className={
+                        "px-3 py-1 rounded-full border text-sm transition " +
+                        (active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-input hover:bg-accent")
+                      }
+                    >
+                      {r.name}
+                    </button>
+                  );
+                })
+              )}
+              {rooms.length > 0 && selectedRooms.length === 0 ? (
+                <span className="px-3 py-1 rounded-full border border-dashed text-xs italic text-muted-foreground">
+                  {t("entries.allRooms")}
+                </span>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
+          </div>
+
           {/* Background image */}
           <div className="space-y-2 border-t pt-3">
             <Label>{t("entries.form.bg")}</Label>
@@ -1192,40 +1226,6 @@ function EntryForm({
                 ) : null}
               </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t("entries.form.rooms")}</Label>
-            <div className="flex flex-wrap gap-2">
-              {rooms.length === 0 ? (
-                <span className="text-xs italic text-muted-foreground">{t("entries.allRooms")}</span>
-              ) : (
-                rooms.map((r) => {
-                  const active = selectedRooms.includes(r.name);
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => toggleRoom(r.name)}
-                      className={
-                        "px-3 py-1 rounded-full border text-sm transition " +
-                        (active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-muted-foreground border-input hover:bg-accent")
-                      }
-                    >
-                      {r.name}
-                    </button>
-                  );
-                })
-              )}
-              {rooms.length > 0 && selectedRooms.length === 0 ? (
-                <span className="px-3 py-1 rounded-full border border-dashed text-xs italic text-muted-foreground">
-                  {t("entries.allRooms")}
-                </span>
-              ) : null}
-            </div>
-            <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
           </div>
         </div>
       </div>
