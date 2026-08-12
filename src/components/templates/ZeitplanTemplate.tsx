@@ -12,7 +12,12 @@ type Entry = {
   description: string;
   tags: string[];
   color?: string | null;
+  background_url?: string | null;
+  background_align?: "right-top" | "right-bottom" | "right-stretch" | "fill" | "time" | null;
+  background_height?: number | null;
+  background_opacity?: number | null;
 };
+
 
 const ANIM_EPOCH = Date.now();
 
@@ -241,6 +246,34 @@ export function ZeitplanTemplate({
                   "--zp-border-duration": p.borderDuration,
                   "--zp-pulse-duration": p.pulseDuration,
                 } as CSSProperties;
+                const bg = e.background_url ?? null;
+                const bgAlign = e.background_align ?? "right-top";
+                const bgH = e.background_height ?? 80;
+                const bgOpacity = (e.background_opacity ?? 100) / 100;
+                const bgStyle: CSSProperties | null = !bg
+                  ? null
+                  : bgAlign === "fill"
+                    ? {
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }
+                    : bgAlign === "right-stretch"
+                      ? {
+                          position: "absolute",
+                          top: 0,
+                          bottom: 0,
+                          right: 0,
+                          height: "100%",
+                          width: "auto",
+                        }
+                      : bgAlign === "right-bottom"
+                        ? { position: "absolute", bottom: 0, right: 0, height: `${bgH}px`, width: "auto" }
+                        : { position: "absolute", top: 0, right: 0, height: `${bgH}px`, width: "auto" };
+
+
 
                 return (
                   <motion.div
@@ -338,10 +371,25 @@ export function ZeitplanTemplate({
                           ) : null}
                         </>
                       )}
+                      {bg && bgAlign === "time" ? (
+                        <img
+                          src={bg}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            height: "auto",
+                            marginTop: 8,
+                            opacity: bgOpacity,
+                            objectFit: "contain",
+                          }}
+                        />
+                      ) : null}
                     </div>
                     <div
                       style={{
                         flex: 1,
+                        position: "relative",
+                        overflow: "hidden",
                         padding: "clamp(10px, 1.2vw, 18px) clamp(16px, 2vw, 32px)",
                         display: "flex",
                         flexDirection: "column",
@@ -349,6 +397,15 @@ export function ZeitplanTemplate({
                         gap: 4,
                       }}
                     >
+                      {bg && bgAlign !== "time" && bgStyle ? (
+                        <img
+                          src={bg}
+                          alt=""
+                          aria-hidden
+                          style={{ ...bgStyle, opacity: bgOpacity, pointerEvents: "none" }}
+                        />
+                      ) : null}
+
                       <div
                         style={{
                           fontWeight: 700,

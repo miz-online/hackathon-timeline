@@ -28,8 +28,11 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const { data: entries } = await supabaseAdmin
           .from("entries")
-          .select("id, time, end_time, title, description, tags, color_scheme_id")
+          .select(
+            "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity",
+          )
           .eq("tenant_id", tenant.id);
+
 
         const { data: schemes } = await supabaseAdmin
           .from("color_schemes")
@@ -65,7 +68,14 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             description: e.description,
             tags: e.tags,
             color: e.color_scheme_id ? (colorById.get(e.color_scheme_id) ?? null) : null,
+            background_url: e.background_path
+              ? `/api/public/entry-bg/${encodeURIComponent(tenantKey)}/${e.id}?v=${encodeURIComponent(e.background_path.split("/").pop() ?? "1")}`
+              : null,
+            background_align: e.background_align ?? "right-top",
+            background_height: e.background_height ?? 80,
+            background_opacity: e.background_opacity ?? 100,
           }));
+
 
         return new Response(
           JSON.stringify({

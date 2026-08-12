@@ -27,9 +27,12 @@ import {
   upsertAdSet,
   deleteAdSet,
   updateTenantTemplate,
-
-
+  uploadEntryBackground,
+  removeEntryBackground,
+  ENTRY_BG_ALIGNMENTS,
+  type EntryBgAlign,
 } from "@/lib/board.functions";
+
 import {
   getTenantAccess,
   unlockTenantAccess,
@@ -76,7 +79,12 @@ type EntryRow = {
   color_scheme_id: string | null;
   notify: boolean;
   sent?: boolean;
+  background_url?: string | null;
+  background_align?: EntryBgAlign | null;
+  background_height?: number | null;
+  background_opacity?: number | null;
 };
+
 type RoomRow = {
   id: string;
   ref_id?: string | null;
@@ -735,16 +743,22 @@ function EntriesPanel({
           {showForm ? (
             <EntryForm
               initial={editing}
+              tenantKey={tenantKey}
+
               rooms={rooms}
               schemes={schemes}
               defaultColor={defaultColor}
               onCancel={() => setShowForm(false)}
               onSubmit={async (entry) => {
-                await upsertFn({ data: { key: tenantKey, entry } });
+                const res = await upsertFn({ data: { key: tenantKey, entry } });
+                return res.id;
+              }}
+              onSaved={() => {
                 toast.success(editing ? t("entries.updated") : t("entries.created"));
                 setShowForm(false);
                 onChange();
               }}
+
             />
           ) : null}
         </DialogContent>
@@ -893,13 +907,18 @@ function EntryForm({
   rooms,
   schemes,
   defaultColor,
+  tenantKey,
   onSubmit,
+  onSaved,
   onCancel,
 }: {
   initial: EntryRow | null;
   rooms: RoomRow[];
   schemes: SchemeRow[];
   defaultColor: string;
+  tenantKey: string;
+  onSaved: () => void;
+
   onSubmit: (entry: {
     id?: string;
     time: string;
@@ -909,10 +928,15 @@ function EntryForm({
     tags: string[];
     color_scheme_id: string | null;
     notify: boolean;
-  }) => Promise<void>;
+    background_align: EntryBgAlign;
+    background_height: number;
+    background_opacity: number;
+  }) => Promise<string>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const uploadBgFn = useServerFn(uploadEntryBackground);
+  const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
     initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
   );
@@ -932,6 +956,19 @@ function EntryForm({
   const [schemeId, setSchemeId] = useState<string>(initial?.color_scheme_id ?? "");
   const [notify, setNotify] = useState<boolean>(initial?.notify !== false);
   const [saving, setSaving] = useState(false);
+  const [bgAlign, setBgAlign] = useState<EntryBgAlign>(
+    (initial?.background_align as EntryBgAlign) ?? "right-top",
+  );
+  const [bgHeight, setBgHeight] = useState<number>(initial?.background_height ?? 80);
+  const [bgOpacity, setBgOpacity] = useState<number>(initial?.background_opacity ?? 100);
+  const [bgUrl, setBgUrl] = useState<string | null>(initial?.background_url ?? null);
+  const [bgFile, setBgFile] = useState<File | null>(null);
+  const [bgPreview, setBgPreview] = useState<string | null>(null);
+  const [bgRemoved, setBgRemoved] = useState(false);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
+  const previewSrc = bgPreview ?? (bgRemoved ? null : bgUrl);
+
 
   const toggleRoom = (name: string) => {
     setSelectedRooms((prev) =>
@@ -1010,7 +1047,105 @@ function EntryForm({
               {t("entries.form.notify")}
             </Label>
           </div>
+
+          {/* Background image */}
+          <div className="space-y-2 border-t pt-3">
+            <Label>{t("entries.form.bg")}</Label>
+            <div className="aspect-video w-full overflow-hidden rounded-md border bg-muted">
+              {previewSrc ? (
+                <img src={previewSrc} alt="" className="h-full w-full object-contain" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                  {t("entries.form.bgNone")}
+                </div>
+              )}
+            </div>
+            <input
+              ref={bgInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                setBgFile(f);
+                setBgRemoved(false);
+                setBgPreview(URL.createObjectURL(f));
+              }}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => bgInputRef.current?.click()}
+              >
+                {t("entries.form.bgUpload")}
+              </Button>
+              {bgUrl && !bgRemoved ? (
+                <Button type="button" size="sm" variant="outline" asChild>
+                  <a href={bgUrl} download target="_blank" rel="noreferrer">
+                    {t("entries.form.bgDownload")}
+                  </a>
+                </Button>
+              ) : null}
+              {previewSrc ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setBgFile(null);
+                    setBgPreview(null);
+                    setBgRemoved(true);
+                  }}
+                >
+                  {t("entries.form.bgRemove")}
+                </Button>
+              ) : null}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">{t("entries.form.bgAlign")}</Label>
+              <select
+                value={bgAlign}
+                onChange={(e) => setBgAlign(e.target.value as EntryBgAlign)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                {ENTRY_BG_ALIGNMENTS.map((a) => (
+                  <option key={a} value={a}>
+                    {t(`entries.form.bgAlign.${a}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {bgAlign === "right-top" || bgAlign === "right-bottom" ? (
+              <div className="space-y-1">
+                <Label className="text-xs">{t("entries.form.bgHeight")}</Label>
+                <Input
+                  type="number"
+                  min={8}
+                  max={2000}
+                  value={bgHeight}
+                  onChange={(e) => setBgHeight(Number(e.target.value) || 8)}
+                />
+              </div>
+            ) : null}
+            <div className="space-y-1">
+              <Label className="text-xs">
+                {t("entries.form.bgOpacity")}: {bgOpacity}%
+              </Label>
+              <Input
+                type="range"
+                min={0}
+                max={100}
+                value={bgOpacity}
+                onChange={(e) => setBgOpacity(Number(e.target.value))}
+              />
+            </div>
+          </div>
         </div>
+
 
         {/* Right column (2): title, description, rooms */}
         <div className="col-span-1 sm:col-span-2 space-y-3">
@@ -1091,7 +1226,7 @@ function EntryForm({
               // Drop any selected room names that no longer exist
               const validNames = new Set(rooms.map((r) => r.name));
               const tags = selectedRooms.filter((n) => validNames.has(n));
-              await onSubmit({
+              const id = await onSubmit({
                 id: initial?.id,
                 time: new Date(time).toISOString(),
                 end_time: endMs != null ? new Date(endMs).toISOString() : null,
@@ -1100,7 +1235,29 @@ function EntryForm({
                 tags,
                 color_scheme_id: schemeId || null,
                 notify,
+                background_align: bgAlign,
+                background_height: bgHeight,
+                background_opacity: bgOpacity,
               });
+              if (bgRemoved && !bgFile) {
+                await removeBgFn({ data: { key: tenantKey, id } });
+              }
+              if (bgFile) {
+                const buf = new Uint8Array(await bgFile.arrayBuffer());
+                let bin = "";
+                for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+                await uploadBgFn({
+                  data: {
+                    key: tenantKey,
+                    id,
+                    filename: bgFile.name,
+                    contentType: bgFile.type || "image/png",
+                    dataBase64: btoa(bin),
+                  },
+                });
+              }
+              onSaved();
+
             } catch (e) {
               toast.error((e as Error).message);
             } finally {
