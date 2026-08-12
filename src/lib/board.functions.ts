@@ -1558,7 +1558,21 @@ export const importTenantData = createServerFn({ method: "POST" })
         await supabase.from("entries").delete().eq("tenant_id", tenant.id);
       }
       if (p.entries.length) {
-        const rows: Record<string, unknown>[] = [];
+        const rows: {
+          tenant_id: string;
+          time: string;
+          end_time: string | null;
+          title: string;
+          description: string;
+          tags: string[];
+          color_scheme_id: string | null;
+          notify: boolean;
+          background_path: string | null;
+          background_content_type: string | null;
+          background_align: string;
+          background_height: number;
+          background_opacity: number;
+        }[] = [];
         for (const e of p.entries) {
           for (const ref of e.rooms) {
             if (!roomNameByRef.get(ref)) {
