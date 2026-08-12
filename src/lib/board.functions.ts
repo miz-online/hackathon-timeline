@@ -694,7 +694,7 @@ export type RoomSnapshot = {
     background_height: number;
     background_opacity: number;
     background_margin: number;
-    background_tint: string | null;
+    background_tint: EntryBgTint | null;
   }[];
 
   ads: { id: string; name: string; url: string; content_type: string }[];
