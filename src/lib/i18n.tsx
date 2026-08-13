@@ -295,6 +295,10 @@ const en: Dict = {
   "messages.sendHint": "The message is sent to all active webhooks.",
   "messages.editWebhook": "Edit webhook",
   "messages.noActive": "No active webhook available.",
+  "messages.image": "Image",
+  "messages.imageNone": "No image",
+  "messages.imageUpload": "Upload image",
+  "messages.imageRemove": "Remove image",
 };
 
 const de: Dict = {
