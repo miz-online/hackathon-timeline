@@ -635,7 +635,12 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
   .inputValidator(
     (d: {
       key: string;
-      message: { title: string; description: string; color?: string | null };
+      message: {
+        title: string;
+        description: string;
+        color?: string | null;
+        image?: { filename: string; contentType: string; dataBase64: string } | null;
+      };
     }) =>
       z
         .object({
@@ -644,6 +649,14 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
             title: z.string().min(1).max(200),
             description: z.string().max(2000).default(""),
             color: z.string().max(7).nullable().default(null),
+            image: z
+              .object({
+                filename: z.string().min(1).max(200),
+                contentType: z.string().min(1).max(100),
+                dataBase64: z.string().min(1),
+              })
+              .nullable()
+              .default(null),
           }),
         })
         .parse(d),
@@ -659,14 +672,28 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const webhooks = rows ?? [];
     if (webhooks.length === 0) throw new Error("No active webhooks configured");
+
+    const { image, ...rest } = data.message;
+    let attachment: { filename: string; contentType: string; bytes: Uint8Array } | null = null;
+    if (image) {
+      const bin = atob(image.dataBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      attachment = { filename: image.filename, contentType: image.contentType, bytes };
+    }
+
     const results = await Promise.all(
       webhooks.map(async (w) => {
-        const result = await sendWebhook(w.url, w.type as WebhookType, data.message);
+        const result = await sendWebhook(w.url, w.type as WebhookType, {
+          ...rest,
+          image: attachment,
+        });
         return { id: w.id, name: w.name, ok: result.ok, error: result.ok ? undefined : result.error };
       }),
     );
     return { results };
   });
+
 
 // ---------- snapshot for displays ----------
 
