@@ -55,7 +55,9 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           // Entries becoming due within the checked minute window
           const { data: entries } = await supabase
             .from("entries")
-            .select("id, time, title, description, color_scheme_id, notify, notified_at")
+            .select(
+              "id, time, title, description, color_scheme_id, notify, notified_at, background_path, background_content_type",
+            )
             .eq("tenant_id", tenant.id)
             .eq("notify", true)
             .is("notified_at", null)
@@ -75,6 +77,21 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
 
             const color = scheme?.color ?? tenant.accent_color;
 
+            // Attach the entry's background image (if any) at the end of the message
+            let image: { filename: string; contentType: string; bytes: Uint8Array } | null = null;
+            if (entry.background_path) {
+              const { data: file } = await supabase.storage
+                .from("tenant-entry-backgrounds")
+                .download(entry.background_path);
+              if (file) {
+                image = {
+                  filename: entry.background_path.split("/").pop() || "image.png",
+                  contentType: entry.background_content_type || file.type || "image/png",
+                  bytes: new Uint8Array(await file.arrayBuffer()),
+                };
+              }
+            }
+
             let anyOk = false;
             for (const webhook of webhooks) {
               const result = await sendWebhook(webhook.url, webhook.type as WebhookType, {
@@ -82,7 +99,9 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 description: entry.description,
                 color,
                 time: entryTime,
+                image,
               });
+
               if (result.ok) anyOk = true;
 
               results.push({
