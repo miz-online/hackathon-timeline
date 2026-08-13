@@ -1144,15 +1144,45 @@ function EntryForm({
               {/* left: preview, upload/download/remove, tint */}
               <div className="space-y-2">
                 <div className="flex gap-3 items-start">
-                  <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
+                  <div
+                    className="relative h-24 w-40 shrink-0 overflow-hidden rounded-md border"
+                    style={{
+                      backgroundColor: bgAlign === "time" ? entryPalette.base : "#ffffff",
+                    }}
+                  >
                     {previewSrc ? (
-                      <img src={previewSrc} alt="" className="h-full w-full object-contain" />
+                      bgTint && tintable ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0"
+                          style={{
+                            opacity: bgOpacity / 100,
+                            backgroundColor: entryPalette[bgTint],
+                            WebkitMaskImage: `url("${previewSrc}")`,
+                            maskImage: `url("${previewSrc}")`,
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={previewSrc}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          style={{ opacity: bgOpacity / 100 }}
+                        />
+                      )
                     ) : (
                       <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                         {t("entries.form.bgNone")}
                       </div>
                     )}
                   </div>
+
                   <div className="flex flex-col gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
