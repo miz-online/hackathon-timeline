@@ -71,11 +71,27 @@ export async function sendWebhook(
   const payload = buildDiscordPayload(message);
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    let res: Response;
+    if (message.image) {
+      const name = sanitizeFilename(message.image.filename);
+      const form = new FormData();
+      form.append("payload_json", JSON.stringify(payload));
+      form.append(
+        "files[0]",
+        new Blob([message.image.bytes as unknown as BlobPart], {
+          type: message.image.contentType || "image/png",
+        }),
+        name,
+      );
+      res = await fetch(url, { method: "POST", body: form });
+    } else {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
 
     if (!res.ok) {
       let text = "";
