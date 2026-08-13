@@ -373,6 +373,48 @@ function DirectMessagePanel({
           </select>
         </div>
       </div>
+      <div className="space-y-1">
+        <Label>{t("messages.image")}</Label>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            setImage(f);
+            setImagePreview(URL.createObjectURL(f));
+          }}
+        />
+        <div className="flex items-start gap-3">
+          <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
+            {imagePreview ? (
+              <img src={imagePreview} alt="" className="h-full w-full object-contain" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                {t("messages.imageNone")}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              {t("messages.imageUpload")}
+            </Button>
+            {imagePreview ? (
+              <Button type="button" size="sm" variant="ghost" onClick={clearImage}>
+                {t("messages.imageRemove")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
       <div className="flex justify-end">
         <Button
           disabled={!title.trim() || activeCount === 0 || sendMut.isPending}
