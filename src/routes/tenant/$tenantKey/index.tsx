@@ -687,13 +687,13 @@ function EntriesPanel({
 
   const now = nowTick;
   const graceMs = (graceMinutes || 0) * 60 * 1000;
-  const visibleEntries = showExpired
-    ? entries
-    : entries.filter((e) => {
-        if (e.end_time) return new Date(e.end_time).getTime() >= now;
-        return new Date(e.time).getTime() + graceMs >= now;
-      });
-  const expiredCount = entries.length - visibleEntries.length;
+  const activeEntries = entries.filter((e) => {
+    if (e.end_time) return new Date(e.end_time).getTime() >= now;
+    return new Date(e.time).getTime() + graceMs >= now;
+  });
+  const visibleEntries = showExpired ? entries : activeEntries;
+  const expiredCount = entries.length - activeEntries.length;
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
@@ -709,13 +709,14 @@ function EntriesPanel({
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {showExpired ? (
+          {showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
             >
               {t("entries.hideExpired")}
             </a>
+
           ) : expiredCount > 0 ? (
             <a
               href="#entries-all"
@@ -1143,15 +1144,45 @@ function EntryForm({
               {/* left: preview, upload/download/remove, tint */}
               <div className="space-y-2">
                 <div className="flex gap-3 items-start">
-                  <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
+                  <div
+                    className="relative h-24 w-40 shrink-0 overflow-hidden rounded-md border"
+                    style={{
+                      backgroundColor: bgAlign === "time" ? entryPalette.base : "#ffffff",
+                    }}
+                  >
                     {previewSrc ? (
-                      <img src={previewSrc} alt="" className="h-full w-full object-contain" />
+                      bgTint && tintable ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0"
+                          style={{
+                            opacity: bgOpacity / 100,
+                            backgroundColor: entryPalette[bgTint],
+                            WebkitMaskImage: `url("${previewSrc}")`,
+                            maskImage: `url("${previewSrc}")`,
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={previewSrc}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          style={{ opacity: bgOpacity / 100 }}
+                        />
+                      )
                     ) : (
                       <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                         {t("entries.form.bgNone")}
                       </div>
                     )}
                   </div>
+
                   <div className="flex flex-col gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>

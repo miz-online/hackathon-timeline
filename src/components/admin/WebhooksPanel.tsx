@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -276,21 +276,42 @@ function DirectMessagePanel({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [schemeId, setSchemeId] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const activeCount = webhooks.filter((w) => w.enabled).length;
 
+  const clearImage = () => {
+    setImage(null);
+    setImagePreview(null);
+  };
+
   const sendMut = useMutation({
-    mutationFn: () =>
-      sendFn({
+    mutationFn: async () => {
+      let imagePayload: { filename: string; contentType: string; dataBase64: string } | null = null;
+      if (image) {
+        const buf = new Uint8Array(await image.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        imagePayload = {
+          filename: image.name,
+          contentType: image.type || "image/png",
+          dataBase64: btoa(bin),
+        };
+      }
+      return sendFn({
         data: {
           key: tenantKey,
           message: {
             title: title.trim(),
             description: description.trim(),
             color: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+            image: imagePayload,
           },
         },
-      }),
+      });
+    },
     onSuccess: (res) => {
       const failed = res.results.filter((r) => !r.ok);
       if (failed.length === 0) {
@@ -300,9 +321,11 @@ function DirectMessagePanel({
       }
       setTitle("");
       setDescription("");
+      clearImage();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <Card className="p-4 space-y-4">
@@ -348,6 +371,48 @@ function DirectMessagePanel({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label>{t("messages.image")}</Label>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (!f) return;
+            setImage(f);
+            setImagePreview(URL.createObjectURL(f));
+          }}
+        />
+        <div className="flex items-start gap-3">
+          <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md border bg-muted">
+            {imagePreview ? (
+              <img src={imagePreview} alt="" className="h-full w-full object-contain" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                {t("messages.imageNone")}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => imageInputRef.current?.click()}
+            >
+              {t("messages.imageUpload")}
+            </Button>
+            {imagePreview ? (
+              <Button type="button" size="sm" variant="ghost" onClick={clearImage}>
+                {t("messages.imageRemove")}
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="flex justify-end">

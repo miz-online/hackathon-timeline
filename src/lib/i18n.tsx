@@ -295,6 +295,10 @@ const en: Dict = {
   "messages.sendHint": "The message is sent to all active webhooks.",
   "messages.editWebhook": "Edit webhook",
   "messages.noActive": "No active webhook available.",
+  "messages.image": "Image",
+  "messages.imageNone": "No image",
+  "messages.imageUpload": "Upload image",
+  "messages.imageRemove": "Remove image",
 };
 
 const de: Dict = {
@@ -593,6 +597,10 @@ const de: Dict = {
   "messages.sendHint": "Die Nachricht wird an alle aktiven Webhooks gesendet.",
   "messages.editWebhook": "Webhook bearbeiten",
   "messages.noActive": "Kein aktiver Webhook vorhanden.",
+  "messages.image": "Bild",
+  "messages.imageNone": "Kein Bild",
+  "messages.imageUpload": "Bild hochladen",
+  "messages.imageRemove": "Bild entfernen",
 };
 
 const DICTS: Record<Lang, Dict> = { en, de };
