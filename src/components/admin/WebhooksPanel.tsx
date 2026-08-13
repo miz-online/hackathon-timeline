@@ -276,21 +276,42 @@ function DirectMessagePanel({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [schemeId, setSchemeId] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const activeCount = webhooks.filter((w) => w.enabled).length;
 
+  const clearImage = () => {
+    setImage(null);
+    setImagePreview(null);
+  };
+
   const sendMut = useMutation({
-    mutationFn: () =>
-      sendFn({
+    mutationFn: async () => {
+      let imagePayload: { filename: string; contentType: string; dataBase64: string } | null = null;
+      if (image) {
+        const buf = new Uint8Array(await image.arrayBuffer());
+        let bin = "";
+        for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        imagePayload = {
+          filename: image.name,
+          contentType: image.type || "image/png",
+          dataBase64: btoa(bin),
+        };
+      }
+      return sendFn({
         data: {
           key: tenantKey,
           message: {
             title: title.trim(),
             description: description.trim(),
             color: schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+            image: imagePayload,
           },
         },
-      }),
+      });
+    },
     onSuccess: (res) => {
       const failed = res.results.filter((r) => !r.ok);
       if (failed.length === 0) {
@@ -300,9 +321,11 @@ function DirectMessagePanel({
       }
       setTitle("");
       setDescription("");
+      clearImage();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <Card className="p-4 space-y-4">
