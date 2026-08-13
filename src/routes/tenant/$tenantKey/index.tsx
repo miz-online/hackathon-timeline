@@ -709,13 +709,14 @@ function EntriesPanel({
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {showExpired ? (
+          {showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
             >
               {t("entries.hideExpired")}
             </a>
+
           ) : expiredCount > 0 ? (
             <a
               href="#entries-all"
