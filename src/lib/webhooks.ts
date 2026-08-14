@@ -12,6 +12,7 @@ export type WebhookMessage = {
   title: string;
   description: string;
   time?: Date;
+  endTime?: Date | null;
   color?: string | null;
   /** optional image, appended at the end of the message as an attachment */
   image?: WebhookImage | null;
@@ -30,9 +31,14 @@ export function buildDiscordPayload(message: WebhookMessage): {
   const colorHex = message.color ? derivePalette(message.color).base : undefined;
   const color = colorHex ? parseInt(colorHex.replace("#", ""), 16) : undefined;
 
-  const title = message.time
-    ? `<t:${Math.floor(message.time.getTime() / 1000)}:t>: ${message.title}`
-    : message.title;
+  const stamp = (d: Date) => `<t:${Math.floor(d.getTime() / 1000)}:t>`;
+  const timeLabel = message.time
+    ? message.endTime
+      ? `${stamp(message.time)} - ${stamp(message.endTime)}`
+      : stamp(message.time)
+    : null;
+
+  const title = timeLabel ? `${timeLabel}: ${message.title}` : message.title;
 
   const embed: {
     title: string;
