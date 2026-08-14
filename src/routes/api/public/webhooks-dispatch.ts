@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           const { data: entries } = await supabase
             .from("entries")
             .select(
-              "id, time, title, description, color_scheme_id, notify, notified_at, background_path, background_content_type",
+              "id, time, end_time, title, description, color_scheme_id, notify, notified_at, background_path, background_content_type",
             )
             .eq("tenant_id", tenant.id)
             .eq("notify", true)
@@ -99,6 +99,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 description: entry.description,
                 color,
                 time: entryTime,
+                endTime: entry.end_time ? new Date(entry.end_time) : null,
                 image,
               });
 
