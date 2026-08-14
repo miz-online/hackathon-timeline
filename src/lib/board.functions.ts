@@ -36,10 +36,14 @@ type TenantRow = {
   logo_height: number;
   accent_color: string;
   ad_seconds: number;
+  focus_mode: string;
+  focus_count: number;
+  focus_minutes: number;
+  focus_dim_opacity: number;
 };
 
 const TENANT_COLS =
-  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds";
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity";
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
@@ -165,6 +169,10 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       logo_height: number;
       accent_color: string;
       ad_seconds: number;
+      focus_mode: string;
+      focus_count: number;
+      focus_minutes: number;
+      focus_dim_opacity: number;
     }) =>
       z
         .object({
@@ -179,6 +187,10 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           logo_height: z.number().int().min(16).max(400),
           accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
           ad_seconds: z.number().int().min(1).max(600).default(10),
+          focus_mode: z.enum(["count", "minutes"]).default("count"),
+          focus_count: z.number().int().min(0).max(50).default(3),
+          focus_minutes: z.number().int().min(0).max(1440).default(30),
+          focus_dim_opacity: z.number().int().min(0).max(100).default(35),
         })
         .parse(d),
   )
@@ -194,6 +206,10 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         logo_height: data.logo_height,
         accent_color: data.accent_color.toUpperCase(),
         ad_seconds: data.ad_seconds,
+        focus_mode: data.focus_mode,
+        focus_count: data.focus_count,
+        focus_minutes: data.focus_minutes,
+        focus_dim_opacity: data.focus_dim_opacity,
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
@@ -706,6 +722,10 @@ export type RoomSnapshot = {
     logo_height: number;
     accent_color: string;
     ad_seconds: number;
+    focus_mode: string;
+    focus_count: number;
+    focus_minutes: number;
+    focus_dim_opacity: number;
   };
   room: { id: string; name: string; color: string | null; template: string };
   entries: {
@@ -787,6 +807,10 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
         ad_seconds: adSeconds,
+        focus_mode: tenant.focus_mode ?? "count",
+        focus_count: tenant.focus_count ?? 3,
+        focus_minutes: tenant.focus_minutes ?? 30,
+        focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
       },
       room: {
         id: room.id,
@@ -1344,6 +1368,10 @@ export const exportTenantData = createServerFn({ method: "GET" })
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
         ad_seconds: tenant.ad_seconds,
+        focus_mode: (tenant.focus_mode ?? "count") as "count" | "minutes",
+        focus_count: tenant.focus_count ?? 3,
+        focus_minutes: tenant.focus_minutes ?? 30,
+        focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
       },
       color_schemes: schemeRows.map((s, idx) => ({
         id: schemeIds[idx],
@@ -1826,6 +1854,11 @@ export const importTenantData = createServerFn({ method: "POST" })
         update.logo_height = p.tenant.logo_height;
         update.accent_color = p.tenant.accent_color.toUpperCase();
         update.ad_seconds = p.tenant.ad_seconds;
+        if (p.tenant.focus_mode !== undefined) update.focus_mode = p.tenant.focus_mode;
+        if (p.tenant.focus_count !== undefined) update.focus_count = p.tenant.focus_count;
+        if (p.tenant.focus_minutes !== undefined) update.focus_minutes = p.tenant.focus_minutes;
+        if (p.tenant.focus_dim_opacity !== undefined)
+          update.focus_dim_opacity = p.tenant.focus_dim_opacity;
         counts.tenant = 1;
       }
       if (logoPath !== undefined) update.logo_url = logoPath;
