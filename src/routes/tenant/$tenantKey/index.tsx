@@ -58,6 +58,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -439,6 +446,10 @@ function AdminPage() {
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
               adSeconds={tenant.ad_seconds}
+              focusMode={tenant.focus_mode}
+              focusCount={tenant.focus_count}
+              focusMinutes={tenant.focus_minutes}
+              focusDimOpacity={tenant.focus_dim_opacity}
               onChange={invalidate}
             />
           </TabsContent>
@@ -1670,6 +1681,10 @@ function SettingsPanel({
   graceMinutes,
   template,
   adSeconds,
+  focusMode,
+  focusCount,
+  focusMinutes,
+  focusDimOpacity,
   onChange,
 }: {
   tenantKey: string;
@@ -1680,6 +1695,10 @@ function SettingsPanel({
   graceMinutes: number;
   template: string;
   adSeconds: number;
+  focusMode: string;
+  focusCount: number;
+  focusMinutes: number;
+  focusDimOpacity: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -1690,6 +1709,12 @@ function SettingsPanel({
   const [adSec, setAdSec] = useState(adSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
+  const [fMode, setFMode] = useState<"count" | "minutes">(
+    focusMode === "minutes" ? "minutes" : "count",
+  );
+  const [fCount, setFCount] = useState(focusCount);
+  const [fMinutes, setFMinutes] = useState(focusMinutes);
+  const [fDim, setFDim] = useState(focusDimOpacity);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -1724,6 +1749,55 @@ function SettingsPanel({
             value={g}
             onChange={(e) => setG(Number(e.target.value))}
           />
+        </div>
+        <div className="space-y-2 rounded-md border p-3">
+          <Label>{t("settings.focusTitle")}</Label>
+          <p className="text-xs text-muted-foreground">{t("settings.focusHint")}</p>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t("settings.focusMode")}</Label>
+            <Select value={fMode} onValueChange={(v) => setFMode(v as "count" | "minutes")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="count">{t("settings.focusModeCount")}</SelectItem>
+                <SelectItem value="minutes">{t("settings.focusModeMinutes")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {fMode === "count" ? (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{t("settings.focusCount")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={50}
+                value={fCount}
+                onChange={(e) => setFCount(Number(e.target.value))}
+              />
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{t("settings.focusMinutes")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={1440}
+                value={fMinutes}
+                onChange={(e) => setFMinutes(Number(e.target.value))}
+              />
+            </div>
+          )}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t("settings.focusDim")}</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={fDim}
+              onChange={(e) => setFDim(Number(e.target.value))}
+            />
+          </div>
         </div>
         {/* Ad display duration is configured per ad set in the Ads tab. */}
 
@@ -1829,6 +1903,10 @@ function SettingsPanel({
                     logo_height: lh,
                     accent_color: accent,
                     ad_seconds: adSec,
+                    focus_mode: fMode,
+                    focus_count: fCount,
+                    focus_minutes: fMinutes,
+                    focus_dim_opacity: fDim,
                   },
                 });
                 toast.success(t("settings.saved"));
