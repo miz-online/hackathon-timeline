@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
         const { data: tenant } = await supabaseAdmin
           .from("tenants")
           .select(
-            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds",
+            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity",
           )
           .eq("key", tenantKey)
           .maybeSingle();
@@ -89,6 +89,10 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               logo_height: tenant.logo_height,
               accent_color: tenant.accent_color,
               ad_seconds: adSeconds,
+              focus_mode: tenant.focus_mode ?? "count",
+              focus_count: tenant.focus_count ?? 3,
+              focus_minutes: tenant.focus_minutes ?? 30,
+              focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
             },
             room: {
               id: room.id,

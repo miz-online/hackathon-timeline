@@ -26,6 +26,10 @@ export const tenantSection = z.object({
   logo_height: z.number().int().min(16).max(400),
   accent_color: hexColor,
   ad_seconds: z.number().int().min(1).max(600),
+  focus_mode: z.enum(["count", "minutes"]).optional(),
+  focus_count: z.number().int().min(0).max(50).optional(),
+  focus_minutes: z.number().int().min(0).max(1440).optional(),
+  focus_dim_opacity: z.number().int().min(0).max(100).optional(),
 });
 
 export const colorSchemeItem = z.object({
@@ -142,6 +146,10 @@ export const TENANT_JSON_SCHEMA = {
         logo_height: { type: "integer", minimum: 16, maximum: 400 },
         accent_color: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
         ad_seconds: { type: "integer", minimum: 1, maximum: 600 },
+        focus_mode: { type: "string", enum: ["count", "minutes"] },
+        focus_count: { type: "integer", minimum: 0, maximum: 50 },
+        focus_minutes: { type: "integer", minimum: 0, maximum: 1440 },
+        focus_dim_opacity: { type: "integer", minimum: 0, maximum: 100 },
       },
     },
     color_schemes: {
