@@ -12,6 +12,7 @@ export type WebhookMessage = {
   title: string;
   description: string;
   time?: Date;
+  endTime?: Date | null;
   color?: string | null;
   /** optional image, appended at the end of the message as an attachment */
   image?: WebhookImage | null;
