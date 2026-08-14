@@ -12,7 +12,55 @@ type Entry = {
   description: string;
   tags: string[];
   color?: string | null;
+  background_url?: string | null;
+  background_align?: "right-top" | "right-bottom" | "right-stretch" | "fill" | "time" | null;
+  background_height?: number | null;
+  background_opacity?: number | null;
+  background_margin?: number | null;
+  background_tint?: "base" | "deep" | "peak" | "highlight" | "onBase" | null;
 };
+
+/**
+ * Renders an entry image, optionally recolored with a palette color.
+ * Tinting uses a CSS mask so the image's alpha channel keeps its shape.
+ */
+function EntryImage({
+  src,
+  tintColor,
+  style,
+  imgStyle,
+}: {
+  src: string;
+  tintColor?: string | null;
+  style: CSSProperties;
+  imgStyle?: CSSProperties;
+}) {
+  if (!tintColor) {
+    return <img src={src} alt="" aria-hidden style={{ ...style, ...imgStyle, pointerEvents: "none" }} />;
+  }
+  return (
+    <span style={{ ...style, display: "inline-block", pointerEvents: "none" }}>
+      <img src={src} alt="" aria-hidden style={{ ...imgStyle, display: "block", opacity: 0 }} />
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: tintColor,
+          WebkitMaskImage: `url("${src}")`,
+          maskImage: `url("${src}")`,
+          WebkitMaskSize: style.objectFit === "cover" ? "cover" : "contain",
+          maskSize: style.objectFit === "cover" ? "cover" : "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+        }}
+      />
+    </span>
+  );
+}
+
 
 const ANIM_EPOCH = Date.now();
 
@@ -241,6 +289,36 @@ export function ZeitplanTemplate({
                   "--zp-border-duration": p.borderDuration,
                   "--zp-pulse-duration": p.pulseDuration,
                 } as CSSProperties;
+                const bg = e.background_url ?? null;
+                const bgAlign = e.background_align ?? "right-top";
+                const bgH = e.background_height ?? 80;
+                const bgOpacity = (e.background_opacity ?? 100) / 100;
+                const bgM = e.background_margin ?? 0;
+                const bgTint = e.background_tint ? p[e.background_tint] : null;
+                const bgStyle: CSSProperties | null = !bg
+                  ? null
+                  : bgAlign === "fill"
+                    ? {
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }
+                    : bgAlign === "right-stretch"
+                      ? {
+                          position: "absolute",
+                          top: bgM,
+                          bottom: bgM,
+                          right: bgM,
+                          height: `calc(100% - ${bgM * 2}px)`,
+                          width: "auto",
+                        }
+                      : bgAlign === "right-bottom"
+                        ? { position: "absolute", bottom: bgM, right: bgM, height: `${bgH}px`, width: "auto" }
+                        : { position: "absolute", top: bgM, right: bgM, height: `${bgH}px`, width: "auto" };
+
+
 
                 return (
                   <motion.div
@@ -338,10 +416,26 @@ export function ZeitplanTemplate({
                           ) : null}
                         </>
                       )}
+                      {bg && bgAlign === "time" ? (
+                        <EntryImage
+                          src={bg}
+                          tintColor={bgTint}
+                          style={{
+                            position: "relative",
+                            width: `calc(100% - ${bgM * 2}px)`,
+                            marginTop: 8 + bgM,
+                            marginBottom: bgM,
+                            opacity: bgOpacity,
+                          }}
+                          imgStyle={{ width: "100%", height: "auto", objectFit: "contain" }}
+                        />
+                      ) : null}
                     </div>
                     <div
                       style={{
                         flex: 1,
+                        position: "relative",
+                        overflow: "hidden",
                         padding: "clamp(10px, 1.2vw, 18px) clamp(16px, 2vw, 32px)",
                         display: "flex",
                         flexDirection: "column",
@@ -349,8 +443,23 @@ export function ZeitplanTemplate({
                         gap: 4,
                       }}
                     >
+                      {bg && bgAlign !== "time" && bgStyle ? (
+                        <EntryImage
+                          src={bg}
+                          tintColor={bgTint}
+                          style={{ ...bgStyle, opacity: bgOpacity }}
+                          imgStyle={{
+                            width: bgStyle.width === "100%" ? "100%" : "auto",
+                            height: "100%",
+                            objectFit: bgAlign === "fill" ? "cover" : "contain",
+                          }}
+                        />
+                      ) : null}
+
                       <div
                         style={{
+                          position: "relative",
+                          zIndex: 1,
                           fontWeight: 700,
                           fontSize: "clamp(16px, 1.8vw, 25px)",
                           color: "#1f2937",
@@ -362,6 +471,8 @@ export function ZeitplanTemplate({
                       {e.description ? (
                         <div
                           style={{
+                            position: "relative",
+                            zIndex: 1,
                             fontStyle: "italic",
                             color: "#6b7280",
                             fontSize: "clamp(13px, 1.15vw, 16px)",
@@ -372,6 +483,7 @@ export function ZeitplanTemplate({
                           {e.description}
                         </div>
                       ) : null}
+
                     </div>
                   </motion.div>
                 );

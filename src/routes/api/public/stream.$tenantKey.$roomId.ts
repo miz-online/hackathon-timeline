@@ -44,8 +44,11 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           if (!tNow || !rNow) return null;
           const { data: entries } = await supabaseAdmin
             .from("entries")
-            .select("id, time, end_time, title, description, tags, color_scheme_id")
+            .select(
+              "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
+            )
             .eq("tenant_id", tenantId);
+
           const { data: schemes } = await supabaseAdmin
             .from("color_schemes")
             .select("id, color")
@@ -77,7 +80,16 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               description: e.description,
               tags: e.tags,
               color: e.color_scheme_id ? (colorById.get(e.color_scheme_id) ?? null) : null,
+              background_url: e.background_path
+                ? `/api/public/entry-bg/${encodeURIComponent(tenantKey)}/${e.id}?v=${encodeURIComponent(e.background_path.split("/").pop() ?? "1")}`
+                : null,
+              background_align: e.background_align ?? "right-top",
+              background_height: e.background_height ?? 80,
+              background_opacity: e.background_opacity ?? 100,
+              background_margin: e.background_margin ?? 0,
+            background_tint: e.background_tint ?? null,
             }));
+
           return {
             tenant: {
               name: tNow.name,

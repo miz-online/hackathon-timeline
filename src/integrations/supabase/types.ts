@@ -143,6 +143,13 @@ export type Database = {
       }
       entries: {
         Row: {
+          background_align: string
+          background_content_type: string | null
+          background_height: number
+          background_margin: number
+          background_opacity: number
+          background_path: string | null
+          background_tint: string | null
           color_scheme_id: string | null
           created_at: string
           description: string
@@ -157,6 +164,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          background_align?: string
+          background_content_type?: string | null
+          background_height?: number
+          background_margin?: number
+          background_opacity?: number
+          background_path?: string | null
+          background_tint?: string | null
           color_scheme_id?: string | null
           created_at?: string
           description: string
@@ -171,6 +185,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          background_align?: string
+          background_content_type?: string | null
+          background_height?: number
+          background_margin?: number
+          background_opacity?: number
+          background_path?: string | null
+          background_tint?: string | null
           color_scheme_id?: string | null
           created_at?: string
           description?: string

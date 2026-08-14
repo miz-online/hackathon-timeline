@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2 } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -27,9 +27,14 @@ import {
   upsertAdSet,
   deleteAdSet,
   updateTenantTemplate,
-
-
+  uploadEntryBackground,
+  removeEntryBackground,
+  ENTRY_BG_ALIGNMENTS,
+  ENTRY_BG_TINTS,
+  supportsTint,
+  type EntryBgAlign,
 } from "@/lib/board.functions";
+
 import {
   getTenantAccess,
   unlockTenantAccess,
@@ -76,7 +81,15 @@ type EntryRow = {
   color_scheme_id: string | null;
   notify: boolean;
   sent?: boolean;
+  background_url?: string | null;
+  background_align?: EntryBgAlign | null;
+  background_height?: number | null;
+  background_opacity?: number | null;
+  background_margin?: number | null;
+  background_tint?: (typeof ENTRY_BG_TINTS)[number] | null;
+  background_content_type?: string | null;
 };
+
 type RoomRow = {
   id: string;
   ref_id?: string | null;
@@ -674,13 +687,13 @@ function EntriesPanel({
 
   const now = nowTick;
   const graceMs = (graceMinutes || 0) * 60 * 1000;
-  const visibleEntries = showExpired
-    ? entries
-    : entries.filter((e) => {
-        if (e.end_time) return new Date(e.end_time).getTime() >= now;
-        return new Date(e.time).getTime() + graceMs >= now;
-      });
-  const expiredCount = entries.length - visibleEntries.length;
+  const activeEntries = entries.filter((e) => {
+    if (e.end_time) return new Date(e.end_time).getTime() >= now;
+    return new Date(e.time).getTime() + graceMs >= now;
+  });
+  const visibleEntries = showExpired ? entries : activeEntries;
+  const expiredCount = entries.length - activeEntries.length;
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { key: tenantKey, id } }),
@@ -696,13 +709,14 @@ function EntriesPanel({
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {showExpired ? (
+          {showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
             >
               {t("entries.hideExpired")}
             </a>
+
           ) : expiredCount > 0 ? (
             <a
               href="#entries-all"
@@ -735,16 +749,22 @@ function EntriesPanel({
           {showForm ? (
             <EntryForm
               initial={editing}
+              tenantKey={tenantKey}
+
               rooms={rooms}
               schemes={schemes}
               defaultColor={defaultColor}
               onCancel={() => setShowForm(false)}
               onSubmit={async (entry) => {
-                await upsertFn({ data: { key: tenantKey, entry } });
+                const res = await upsertFn({ data: { key: tenantKey, entry } });
+                return res.id;
+              }}
+              onSaved={() => {
                 toast.success(editing ? t("entries.updated") : t("entries.created"));
                 setShowForm(false);
                 onChange();
               }}
+
             />
           ) : null}
         </DialogContent>
@@ -893,13 +913,18 @@ function EntryForm({
   rooms,
   schemes,
   defaultColor,
+  tenantKey,
   onSubmit,
+  onSaved,
   onCancel,
 }: {
   initial: EntryRow | null;
   rooms: RoomRow[];
   schemes: SchemeRow[];
   defaultColor: string;
+  tenantKey: string;
+  onSaved: () => void;
+
   onSubmit: (entry: {
     id?: string;
     time: string;
@@ -909,10 +934,17 @@ function EntryForm({
     tags: string[];
     color_scheme_id: string | null;
     notify: boolean;
-  }) => Promise<void>;
+    background_align: EntryBgAlign;
+    background_height: number;
+    background_opacity: number;
+    background_margin: number;
+    background_tint: (typeof ENTRY_BG_TINTS)[number] | null;
+  }) => Promise<string>;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const uploadBgFn = useServerFn(uploadEntryBackground);
+  const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
     initial ? toLocalInput(initial.time) : toLocalInput(new Date().toISOString()),
   );
@@ -932,6 +964,30 @@ function EntryForm({
   const [schemeId, setSchemeId] = useState<string>(initial?.color_scheme_id ?? "");
   const [notify, setNotify] = useState<boolean>(initial?.notify !== false);
   const [saving, setSaving] = useState(false);
+  const [bgAlign, setBgAlign] = useState<EntryBgAlign>(
+    (initial?.background_align as EntryBgAlign) ?? "right-top",
+  );
+  const [bgHeight, setBgHeight] = useState<number>(initial?.background_height ?? 80);
+  const [bgOpacity, setBgOpacity] = useState<number>(initial?.background_opacity ?? 100);
+  const [bgMargin, setBgMargin] = useState<number>(initial?.background_margin ?? 0);
+  const [bgTint, setBgTint] = useState<(typeof ENTRY_BG_TINTS)[number] | null>(
+    initial?.background_tint ?? null,
+  );
+  const [bgUrl, setBgUrl] = useState<string | null>(initial?.background_url ?? null);
+  const [bgFile, setBgFile] = useState<File | null>(null);
+  const [bgPreview, setBgPreview] = useState<string | null>(null);
+  const [bgRemoved, setBgRemoved] = useState(false);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
+  const previewSrc = bgPreview ?? (bgRemoved ? null : bgUrl);
+  const entryPalette = derivePalette(
+    schemes.find((s) => s.id === schemeId)?.color ?? defaultColor,
+  );
+  // only images with an alpha channel (PNG/SVG/WebP/GIF) can be recolored
+  const tintable =
+    !!previewSrc &&
+    supportsTint(bgFile ? bgFile.type : (initial?.background_content_type ?? null));
+
 
   const toggleRoom = (name: string) => {
     setSelectedRooms((prev) =>
@@ -1012,6 +1068,7 @@ function EntryForm({
           </div>
         </div>
 
+
         {/* Right column (2): title, description, rooms */}
         <div className="col-span-1 sm:col-span-2 space-y-3">
           <div className="space-y-1">
@@ -1031,6 +1088,7 @@ function EntryForm({
               placeholder={t("entries.form.descriptionPh")}
             />
           </div>
+
           <div className="space-y-2">
             <Label>{t("entries.form.rooms")}</Label>
             <div className="flex flex-wrap gap-2">
@@ -1064,6 +1122,221 @@ function EntryForm({
             </div>
             <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
           </div>
+
+          {/* Background image */}
+          <div className="space-y-2 border-t pt-3">
+            <Label>{t("entries.form.bg")}</Label>
+            <input
+              ref={bgInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                setBgFile(f);
+                setBgRemoved(false);
+                setBgPreview(URL.createObjectURL(f));
+              }}
+            />
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+              {/* left: preview, upload/download/remove, tint */}
+              <div className="space-y-2">
+                <div className="flex gap-3 items-start">
+                  <div
+                    className="relative h-24 w-40 shrink-0 overflow-hidden rounded-md border"
+                    style={{
+                      backgroundColor: bgAlign === "time" ? entryPalette.base : "#ffffff",
+                    }}
+                  >
+                    {previewSrc ? (
+                      bgTint && tintable ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0"
+                          style={{
+                            opacity: bgOpacity / 100,
+                            backgroundColor: entryPalette[bgTint],
+                            WebkitMaskImage: `url("${previewSrc}")`,
+                            maskImage: `url("${previewSrc}")`,
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={previewSrc}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          style={{ opacity: bgOpacity / 100 }}
+                        />
+                      )
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                        {t("entries.form.bgNone")}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => bgInputRef.current?.click()}
+                          aria-label={t("entries.form.bgUpload")}
+                        >
+                          <Upload className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("entries.form.bgUpload")}</TooltipContent>
+                    </Tooltip>
+                    {bgUrl && !bgRemoved ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            asChild
+                            aria-label={t("entries.form.bgDownload")}
+                          >
+                            <a href={bgUrl} download target="_blank" rel="noreferrer">
+                              <Download className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("entries.form.bgDownload")}</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    {previewSrc ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setBgFile(null);
+                              setBgPreview(null);
+                              setBgRemoved(true);
+                            }}
+                            aria-label={t("entries.form.bgRemove")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("entries.form.bgRemove")}</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                  </div>
+                </div>
+                {tintable ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgTint")}</Label>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-6 w-6 shrink-0 rounded border"
+                        style={{
+                          backgroundColor: bgTint
+                            ? entryPalette[bgTint]
+                            : "transparent",
+                          backgroundImage: bgTint
+                            ? undefined
+                            : "linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%)",
+                          backgroundSize: "8px 8px",
+                          backgroundPosition: "0 0, 4px 4px",
+                        }}
+                      />
+                      <select
+                        value={bgTint ?? ""}
+                        onChange={(e) =>
+                          setBgTint(
+                            (e.target.value || null) as (typeof ENTRY_BG_TINTS)[number] | null,
+                          )
+                        }
+                        className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">{t("entries.form.bgTintNone")}</option>
+                        {ENTRY_BG_TINTS.map((tint) => (
+                          <option key={tint} value={tint}>
+                            {t(`entries.form.bgTint.${tint}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t("entries.form.bgTintHint")}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* right: opacity, alignment, size, margin */}
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    {t("entries.form.bgOpacity")}: {bgOpacity}%
+                  </Label>
+                  <Input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={bgOpacity}
+                    onChange={(e) => setBgOpacity(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("entries.form.bgAlign")}</Label>
+                  <select
+                    value={bgAlign}
+                    onChange={(e) => setBgAlign(e.target.value as EntryBgAlign)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    {ENTRY_BG_ALIGNMENTS.map((a) => (
+                      <option key={a} value={a}>
+                        {t(`entries.form.bgAlign.${a}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {bgAlign === "right-top" || bgAlign === "right-bottom" ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgHeight")}</Label>
+                    <Input
+                      type="number"
+                      min={8}
+                      max={2000}
+                      value={bgHeight}
+                      onChange={(e) => setBgHeight(Number(e.target.value) || 8)}
+                    />
+                  </div>
+                ) : null}
+                {bgAlign !== "fill" ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("entries.form.bgMargin")}</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={500}
+                      value={bgMargin}
+                      onChange={(e) => setBgMargin(Math.max(0, Number(e.target.value) || 0))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("entries.form.bgMarginHint")}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       </div>
@@ -1091,7 +1364,7 @@ function EntryForm({
               // Drop any selected room names that no longer exist
               const validNames = new Set(rooms.map((r) => r.name));
               const tags = selectedRooms.filter((n) => validNames.has(n));
-              await onSubmit({
+              const id = await onSubmit({
                 id: initial?.id,
                 time: new Date(time).toISOString(),
                 end_time: endMs != null ? new Date(endMs).toISOString() : null,
@@ -1100,7 +1373,31 @@ function EntryForm({
                 tags,
                 color_scheme_id: schemeId || null,
                 notify,
+                background_align: bgAlign,
+                background_height: bgHeight,
+                background_opacity: bgOpacity,
+                background_margin: bgMargin,
+                background_tint: bgTint,
               });
+              if (bgRemoved && !bgFile) {
+                await removeBgFn({ data: { key: tenantKey, id } });
+              }
+              if (bgFile) {
+                const buf = new Uint8Array(await bgFile.arrayBuffer());
+                let bin = "";
+                for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+                await uploadBgFn({
+                  data: {
+                    key: tenantKey,
+                    id,
+                    filename: bgFile.name,
+                    contentType: bgFile.type || "image/png",
+                    dataBase64: btoa(bin),
+                  },
+                });
+              }
+              onSaved();
+
             } catch (e) {
               toast.error((e as Error).message);
             } finally {

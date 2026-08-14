@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const IO_VERSION = 3;
+export const IO_VERSION = 4;
 
 export const SECTIONS = [
   "tenant",
@@ -49,7 +49,22 @@ export const entryItem = z.object({
   rooms: z.array(z.string().min(1).max(60)).max(50).default([]),
   color_scheme: z.string().max(60).nullable().default(null),
   notify: z.boolean().default(true),
+  background: z
+    .object({ file: z.string().min(1), content_type: z.string().min(1) })
+    .nullable()
+    .default(null),
+  background_align: z
+    .enum(["right-top", "right-bottom", "right-stretch", "fill", "time"])
+    .default("right-top"),
+  background_height: z.number().int().min(8).max(2000).default(80),
+  background_opacity: z.number().int().min(0).max(100).default(100),
+  background_margin: z.number().int().min(0).max(500).default(0),
+  background_tint: z
+    .enum(["base", "deep", "peak", "highlight", "onBase"])
+    .nullable()
+    .default(null),
 });
+
 
 export const adSetItem = z.object({
   id: z.string().min(1).max(60),
