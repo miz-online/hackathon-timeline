@@ -194,6 +194,10 @@ function RoomDisplay() {
       logoHeight={snapshot.tenant.logo_height}
       accentColor={snapshot.tenant.accent_color}
       roomColor={snapshot.room.color}
+      focusMode={snapshot.tenant.focus_mode}
+      focusCount={snapshot.tenant.focus_count}
+      focusMinutes={snapshot.tenant.focus_minutes}
+      focusDimOpacity={snapshot.tenant.focus_dim_opacity}
       entries={visible}
     />
   );

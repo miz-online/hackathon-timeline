@@ -272,6 +272,10 @@ export type Database = {
           accent_color: string
           ad_seconds: number
           created_at: string
+          focus_count: number
+          focus_dim_opacity: number
+          focus_minutes: number
+          focus_mode: string
           id: string
           key: string
           logo_height: number
@@ -285,6 +289,10 @@ export type Database = {
           accent_color?: string
           ad_seconds?: number
           created_at?: string
+          focus_count?: number
+          focus_dim_opacity?: number
+          focus_minutes?: number
+          focus_mode?: string
           id?: string
           key: string
           logo_height?: number
@@ -298,6 +306,10 @@ export type Database = {
           accent_color?: string
           ad_seconds?: number
           created_at?: string
+          focus_count?: number
+          focus_dim_opacity?: number
+          focus_minutes?: number
+          focus_mode?: string
           id?: string
           key?: string
           logo_height?: number

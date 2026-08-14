@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           const { data: tNow } = await supabaseAdmin
             .from("tenants")
             .select(
-              "name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds",
+              "name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity",
             )
             .eq("id", tenantId)
             .maybeSingle();
@@ -99,6 +99,10 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               logo_height: tNow.logo_height,
               accent_color: tNow.accent_color,
               ad_seconds: adSeconds,
+              focus_mode: tNow.focus_mode ?? "count",
+              focus_count: tNow.focus_count ?? 3,
+              focus_minutes: tNow.focus_minutes ?? 30,
+              focus_dim_opacity: tNow.focus_dim_opacity ?? 35,
             },
             room: {
               id: rNow.id,
