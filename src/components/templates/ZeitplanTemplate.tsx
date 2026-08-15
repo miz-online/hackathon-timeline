@@ -346,8 +346,13 @@ export function ZeitplanTemplate({
 
 
 
-                return (
+                const prev = entryIndex > 0 ? entries[entryIndex - 1] : null;
+                const showSeparator =
+                  !focused && prev != null && isFocused(prev, entryIndex - 1);
+
+                const entryNode = (
                   <motion.div
+
                     key={e.id}
                     layout
                     initial={{ opacity: 0, y: -16 }}
