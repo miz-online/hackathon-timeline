@@ -81,6 +81,10 @@ export function ZeitplanTemplate({
   logoHeight,
   accentColor,
   roomColor,
+  focusMode = "count",
+  focusCount = 3,
+  focusMinutes = 30,
+  focusDimOpacity = 35,
 }: {
   tenantName: string;
   roomName: string;
@@ -89,6 +93,10 @@ export function ZeitplanTemplate({
   logoHeight?: number | null;
   accentColor?: string | null;
   roomColor?: string | null;
+  focusMode?: string | null;
+  focusCount?: number | null;
+  focusMinutes?: number | null;
+  focusDimOpacity?: number | null;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -103,6 +111,23 @@ export function ZeitplanTemplate({
 
   // shared animation timeline so every glowing entry animates in sync,
   // computed once per entry when it first mounts
+  // focus handling: entries outside the focus window are dimmed
+  const dim = Math.min(100, Math.max(0, focusDimOpacity ?? 35)) / 100;
+  const isFocused = (e: Entry, index: number) => {
+    const startMs = new Date(e.time).getTime();
+    const endMs = e.end_time ? new Date(e.end_time).getTime() : null;
+    const running = startMs <= now && (endMs == null || endMs > now);
+    if (running) return true;
+    if ((focusMode ?? "count") === "minutes") {
+      const win = focusMinutes ?? 30;
+      if (win <= 0) return false;
+      return startMs - now <= win * 60_000;
+    }
+    const count = focusCount ?? 3;
+    if (count <= 0) return false;
+    return index < count;
+  };
+
   const delayCache = useRef(new Map<string, { border: string; bg: string }>());
   const getDelays = (id: string) => {
     const cache = delayCache.current;
@@ -270,13 +295,14 @@ export function ZeitplanTemplate({
             </div>
           ) : (
             <AnimatePresence initial={false} mode="popLayout">
-              {entries.map((e) => {
+              {entries.map((e, entryIndex) => {
                 const entryMs = new Date(e.time).getTime();
                 const endMs = e.end_time ? new Date(e.end_time).getTime() : null;
                 const diffMin = Math.ceil((entryMs - now) / 60000);
                 const inGrace = entryMs <= now && (endMs == null || endMs > now);
                 const showRelative = !inGrace && diffMin < 15;
                 const delays = getDelays(e.id);
+                const focused = isFocused(e, entryIndex);
                 const p = e.color ? derivePalette(e.color) : defaultPalette;
                 const vars = {
                   "--zp-base": p.base,
@@ -320,12 +346,12 @@ export function ZeitplanTemplate({
 
 
 
-                return (
+                const entryNode = (
                   <motion.div
                     key={e.id}
                     layout
                     initial={{ opacity: 0, y: -16 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{ opacity: focused ? 1 : dim, y: 0 }}
                     exit={{ opacity: 0, y: 16, transition: { duration: 0.6, ease: "easeInOut" } }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
                     className={`zp-entry ${inGrace ? "zp-glow" : ""}`}
@@ -487,6 +513,10 @@ export function ZeitplanTemplate({
                     </div>
                   </motion.div>
                 );
+
+                return entryNode;
+
+
               })}
             </AnimatePresence>
           )}

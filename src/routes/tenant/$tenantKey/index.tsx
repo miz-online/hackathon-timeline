@@ -58,6 +58,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -439,6 +446,10 @@ function AdminPage() {
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
               adSeconds={tenant.ad_seconds}
+              focusMode={tenant.focus_mode}
+              focusCount={tenant.focus_count}
+              focusMinutes={tenant.focus_minutes}
+              focusDimOpacity={tenant.focus_dim_opacity}
               onChange={invalidate}
             />
           </TabsContent>
@@ -579,7 +590,7 @@ function PinCard({ tenantKey }: { tenantKey: string }) {
   const [saving, setSaving] = useState(false);
 
   return (
-    <div className="border-t pt-4 space-y-3">
+    <div className="space-y-3">
       <div className="font-medium">{t("pin.card.title")}</div>
       <p className="text-xs text-muted-foreground">
         {isProtected ? t("pin.card.active") : t("pin.card.inactive")}
@@ -1670,6 +1681,10 @@ function SettingsPanel({
   graceMinutes,
   template,
   adSeconds,
+  focusMode,
+  focusCount,
+  focusMinutes,
+  focusDimOpacity,
   onChange,
 }: {
   tenantKey: string;
@@ -1680,6 +1695,10 @@ function SettingsPanel({
   graceMinutes: number;
   template: string;
   adSeconds: number;
+  focusMode: string;
+  focusCount: number;
+  focusMinutes: number;
+  focusDimOpacity: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -1690,6 +1709,12 @@ function SettingsPanel({
   const [adSec, setAdSec] = useState(adSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
+  const [fMode, setFMode] = useState<"count" | "minutes">(
+    focusMode === "minutes" ? "minutes" : "count",
+  );
+  const [fCount, setFCount] = useState(focusCount);
+  const [fMinutes, setFMinutes] = useState(focusMinutes);
+  const [fDim, setFDim] = useState(focusDimOpacity);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -1702,195 +1727,281 @@ function SettingsPanel({
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
+  const [section, setSection] = useState<"general" | "display" | "logo" | "tenant">("general");
+
+  const saveButton = (
+    <div className="pt-2">
+      <Button
+        size="sm"
+        disabled={saving}
+        onClick={async () => {
+          setSaving(true);
+          try {
+            await updateFn({
+              data: {
+                key: tenantKey,
+                name: n,
+                past_grace_minutes: g,
+                template,
+                logo_height: lh,
+                accent_color: accent,
+                ad_seconds: adSec,
+                focus_mode: fMode,
+                focus_count: fCount,
+                focus_minutes: fMinutes,
+                focus_dim_opacity: fDim,
+              },
+            });
+            toast.success(t("settings.saved"));
+            onChange();
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        {saving ? t("entries.saving") : t("settings.save")}
+      </Button>
+    </div>
+  );
+
   return (
-    <Card className="p-4 space-y-5 max-w-xl">
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <Label>{t("settings.name")}</Label>
-          <Input value={n} onChange={(e) => setN(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t("settings.accent")}</Label>
-          <ColorField value={accent} onChange={setAccent} />
-          <p className="text-xs text-muted-foreground">{t("settings.accentHint")}</p>
-          <PalettePreview color={accent} />
-        </div>
-        <div className="space-y-1">
-          <Label>{t("settings.grace")}</Label>
-          <Input
-            type="number"
-            min={0}
-            max={1440}
-            value={g}
-            onChange={(e) => setG(Number(e.target.value))}
-          />
-        </div>
-        {/* Ad display duration is configured per ad set in the Ads tab. */}
+    <div className="max-w-xl space-y-4">
+      <Tabs value={section} onValueChange={(v) => setSection(v as typeof section)}>
+        <TabsList>
+          <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
+          <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
+          <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
+          <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
+        </TabsList>
 
-      </div>
+        <TabsContent value="general" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
+              <Label>{t("settings.name")}</Label>
+              <Input value={n} onChange={(e) => setN(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("settings.accent")}</Label>
+              <ColorField value={accent} onChange={setAccent} />
+              <p className="text-xs text-muted-foreground">{t("settings.accentHint")}</p>
+              <PalettePreview color={accent} />
+            </div>
+            {saveButton}
+          </Card>
+        </TabsContent>
 
-      <div className="border-t pt-4 space-y-2">
-        <Label>{t("settings.logo")}</Label>
-        <div className="space-y-1 pb-2">
-          <Label className="text-xs text-muted-foreground">{t("settings.logoHeight")}</Label>
-          <Input
-            type="number"
-            min={16}
-            max={400}
-            value={lh}
-            onChange={(e) => setLh(Number(e.target.value))}
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="rounded-md border bg-muted/40 p-2">
-            <img
-              src={logoSrc ?? defaultLogo.url}
-              alt="Logo"
-              className="h-12 w-auto object-contain"
-            />
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {logoSrc ? t("settings.logoHint") : t("settings.logoDefault")}
-          </div>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={async (ev) => {
-            const file = ev.target.files?.[0];
-            ev.target.value = "";
-            if (!file) return;
-            if (file.size > 2 * 1024 * 1024) {
-              toast.error(t("settings.logoTooLarge"));
-              return;
-            }
-            try {
-              const buf = new Uint8Array(await file.arrayBuffer());
-              let bin = "";
-              for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-              await uploadLogoFn({
-                data: {
-                  key: tenantKey,
-                  filename: file.name,
-                  contentType: file.type || "image/png",
-                  dataBase64: btoa(bin),
-                },
-              });
-              setLogoBust(Date.now());
-              toast.success(t("settings.logoSaved"));
-              onChange();
-            } catch (e) {
-              toast.error((e as Error).message);
-            }
-          }}
-        />
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-            {t("settings.logoUpload")}
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={logoSrc ?? defaultLogo.url} download>
-              {t("settings.logoDownload")}
-            </a>
-          </Button>
-          {logoSrc ? (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={async () => {
+        <TabsContent value="display" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
+              <Label>{t("settings.grace")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={1440}
+                value={g}
+                onChange={(e) => setG(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2 rounded-md border p-3">
+              <Label>{t("settings.focusTitle")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.focusHint")}</p>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t("settings.focusMode")}</Label>
+                <Select value={fMode} onValueChange={(v) => setFMode(v as "count" | "minutes")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="count">{t("settings.focusModeCount")}</SelectItem>
+                    <SelectItem value="minutes">{t("settings.focusModeMinutes")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {fMode === "count" ? (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("settings.focusCount")}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={fCount}
+                    onChange={(e) => setFCount(Number(e.target.value))}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("settings.focusMinutes")}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={1440}
+                    value={fMinutes}
+                    onChange={(e) => setFMinutes(Number(e.target.value))}
+                  />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t("settings.focusDim")}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={fDim}
+                  onChange={(e) => setFDim(Number(e.target.value))}
+                />
+              </div>
+            </div>
+            {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logo" className="pt-4">
+          <Card className="p-4 space-y-2">
+            <Label>{t("settings.logo")}</Label>
+            <div className="space-y-1 pb-2">
+              <Label className="text-xs text-muted-foreground">{t("settings.logoHeight")}</Label>
+              <Input
+                type="number"
+                min={16}
+                max={400}
+                value={lh}
+                onChange={(e) => setLh(Number(e.target.value))}
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="rounded-md border bg-muted/40 p-2">
+                <img
+                  src={logoSrc ?? defaultLogo.url}
+                  alt="Logo"
+                  className="h-12 w-auto object-contain"
+                />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {logoSrc ? t("settings.logoHint") : t("settings.logoDefault")}
+              </div>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (ev) => {
+                const file = ev.target.files?.[0];
+                ev.target.value = "";
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) {
+                  toast.error(t("settings.logoTooLarge"));
+                  return;
+                }
                 try {
-                  await removeLogoFn({ data: { key: tenantKey } });
-                  toast.success(t("settings.logoRemoved"));
+                  const buf = new Uint8Array(await file.arrayBuffer());
+                  let bin = "";
+                  for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+                  await uploadLogoFn({
+                    data: {
+                      key: tenantKey,
+                      filename: file.name,
+                      contentType: file.type || "image/png",
+                      dataBase64: btoa(bin),
+                    },
+                  });
+                  setLogoBust(Date.now());
+                  toast.success(t("settings.logoSaved"));
                   onChange();
                 } catch (e) {
                   toast.error((e as Error).message);
                 }
               }}
+            />
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                {t("settings.logoUpload")}
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href={logoSrc ?? defaultLogo.url} download>
+                  {t("settings.logoDownload")}
+                </a>
+              </Button>
+              {logoSrc ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await removeLogoFn({ data: { key: tenantKey } });
+                      toast.success(t("settings.logoRemoved"));
+                      onChange();
+                    } catch (e) {
+                      toast.error((e as Error).message);
+                    }
+                  }}
+                >
+                  {t("settings.logoRemove")}
+                </Button>
+              ) : null}
+            </div>
+            {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tenant" className="pt-4 space-y-4">
+          <Card className="p-4 space-y-2">
+            <div className="font-medium">{t("settings.keyTitle")}</div>
+            <div className="font-mono text-xs break-all rounded-md border bg-muted px-3 py-2">
+              {tenantKey}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void navigator.clipboard?.writeText(tenantKey)}
+              >
+                {t("home.copy")}
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <PinCard tenantKey={tenantKey} />
+          </Card>
+
+          <Card className="p-4 space-y-2">
+            <div className="font-medium text-destructive">{t("settings.dangerTitle")}</div>
+            <p className="text-xs text-muted-foreground">{t("settings.dangerHint")}</p>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={deleting}
+              onClick={async () => {
+                if (!confirm(t("settings.deleteConfirm"))) return;
+                setDeleting(true);
+                try {
+                  await deleteFn({ data: { key: tenantKey } });
+                  clearStoredTenantKey();
+                  toast.success(t("settings.deleted"));
+                  navigate({ to: "/" });
+                } catch (e) {
+                  toast.error((e as Error).message);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
             >
-              {t("settings.logoRemove")}
+              {t("settings.delete")}
             </Button>
-          ) : null}
-        </div>
-        <div className="pt-2">
-          <Button
-            size="sm"
-            disabled={saving}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await updateFn({
-                  data: {
-                    key: tenantKey,
-                    name: n,
-                    past_grace_minutes: g,
-                    template,
-                    logo_height: lh,
-                    accent_color: accent,
-                    ad_seconds: adSec,
-                  },
-                });
-                toast.success(t("settings.saved"));
-                onChange();
-              } catch (e) {
-                toast.error((e as Error).message);
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            {saving ? t("entries.saving") : t("settings.save")}
-          </Button>
-        </div>
-      </div>
-
-      <div className="border-t pt-4 space-y-2">
-        <div className="font-medium">{t("settings.keyTitle")}</div>
-        <div className="font-mono text-xs break-all rounded-md border bg-muted px-3 py-2">
-          {tenantKey}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void navigator.clipboard?.writeText(tenantKey)}
-          >
-            {t("home.copy")}
-          </Button>
-        </div>
-      </div>
-
-      <PinCard tenantKey={tenantKey} />
-
-      <div className="border-t pt-4 space-y-2">
-        <div className="font-medium text-destructive">{t("settings.dangerTitle")}</div>
-        <p className="text-xs text-muted-foreground">{t("settings.dangerHint")}</p>
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={deleting}
-          onClick={async () => {
-            if (!confirm(t("settings.deleteConfirm"))) return;
-            setDeleting(true);
-            try {
-              await deleteFn({ data: { key: tenantKey } });
-              clearStoredTenantKey();
-              toast.success(t("settings.deleted"));
-              navigate({ to: "/" });
-            } catch (e) {
-              toast.error((e as Error).message);
-            } finally {
-              setDeleting(false);
-            }
-          }}
-        >
-          {t("settings.delete")}
-        </Button>
-      </div>
-    </Card>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
+
 
 // --------------- Color schemes ---------------
 
