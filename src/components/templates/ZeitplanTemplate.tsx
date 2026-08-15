@@ -518,6 +518,27 @@ export function ZeitplanTemplate({
                     </div>
                   </motion.div>
                 );
+
+                if (!showSeparator) return entryNode;
+
+                return [
+                  <motion.div
+                    key={`sep-${e.id}`}
+                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.35 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    aria-hidden
+                    style={{
+                      flexShrink: 0,
+                      height: 0,
+                      borderTop: `2px solid ${defaultPalette.base}`,
+                    }}
+                  />,
+                  entryNode,
+                ];
+
               })}
             </AnimatePresence>
           )}
