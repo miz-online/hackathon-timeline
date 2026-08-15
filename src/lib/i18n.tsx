@@ -108,6 +108,10 @@ const en: Dict = {
   "rooms.picker.empty": "No rooms yet. Add some in the admin.",
 
   "settings.title": "Settings",
+  "settings.sec.general": "General",
+  "settings.sec.display": "Entry display",
+  "settings.sec.logo": "Logo",
+  "settings.sec.tenant": "Tenant",
   "settings.name": "Organization name",
   "settings.grace": "Hide entries this many minutes after they pass",
   "settings.focusTitle": "Focus entries",
@@ -414,6 +418,10 @@ const de: Dict = {
   "rooms.picker.empty": "Noch keine Räume. In der Verwaltung anlegen.",
 
   "settings.title": "Einstellungen",
+  "settings.sec.general": "Allgemein",
+  "settings.sec.display": "Eintrags-Anzeige",
+  "settings.sec.logo": "Logo",
+  "settings.sec.tenant": "Mandant",
   "settings.name": "Name der Organisation",
   "settings.grace": "Einträge so viele Minuten nach Ablauf ausblenden",
   "settings.focusTitle": "Fokus-Einträge",
