@@ -590,7 +590,7 @@ function PinCard({ tenantKey }: { tenantKey: string }) {
   const [saving, setSaving] = useState(false);
 
   return (
-    <div className="border-t pt-4 space-y-3">
+    <div className="space-y-3">
       <div className="font-medium">{t("pin.card.title")}</div>
       <p className="text-xs text-muted-foreground">
         {isProtected ? t("pin.card.active") : t("pin.card.inactive")}
