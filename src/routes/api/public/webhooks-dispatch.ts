@@ -94,7 +94,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                   const { greyscalePng } = await import("@/lib/image-grey.server");
                   const grey = greyscalePng(bytes);
                   if (grey) {
-                    bytes = grey;
+                    bytes = new Uint8Array(grey.buffer.slice(0) as ArrayBuffer);
                     contentType = "image/png";
                     filename = filename.replace(/(\.[A-Za-z0-9]+)?$/, ".png");
                   }
