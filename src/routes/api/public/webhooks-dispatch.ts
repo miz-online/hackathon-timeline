@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           const { data: entries } = await supabase
             .from("entries")
             .select(
-              "id, time, end_time, title, description, color_scheme_id, notify, notified_at, background_path, background_content_type",
+              "id, time, end_time, title, description, color_scheme_id, notify, notified_at, background_path, background_content_type, background_tint",
             )
             .eq("tenant_id", tenant.id)
             .eq("notify", true)
@@ -84,13 +84,25 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
                 .from("tenant-entry-backgrounds")
                 .download(entry.background_path);
               if (file) {
-                image = {
-                  filename: entry.background_path.split("/").pop() || "image.png",
-                  contentType: entry.background_content_type || file.type || "image/png",
-                  bytes: new Uint8Array(await file.arrayBuffer()),
-                };
+                let bytes = new Uint8Array(await file.arrayBuffer());
+                let contentType = entry.background_content_type || file.type || "image/png";
+                let filename = entry.background_path.split("/").pop() || "image.png";
+                // Tinted images are rendered as masks on the display; for chat
+                // messages we reshade them to neutral grey so they work on both
+                // light and dark themes.
+                if (entry.background_tint && contentType.includes("png")) {
+                  const { greyscalePng } = await import("@/lib/image-grey.server");
+                  const grey = greyscalePng(bytes);
+                  if (grey) {
+                    bytes = grey;
+                    contentType = "image/png";
+                    filename = filename.replace(/(\.[A-Za-z0-9]+)?$/, ".png");
+                  }
+                }
+                image = { filename, contentType, bytes };
               }
             }
+
 
             let anyOk = false;
             for (const webhook of webhooks) {
