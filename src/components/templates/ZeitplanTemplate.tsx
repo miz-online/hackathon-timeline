@@ -346,13 +346,8 @@ export function ZeitplanTemplate({
 
 
 
-                const prev = entryIndex > 0 ? entries[entryIndex - 1] : null;
-                const showSeparator =
-                  !focused && prev != null && isFocused(prev, entryIndex - 1);
-
                 const entryNode = (
                   <motion.div
-
                     key={e.id}
                     layout
                     initial={{ opacity: 0, y: -16 }}
@@ -519,25 +514,8 @@ export function ZeitplanTemplate({
                   </motion.div>
                 );
 
-                if (!showSeparator) return entryNode;
+                return entryNode;
 
-                return [
-                  <motion.div
-                    key={`sep-${e.id}`}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.35 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    aria-hidden
-                    style={{
-                      flexShrink: 0,
-                      height: 0,
-                      borderTop: `2px solid ${defaultPalette.base}`,
-                    }}
-                  />,
-                  entryNode,
-                ];
 
               })}
             </AnimatePresence>
