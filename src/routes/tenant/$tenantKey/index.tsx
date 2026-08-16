@@ -42,7 +42,7 @@ import {
   setTenantPin,
 } from "@/lib/tenant-auth.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
-import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
+import { WebhooksPanel, WebhookConfigPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
 import { isTenantLockedError, onTenantLocked, notifyTenantLocked } from "@/lib/tenant-lock";
 
