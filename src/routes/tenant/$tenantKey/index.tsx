@@ -1727,7 +1727,9 @@ function SettingsPanel({
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
-  const [section, setSection] = useState<"general" | "display" | "logo" | "tenant">("general");
+  const [section, setSection] = useState<
+    "general" | "display" | "logo" | "webhooks" | "tenant"
+  >("general");
 
   const saveButton = (
     <div className="pt-2">
