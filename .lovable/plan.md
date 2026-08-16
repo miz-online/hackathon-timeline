@@ -4,6 +4,8 @@ Der Tab "Einträge" bekommt einen Umschalter zwischen der bestehenden Einzel-Edi
 
 ## Verhalten
 
+- Der JSON-Modus ist zweispaltig im Verhältnis 1:1: links der Editor, rechts eine Seitenspalte. Bei Fehlern (JSON- oder Schema-/Referenzfehler) listet die rechte Spalte die Fehlermeldungen mit Zeilenangabe; ohne Fehler zeigt sie eine Vorschau der Einträge, wie sie nach der Übernahme aussehen würden (inkl. Kennzeichnung neu / geändert / gelöscht).
+
 - Umschalter (Formular / JSON) oben im Einträge-Tab, Auswahl bleibt beim Tabwechsel erhalten.
 - JSON-Modus zeigt ein Objekt `{ "entries": [ ... ] }` mit allen Einträgen, sortiert nach Zeit.
 - Jeder Eintrag enthält seine `id` (dieselbe Referenz-ID wie im Export). Beim Speichern gilt:
