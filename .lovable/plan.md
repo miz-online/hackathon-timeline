@@ -6,7 +6,7 @@ Der Tab "Einträge" bekommt einen Umschalter zwischen der bestehenden Einzel-Edi
 
 - Umschalter (Formular / JSON) oben im Einträge-Tab, Auswahl bleibt beim Tabwechsel erhalten.
 - JSON-Modus zeigt ein Objekt `{ "entries": [ ... ] }` mit allen Einträgen, sortiert nach Zeit.
-- Jeder Eintrag enthält seine `id` (UUID). Beim Speichern gilt:
+- Jeder Eintrag enthält seine `id` (dieselbe Referenz-ID wie im Export). Beim Speichern gilt:
   - Eintrag mit bekannter id → wird aktualisiert
   - Eintrag ohne id → wird neu angelegt (id wird generiert)
   - fehlende id (im JSON gelöscht) → Eintrag wird gelöscht
