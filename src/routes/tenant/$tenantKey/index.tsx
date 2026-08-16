@@ -1775,6 +1775,7 @@ function SettingsPanel({
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
+          <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
         </TabsList>
 
