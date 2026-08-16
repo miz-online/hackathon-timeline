@@ -1955,6 +1955,12 @@ function SettingsPanel({
           </Card>
         </TabsContent>
 
+        <TabsContent value="webhooks" className="pt-4">
+          <Card className="p-4">
+            <WebhookConfigPanel tenantKey={tenantKey} onChange={onChange} />
+          </Card>
+        </TabsContent>
+
         <TabsContent value="tenant" className="pt-4 space-y-4">
           <Card className="p-4 space-y-2">
             <div className="font-medium">{t("settings.keyTitle")}</div>
