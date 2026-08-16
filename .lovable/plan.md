@@ -21,7 +21,7 @@ Der Tab "Einträge" bekommt einen Umschalter zwischen der bestehenden Einzel-Edi
 
 ## Technische Umsetzung
 
-- `monaco-editor` + `@monaco-editor/react` als Dependency; Editor nur clientseitig gerendert (kein SSR-Import), dunkles Theme passend zur Admin-UI.
+- `monaco-editor` + `@monaco-editor/react` als Dependency; Editor nur clientseitig gerendert (kein SSR-Import), helles Theme passend zur aktuellen Admin-UI, Theme-Wahl so gekapselt, dass ein späteres dunkles Theme nur umgeschaltet werden muss.
 - Neues Schema-Modul (z. B. `src/lib/entries-json.ts`): JSON-Schema für `{ entries: [...] }` inkl. Beschreibungen, plus Zod-Schema für serverseitige Validierung. Wiederverwendung der Zeit-/Farb-/Raum-Konventionen aus `src/lib/tenant-io.ts`.
 - Neue Server-Funktionen in `src/lib/board.functions.ts`:
   - `exportEntriesJson` – liefert die Einträge in JSON-Form (mit id, ref-ids für Räume/Farbschema, ohne Bildfelder)
