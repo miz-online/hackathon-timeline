@@ -42,7 +42,7 @@ import {
   setTenantPin,
 } from "@/lib/tenant-auth.functions";
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
-import { WebhooksPanel } from "@/components/admin/WebhooksPanel";
+import { WebhooksPanel, WebhookConfigPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
 import { isTenantLockedError, onTenantLocked, notifyTenantLocked } from "@/lib/tenant-lock";
 
@@ -1727,7 +1727,9 @@ function SettingsPanel({
   const [logoBust, setLogoBust] = useState(0);
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
-  const [section, setSection] = useState<"general" | "display" | "logo" | "tenant">("general");
+  const [section, setSection] = useState<
+    "general" | "display" | "logo" | "webhooks" | "tenant"
+  >("general");
 
   const saveButton = (
     <div className="pt-2">
@@ -1773,6 +1775,7 @@ function SettingsPanel({
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
+          <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
         </TabsList>
 
@@ -1804,7 +1807,7 @@ function SettingsPanel({
                 onChange={(e) => setG(Number(e.target.value))}
               />
             </div>
-            <div className="space-y-2 rounded-md border p-3">
+            <div className="space-y-2 border-t pt-4 mt-4">
               <Label>{t("settings.focusTitle")}</Label>
               <p className="text-xs text-muted-foreground">{t("settings.focusHint")}</p>
               <div className="space-y-1">
@@ -1847,9 +1850,11 @@ function SettingsPanel({
                 </div>
               )}
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">{t("settings.focusDim")}</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("settings.focusDim")}: {fDim}%
+                </Label>
                 <Input
-                  type="number"
+                  type="range"
                   min={0}
                   max={100}
                   value={fDim}
@@ -1947,6 +1952,12 @@ function SettingsPanel({
               ) : null}
             </div>
             {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="webhooks" className="pt-4">
+          <Card className="p-4">
+            <WebhookConfigPanel tenantKey={tenantKey} onChange={onChange} />
           </Card>
         </TabsContent>
 

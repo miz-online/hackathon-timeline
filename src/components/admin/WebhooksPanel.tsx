@@ -25,11 +25,33 @@ export function WebhooksPanel({
   tenantKey,
   schemes,
   defaultColor,
-  onChange,
 }: {
   tenantKey: string;
   schemes: { id: string; ref_id?: string | null; name: string; color: string }[];
   defaultColor: string;
+  onChange?: () => void;
+}) {
+  const listFn = useServerFn(listWebhooks);
+  const { data: webhooks } = useQuery({
+    queryKey: ["webhooks", tenantKey],
+    queryFn: () => listFn({ data: { key: tenantKey } }),
+  });
+
+  return (
+    <DirectMessagePanel
+      tenantKey={tenantKey}
+      webhooks={webhooks ?? []}
+      schemes={schemes}
+      defaultColor={defaultColor}
+    />
+  );
+}
+
+export function WebhookConfigPanel({
+  tenantKey,
+  onChange,
+}: {
+  tenantKey: string;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -63,14 +85,7 @@ export function WebhooksPanel({
 
   return (
     <div className="space-y-6">
-      <DirectMessagePanel
-        tenantKey={tenantKey}
-        webhooks={webhooks ?? []}
-        schemes={schemes}
-        defaultColor={defaultColor}
-      />
-
-      <div className="space-y-2 border-t pt-6">
+      <div className="space-y-2">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-medium">{t("messages.configTitle")}</h2>
           <Button
