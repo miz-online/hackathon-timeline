@@ -1804,7 +1804,7 @@ function SettingsPanel({
                 onChange={(e) => setG(Number(e.target.value))}
               />
             </div>
-            <div className="space-y-2 rounded-md border p-3">
+            <div className="space-y-2 border-t pt-4 mt-4">
               <Label>{t("settings.focusTitle")}</Label>
               <p className="text-xs text-muted-foreground">{t("settings.focusHint")}</p>
               <div className="space-y-1">
@@ -1847,9 +1847,11 @@ function SettingsPanel({
                 </div>
               )}
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">{t("settings.focusDim")}</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("settings.focusDim")}: {fDim}%
+                </Label>
                 <Input
-                  type="number"
+                  type="range"
                   min={0}
                   max={100}
                   value={fDim}
