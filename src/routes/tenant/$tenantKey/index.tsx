@@ -686,8 +686,19 @@ function EntriesPanel({
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState<"form" | "json">("form");
   const upsertFn = useServerFn(upsertEntry);
   const deleteFn = useServerFn(deleteEntry);
+
+  // Remember the editing mode across tab switches / reloads.
+  useEffect(() => {
+    const saved = window.localStorage.getItem("entries-mode");
+    if (saved === "json" || saved === "form") setMode(saved);
+  }, []);
+  const changeMode = (m: "form" | "json") => {
+    setMode(m);
+    window.localStorage.setItem("entries-mode", m);
+  };
 
   // Re-evaluate the expiry window every second so entries disappear on their own.
   const [nowTick, setNowTick] = useState(() => Date.now());
