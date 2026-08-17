@@ -454,6 +454,144 @@ export const deleteEntry = createServerFn({ method: "POST" })
 
   });
 
+// ---------- entries as JSON ----------
+
+/** Rooms/color schemes with their reference ids, used by the JSON entries editor. */
+async function entryRefMaps(tenantId: string) {
+  const supabase = await getAdmin();
+  const [rooms, schemes] = await Promise.all([
+    supabase
+      .from("rooms")
+      .select("id, ref_id, name")
+      .eq("tenant_id", tenantId)
+      .order("name", { ascending: true }),
+    supabase
+      .from("color_schemes")
+      .select("id, ref_id, name")
+      .eq("tenant_id", tenantId)
+      .order("name", { ascending: true }),
+  ]);
+  const roomRows = rooms.data ?? [];
+  const schemeRows = schemes.data ?? [];
+  const roomIds = refIdsFor(roomRows);
+  const schemeIds = refIdsFor(schemeRows);
+  return {
+    roomIds,
+    schemeIds,
+    roomRefByName: new Map(roomRows.map((r, i) => [r.name, roomIds[i]])),
+    roomNameByRef: new Map(roomRows.map((r, i) => [roomIds[i], r.name])),
+    schemeRefByUuid: new Map(schemeRows.map((s, i) => [s.id, schemeIds[i]])),
+    schemeUuidByRef: new Map(schemeRows.map((s, i) => [schemeIds[i], s.id])),
+  };
+}
+
+export const exportEntriesJson = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const maps = await entryRefMaps(tenant.id);
+    const { data: rows, error } = await supabase
+      .from("entries")
+      .select("id, time, end_time, title, description, tags, color_scheme_id, notify")
+      .eq("tenant_id", tenant.id)
+      .order("time", { ascending: true });
+    if (error) throw new Error(error.message);
+    return {
+      roomIds: maps.roomIds,
+      schemeIds: maps.schemeIds,
+      entries: (rows ?? []).map((e) => ({
+        id: e.id,
+        time: e.time,
+        end_time: e.end_time,
+        title: e.title,
+        description: e.description ?? "",
+        rooms: (e.tags ?? []).map((n) => maps.roomRefByName.get(n) ?? slugify(n)).filter(Boolean),
+        color_scheme: e.color_scheme_id ? (maps.schemeRefByUuid.get(e.color_scheme_id) ?? null) : null,
+        notify: e.notify,
+      })),
+    };
+  });
+
+export const replaceEntriesJson = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; entries: unknown }) =>
+    z
+      .object({ key: z.string().min(1), entries: entriesJsonSchema.shape.entries })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const maps = await entryRefMaps(tenant.id);
+
+    const { data: existing, error: exErr } = await supabase
+      .from("entries")
+      .select("id, background_path")
+      .eq("tenant_id", tenant.id);
+    if (exErr) throw new Error(exErr.message);
+    const existingIds = new Set((existing ?? []).map((e) => e.id));
+
+    // validate references and time values up front, apply nothing on error
+    const problems: string[] = [];
+    const seen = new Set<string>();
+    data.entries.forEach((e, i) => {
+      const at = `entries[${i}]`;
+      if (Number.isNaN(new Date(e.time).getTime())) problems.push(`${at}.time is not a valid date`);
+      if (e.end_time && Number.isNaN(new Date(e.end_time).getTime()))
+        problems.push(`${at}.end_time is not a valid date`);
+      if (e.id) {
+        if (!existingIds.has(e.id)) problems.push(`${at}.id "${e.id}" does not exist`);
+        if (seen.has(e.id)) problems.push(`${at}.id "${e.id}" is used more than once`);
+        seen.add(e.id);
+      }
+      for (const r of e.rooms ?? []) {
+        if (!maps.roomNameByRef.has(r)) problems.push(`${at}: unknown room "${r}"`);
+      }
+      if (e.color_scheme && !maps.schemeUuidByRef.has(e.color_scheme))
+        problems.push(`${at}: unknown color scheme "${e.color_scheme}"`);
+    });
+    if (problems.length) throw new Error(problems.slice(0, 20).join("\n"));
+
+    const toRow = (e: (typeof data.entries)[number]) => ({
+      tenant_id: tenant.id,
+      time: new Date(e.time).toISOString(),
+      end_time: e.end_time ? new Date(e.end_time).toISOString() : null,
+      title: e.title,
+      description: e.description ?? "",
+      tags: (e.rooms ?? []).map((r) => maps.roomNameByRef.get(r)!).filter(Boolean),
+      color_scheme_id: e.color_scheme ? (maps.schemeUuidByRef.get(e.color_scheme) ?? null) : null,
+      notify: e.notify ?? true,
+    });
+
+    let updated = 0;
+    let created = 0;
+    for (const e of data.entries) {
+      if (e.id) {
+        const { error } = await supabase.from("entries").update(toRow(e)).eq("id", e.id).eq("tenant_id", tenant.id);
+        if (error) throw new Error(error.message);
+        updated++;
+      } else {
+        const { error } = await supabase.from("entries").insert(toRow(e));
+        if (error) throw new Error(error.message);
+        created++;
+      }
+    }
+
+    const removed = (existing ?? []).filter((e) => !seen.has(e.id));
+    if (removed.length) {
+      const paths = removed.map((r) => r.background_path).filter(Boolean) as string[];
+      if (paths.length) await supabase.storage.from(ENTRY_BG_BUCKET).remove(paths);
+      const { error } = await supabase
+        .from("entries")
+        .delete()
+        .in("id", removed.map((r) => r.id))
+        .eq("tenant_id", tenant.id);
+      if (error) throw new Error(error.message);
+    }
+
+    return { updated, created, deleted: removed.length };
+  });
+
 // ---------- rooms ----------
 
 export const listRooms = createServerFn({ method: "GET" })
