@@ -70,6 +70,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
+import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
 const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
@@ -686,8 +687,19 @@ function EntriesPanel({
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState<"form" | "json">("form");
   const upsertFn = useServerFn(upsertEntry);
   const deleteFn = useServerFn(deleteEntry);
+
+  // Remember the editing mode across tab switches / reloads.
+  useEffect(() => {
+    const saved = window.localStorage.getItem("entries-mode");
+    if (saved === "json" || saved === "form") setMode(saved);
+  }, []);
+  const changeMode = (m: "form" | "json") => {
+    setMode(m);
+    window.localStorage.setItem("entries-mode", m);
+  };
 
   // Re-evaluate the expiry window every second so entries disappear on their own.
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -720,7 +732,7 @@ function EntriesPanel({
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {showExpired && expiredCount > 0 ? (
+          {mode === "form" && showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -728,7 +740,7 @@ function EntriesPanel({
               {t("entries.hideExpired")}
             </a>
 
-          ) : expiredCount > 0 ? (
+          ) : mode === "form" && expiredCount > 0 ? (
             <a
               href="#entries-all"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -740,17 +752,37 @@ function EntriesPanel({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null);
-              setShowForm(true);
-            }}
-          >
-            {t("entries.new")}
-          </Button>
+          <div className="flex rounded-md border p-0.5">
+            <Button
+              size="sm"
+              variant={mode === "form" ? "secondary" : "ghost"}
+              onClick={() => changeMode("form")}
+            >
+              {t("entries.mode.form")}
+            </Button>
+            <Button
+              size="sm"
+              variant={mode === "json" ? "secondary" : "ghost"}
+              onClick={() => changeMode("json")}
+            >
+              {t("entries.mode.json")}
+            </Button>
+          </div>
+          {mode === "form" ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditing(null);
+                setShowForm(true);
+              }}
+            >
+              {t("entries.new")}
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {mode === "json" ? <EntriesJsonPanel tenantKey={tenantKey} onChange={onChange} /> : null}
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
@@ -782,6 +814,7 @@ function EntriesPanel({
       </Dialog>
 
 
+      {mode === "form" ? (
       <div className="space-y-2">
         {visibleEntries.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">
@@ -915,6 +948,7 @@ function EntriesPanel({
           })
         )}
       </div>
+      ) : null}
     </div>
   );
 }
