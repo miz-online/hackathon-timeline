@@ -731,7 +731,7 @@ function EntriesPanel({
       <div className="flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {showExpired && expiredCount > 0 ? (
+          {mode === "form" && showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -739,7 +739,7 @@ function EntriesPanel({
               {t("entries.hideExpired")}
             </a>
 
-          ) : expiredCount > 0 ? (
+          ) : mode === "form" && expiredCount > 0 ? (
             <a
               href="#entries-all"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -751,17 +751,37 @@ function EntriesPanel({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null);
-              setShowForm(true);
-            }}
-          >
-            {t("entries.new")}
-          </Button>
+          <div className="flex rounded-md border p-0.5">
+            <Button
+              size="sm"
+              variant={mode === "form" ? "secondary" : "ghost"}
+              onClick={() => changeMode("form")}
+            >
+              {t("entries.mode.form")}
+            </Button>
+            <Button
+              size="sm"
+              variant={mode === "json" ? "secondary" : "ghost"}
+              onClick={() => changeMode("json")}
+            >
+              {t("entries.mode.json")}
+            </Button>
+          </div>
+          {mode === "form" ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditing(null);
+                setShowForm(true);
+              }}
+            >
+              {t("entries.new")}
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {mode === "json" ? <EntriesJsonPanel tenantKey={tenantKey} onChange={onChange} /> : null}
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
