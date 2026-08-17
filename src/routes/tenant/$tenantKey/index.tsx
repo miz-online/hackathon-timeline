@@ -813,6 +813,7 @@ function EntriesPanel({
       </Dialog>
 
 
+      {mode === "form" ? (
       <div className="space-y-2">
         {visibleEntries.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">
@@ -946,6 +947,7 @@ function EntriesPanel({
           })
         )}
       </div>
+      ) : null}
     </div>
   );
 }
