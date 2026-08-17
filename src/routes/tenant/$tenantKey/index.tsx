@@ -70,6 +70,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
+import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
 const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
