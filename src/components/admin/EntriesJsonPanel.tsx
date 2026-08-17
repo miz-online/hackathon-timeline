@@ -93,7 +93,10 @@ export function EntriesJsonPanel({
       w.__entrySnippetRegistered = true;
       monaco.languages.registerCompletionItemProvider("json", {
         triggerCharacters: ["e", "{"],
-        provideCompletionItems: (model, position) => {
+        provideCompletionItems: (
+          model: import("monaco-editor").editor.ITextModel,
+          position: import("monaco-editor").Position,
+        ) => {
           const word = model.getWordUntilPosition(position);
           return {
             suggestions: [
