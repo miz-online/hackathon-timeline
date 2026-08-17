@@ -515,7 +515,7 @@ export const exportEntriesJson = createServerFn({ method: "GET" })
   });
 
 export const replaceEntriesJson = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; entries: unknown }) =>
+  .inputValidator((d: { key: string; entries: EntryJsonItem[] }) =>
     z
       .object({ key: z.string().min(1), entries: entriesJsonSchema.shape.entries })
       .parse(d),
