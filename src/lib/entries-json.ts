@@ -86,16 +86,6 @@ export function entriesJsonSchemaDoc(roomIds: string[], schemeIds: string[]) {
   };
 }
 
-/** VS Code style snippet inserted through autocompletion ("entry"). */
-export const ENTRY_SNIPPET = `{
-  "time": "\${1:${"${"}}",
-  "title": "\${2:New entry}",
-  "description": "\${3:}",
-  "rooms": [],
-  "color_scheme": null,
-  "notify": true
-}`;
-
 /** Snippet body with a concrete example time, generated at call time. */
 export function entrySnippetBody(exampleIso: string): string {
   return [
