@@ -85,6 +85,7 @@ export function ZeitplanTemplate({
   focusCount = 3,
   focusMinutes = 30,
   focusDimOpacity = 35,
+  overview = false,
 }: {
   tenantName: string;
   roomName: string;
@@ -97,6 +98,7 @@ export function ZeitplanTemplate({
   focusCount?: number | null;
   focusMinutes?: number | null;
   focusDimOpacity?: number | null;
+  overview?: boolean;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
