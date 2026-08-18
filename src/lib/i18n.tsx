@@ -103,6 +103,8 @@ const en: Dict = {
   "entries.json.saved": "{updated} updated, {created} created, {deleted} deleted",
 
   "rooms.title": "Rooms",
+  "rooms.overview": "Overview",
+  "rooms.overviewHint": "Always available, shows all entries.",
   "rooms.new": "New room",
   "rooms.empty": "No rooms yet.",
   "rooms.openDisplay": "Open display",
@@ -425,6 +427,8 @@ const de: Dict = {
   "entries.json.saved": "{updated} geändert, {created} neu, {deleted} gelöscht",
 
   "rooms.title": "Räume",
+  "rooms.overview": "Übersicht",
+  "rooms.overviewHint": "Immer verfügbar, zeigt alle Einträge.",
   "rooms.new": "Neuer Raum",
   "rooms.empty": "Noch keine Räume.",
   "rooms.openDisplay": "Anzeige öffnen",
