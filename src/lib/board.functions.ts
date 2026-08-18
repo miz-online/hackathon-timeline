@@ -866,7 +866,13 @@ export type RoomSnapshot = {
     focus_minutes: number;
     focus_dim_opacity: number;
   };
-  room: { id: string; name: string; color: string | null; template: string };
+  room: {
+    id: string;
+    name: string;
+    color: string | null;
+    template: string;
+    is_overview?: boolean;
+  };
   entries: {
     id: string;
     time: string;

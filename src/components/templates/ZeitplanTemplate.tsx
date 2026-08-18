@@ -85,6 +85,7 @@ export function ZeitplanTemplate({
   focusCount = 3,
   focusMinutes = 30,
   focusDimOpacity = 35,
+  overview = false,
 }: {
   tenantName: string;
   roomName: string;
@@ -97,6 +98,7 @@ export function ZeitplanTemplate({
   focusCount?: number | null;
   focusMinutes?: number | null;
   focusDimOpacity?: number | null;
+  overview?: boolean;
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
@@ -239,7 +241,7 @@ export function ZeitplanTemplate({
               minWidth: 0,
             }}
           >
-            {roomName}
+            {overview ? tenantName : roomName}
           </div>
           <div
             style={{
@@ -251,7 +253,7 @@ export function ZeitplanTemplate({
               flexShrink: 0,
             }}
           >
-            {tenantName}
+            {overview ? "" : tenantName}
           </div>
           <div
             style={{

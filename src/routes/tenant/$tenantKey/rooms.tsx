@@ -47,6 +47,12 @@ function RoomPicker() {
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Link to="/tenant/$tenantKey/room/$roomId" params={{ tenantKey, roomId: "overview" }}>
+          <Card className="p-6 hover:bg-accent transition-colors h-full">
+            <div className="font-semibold text-lg">{t("rooms.overview")}</div>
+            <div className="text-xs text-muted-foreground mt-1">{t("rooms.overviewHint")}</div>
+          </Card>
+        </Link>
         {(roomsQ.data ?? []).map((r) => (
           <Link
             key={r.id}
