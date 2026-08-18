@@ -19,7 +19,7 @@ Ein neuer Admin-Bereich "Teams" plus ein spezieller Eintragstyp "Übungszeit", d
 ## Eintrag "Übungszeit"
 
 - Im Einträge-Tab bleibt "Neuer Eintrag" die Hauptaktion; direkt daneben ein Dropdown-Pfeil als Sekundäraktion "Übungszeit".
-- Der Übungseintrag hat Startzeit, Titel, Beschreibung, Räume, Farbschema, Hintergrundbild wie ein normaler Eintrag — nur das Endzeit-Feld ist gesperrt und zeigt die berechnete Endzeit (Start + Anzahl Teams × Übungszeit) als Hinweis an.
+- Der Übungseintrag hat Startzeit, Titel und Hintergrundbild (inkl. seiner Einstellungen, die für alle Team-Zeilen gelten) — keine Beschreibung, keine Raumauswahl und kein Farbschema, da sich beides über die Räume der Teams ergibt; nicht zugeordnete Teams nutzen die Standardfarbe. Das Endzeit-Feld ist gesperrt und zeigt die berechnete Endzeit (Start + Anzahl Teams × Übungszeit) als Hinweis an.
 - Mehrere Übungseinträge sind möglich; jeder spannt die volle Team-Liste auf.
 
 ## Anzeige im Raum
