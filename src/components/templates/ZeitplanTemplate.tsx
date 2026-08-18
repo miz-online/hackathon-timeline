@@ -239,7 +239,7 @@ export function ZeitplanTemplate({
               minWidth: 0,
             }}
           >
-            {roomName}
+            {overview ? tenantName : roomName}
           </div>
           <div
             style={{
@@ -251,7 +251,7 @@ export function ZeitplanTemplate({
               flexShrink: 0,
             }}
           >
-            {tenantName}
+            {overview ? "" : tenantName}
           </div>
           <div
             style={{
