@@ -22,6 +22,7 @@ export function AdsTemplate({
   logoHeight,
   accentColor,
   roomColor,
+  overview = false,
 }: {
   tenantName: string;
   roomName: string;
@@ -31,6 +32,7 @@ export function AdsTemplate({
   logoHeight?: number | null;
   accentColor?: string | null;
   roomColor?: string | null;
+  overview?: boolean;
 }) {
   const { t } = useI18n();
   const palette = derivePalette(roomColor || accentColor || DEFAULT_ACCENT);
@@ -131,7 +133,7 @@ export function AdsTemplate({
               textShadow: GLOW,
             }}
           >
-            {roomName}
+            {overview ? tenantName : roomName}
           </div>
           <div
             style={{
@@ -143,7 +145,7 @@ export function AdsTemplate({
               textShadow: GLOW,
             }}
           >
-            {tenantName}
+            {overview ? "" : tenantName}
           </div>
           <div
             style={{

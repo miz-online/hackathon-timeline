@@ -168,13 +168,16 @@ function RoomDisplay() {
         : new Date(e.time).getTime() >= cutoff,
     );
 
+  const isOverview = snapshot.room.is_overview === true;
+  const displayRoomName = isOverview ? t("rooms.overview") : snapshot.room.name;
   const activeTemplate = snapshot.room.template || snapshot.tenant.template;
   if (activeTemplate === "ads" || activeTemplate?.startsWith("ads:")) {
 
     return (
       <AdsTemplate
         tenantName={snapshot.tenant.name}
-        roomName={snapshot.room.name}
+        roomName={displayRoomName}
+        overview={isOverview}
         ads={snapshot.ads ?? []}
         adSeconds={snapshot.tenant.ad_seconds ?? 10}
         logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
@@ -189,7 +192,8 @@ function RoomDisplay() {
   return (
     <ZeitplanTemplate
       tenantName={snapshot.tenant.name}
-      roomName={snapshot.room.name}
+      roomName={displayRoomName}
+      overview={isOverview}
       logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
       logoHeight={snapshot.tenant.logo_height}
       accentColor={snapshot.tenant.accent_color}

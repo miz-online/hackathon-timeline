@@ -16,13 +16,18 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           .maybeSingle();
         if (tErr || !tenant) return new Response("Not found", { status: 404 });
 
-        const { data: room, error: rErr } = await supabaseAdmin
-          .from("rooms")
-          .select("id, name")
-          .eq("id", roomId)
-          .eq("tenant_id", tenant.id)
-          .maybeSingle();
-        if (rErr || !room) return new Response("Not found", { status: 404 });
+        const isOverview = roomId === "overview";
+        const room = isOverview
+          ? { id: "overview", name: "" }
+          : (
+              await supabaseAdmin
+                .from("rooms")
+                .select("id, name")
+                .eq("id", roomId)
+                .eq("tenant_id", tenant.id)
+                .maybeSingle()
+            ).data;
+        if (!room) return new Response("Not found", { status: 404 });
 
         const tenantId = tenant.id;
         const roomDbId = room.id;
@@ -36,11 +41,15 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             )
             .eq("id", tenantId)
             .maybeSingle();
-          const { data: rNow } = await supabaseAdmin
-            .from("rooms")
-            .select("id, name, color_scheme_id, template")
-            .eq("id", roomDbId)
-            .maybeSingle();
+          const rNow = isOverview
+            ? { id: "overview", name: "", color_scheme_id: null as string | null, template: null as string | null }
+            : (
+                await supabaseAdmin
+                  .from("rooms")
+                  .select("id, name, color_scheme_id, template")
+                  .eq("id", roomDbId)
+                  .maybeSingle()
+              ).data;
           if (!tNow || !rNow) return null;
           const { data: entries } = await supabaseAdmin
             .from("entries")
@@ -70,7 +79,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
                 ? new Date(e.end_time).getTime() >= now
                 : new Date(e.time).getTime() >= cutoff,
             )
-            .filter((e) => e.tags.length === 0 || e.tags.includes(rNow.name))
+            .filter((e) => isOverview || e.tags.length === 0 || e.tags.includes(rNow.name))
             .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
             .map((e) => ({
               id: e.id,
@@ -109,6 +118,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               name: rNow.name,
               color: rNow.color_scheme_id ? (colorById.get(rNow.color_scheme_id) ?? null) : null,
               template: effectiveTemplate,
+              is_overview: isOverview,
             },
             entries: visible,
             ads,

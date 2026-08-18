@@ -1528,8 +1528,30 @@ function RoomsPanel({
 
 
       <div className="grid gap-2 sm:grid-cols-2">
+        <Card className="p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-4 w-4 shrink-0 rounded-full border"
+              style={{ backgroundColor: defaultColor }}
+              title={t("colors.default")}
+            />
+            <div className="font-semibold truncate">{t("rooms.overview")}</div>
+          </div>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Link
+              to="/tenant/$tenantKey/room/$roomId"
+              params={{ tenantKey, roomId: "overview" }}
+              target="_blank"
+            >
+              <Button size="sm" variant="default">
+                {t("rooms.openDisplay")}
+              </Button>
+            </Link>
+            <span className="text-xs text-muted-foreground">{t("rooms.overviewHint")}</span>
+          </div>
+        </Card>
         {rooms.length === 0 ? (
-          <Card className="p-6 text-sm text-muted-foreground text-center sm:col-span-2">
+          <Card className="p-6 text-sm text-muted-foreground text-center">
             {t("rooms.empty")}
           </Card>
         ) : (

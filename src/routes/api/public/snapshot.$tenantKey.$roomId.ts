@@ -18,12 +18,17 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
           .maybeSingle();
         if (!tenant) return new Response("Not found", { status: 404 });
 
-        const { data: room } = await supabaseAdmin
-          .from("rooms")
-          .select("id, name, color_scheme_id, template")
-          .eq("id", roomId)
-          .eq("tenant_id", tenant.id)
-          .maybeSingle();
+        const isOverview = roomId === "overview";
+        const room = isOverview
+          ? { id: "overview", name: "", color_scheme_id: null as string | null, template: null as string | null }
+          : (
+              await supabaseAdmin
+                .from("rooms")
+                .select("id, name, color_scheme_id, template")
+                .eq("id", roomId)
+                .eq("tenant_id", tenant.id)
+                .maybeSingle()
+            ).data;
         if (!room) return new Response("Not found", { status: 404 });
 
         const { data: entries } = await supabaseAdmin
@@ -58,7 +63,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               ? new Date(e.end_time).getTime() >= now
               : new Date(e.time).getTime() >= cutoff,
           )
-          .filter((e) => e.tags.length === 0 || e.tags.includes(room.name))
+          .filter((e) => isOverview || e.tags.length === 0 || e.tags.includes(room.name))
           .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
           .map((e) => ({
             id: e.id,
@@ -99,6 +104,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               name: room.name,
               color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
               template: effectiveTemplate,
+              is_overview: isOverview,
             },
             entries: visible,
             ads,
