@@ -196,6 +196,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           focus_count: z.number().int().min(0).max(50).default(3),
           focus_minutes: z.number().int().min(0).max(1440).default(30),
           focus_dim_opacity: z.number().int().min(0).max(100).default(35),
+          practice_minutes: z.number().int().min(1).max(600).default(10),
+          practice_room_scope: z.enum(PRACTICE_SCOPES).default("all"),
         })
         .parse(d),
   )
