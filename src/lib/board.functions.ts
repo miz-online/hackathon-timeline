@@ -176,6 +176,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       focus_count: number;
       focus_minutes: number;
       focus_dim_opacity: number;
+      practice_minutes?: number;
+      practice_room_scope?: string;
     }) =>
       z
         .object({
