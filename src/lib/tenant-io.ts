@@ -1,11 +1,12 @@
 import { z } from "zod";
 
-export const IO_VERSION = 4;
+export const IO_VERSION = 5;
 
 export const SECTIONS = [
   "tenant",
   "color_schemes",
   "rooms",
+  "teams",
   "entries",
   "ad_sets",
   "ads",
@@ -30,6 +31,17 @@ export const tenantSection = z.object({
   focus_count: z.number().int().min(0).max(50).optional(),
   focus_minutes: z.number().int().min(0).max(1440).optional(),
   focus_dim_opacity: z.number().int().min(0).max(100).optional(),
+  practice_minutes: z.number().int().min(1).max(600).optional(),
+  practice_room_scope: z.enum(["assigned", "all"]).optional(),
+});
+
+export const teamItem = z.object({
+  id: z.string().min(1).max(60),
+  name: z.string().min(1).max(120),
+  members: z.string().max(2000).default(""),
+  project: z.string().max(4000).default(""),
+  /** id of an entry in rooms, or null when the team has no room */
+  room: z.string().max(60).nullable().default(null),
 });
 
 export const colorSchemeItem = z.object({
@@ -46,6 +58,8 @@ export const roomItem = z.object({
 });
 
 export const entryItem = z.object({
+  /** "practice" entries expand into one row per team on the displays */
+  kind: z.enum(["entry", "practice"]).default("entry"),
   time: z.string().min(1),
   end_time: z.string().min(1).nullable().default(null),
   title: z.string().min(1).max(200),
@@ -105,6 +119,7 @@ export const tenantDataSchema = z.object({
   tenant: tenantSection.optional(),
   color_schemes: z.array(colorSchemeItem).optional(),
   rooms: z.array(roomItem).optional(),
+  teams: z.array(teamItem).optional(),
   entries: z.array(entryItem).optional(),
   ad_sets: z.array(adSetItem).optional(),
   ads: z.array(adItem).optional(),
@@ -150,6 +165,18 @@ export const TENANT_JSON_SCHEMA = {
         focus_count: { type: "integer", minimum: 0, maximum: 50 },
         focus_minutes: { type: "integer", minimum: 0, maximum: 1440 },
         focus_dim_opacity: { type: "integer", minimum: 0, maximum: 100 },
+        practice_minutes: {
+          type: "integer",
+          minimum: 1,
+          maximum: 600,
+          description: "Minutes per team for practice time entries",
+        },
+        practice_room_scope: {
+          type: "string",
+          enum: ["assigned", "all"],
+          description:
+            'Whether practice rows appear only in the room a team is assigned to ("assigned") or in every room ("all")',
+        },
       },
     },
     color_schemes: {
@@ -193,6 +220,22 @@ export const TENANT_JSON_SCHEMA = {
         },
       },
     },
+    teams: {
+      type: "array",
+      description: "Teams, in display order. Referenced by practice time entries.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name"],
+        properties: {
+          id: { type: "string", minLength: 1, maxLength: 60, description: "Reference id" },
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          members: { type: "string", description: "Comma separated participant names" },
+          project: { type: "string", description: "Project description" },
+          room: { type: ["string", "null"], description: "id of an entry in rooms" },
+        },
+      },
+    },
     entries: {
       type: "array",
       items: {
@@ -200,6 +243,13 @@ export const TENANT_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["time", "title"],
         properties: {
+          kind: {
+            type: "string",
+            enum: ["entry", "practice"],
+            default: "entry",
+            description:
+              'A "practice" entry is shown as one row per team, each lasting practice_minutes.',
+          },
           time: { type: "string", format: "date-time" },
           end_time: {
             type: ["string", "null"],
