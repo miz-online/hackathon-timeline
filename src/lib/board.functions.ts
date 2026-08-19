@@ -983,6 +983,8 @@ export type RoomSnapshot = {
     focus_count: number;
     focus_minutes: number;
     focus_dim_opacity: number;
+    practice_minutes: number;
+    practice_room_scope: string;
   };
   room: {
     id: string;
@@ -1005,6 +1007,7 @@ export type RoomSnapshot = {
     background_opacity: number;
     background_margin: number;
     background_tint: EntryBgTint | null;
+    team_id?: string | null;
   }[];
 
   ads: { id: string; name: string; url: string; content_type: string }[];
@@ -1028,7 +1031,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
       .select(
-        "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
       )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
@@ -1045,8 +1048,31 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       template,
       fallbackSeconds: tenant.ad_seconds,
     });
+    const { data: teamRows } = await supabase
+      .from("teams")
+      .select("id, name, room_id, sort_order, created_at")
+      .eq("tenant_id", tenant.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    const { data: roomRows } = await supabase
+      .from("rooms")
+      .select("id, color_scheme_id")
+      .eq("tenant_id", tenant.id);
+    const roomColorById = new Map(
+      (roomRows ?? []).map((r) => [
+        r.id,
+        r.color_scheme_id ? (colorById.get(r.color_scheme_id) ?? null) : null,
+      ]),
+    );
+    const teams: PracticeTeam[] = (teamRows ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      room_id: t.room_id,
+      color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
+    }));
     const withColor = (entries ?? []).map((e) => ({
       id: e.id,
+      kind: e.kind,
       time: e.time,
       end_time: e.end_time,
       title: e.title,
@@ -1074,6 +1100,8 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         focus_count: tenant.focus_count ?? 3,
         focus_minutes: tenant.focus_minutes ?? 30,
         focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
+        practice_minutes: tenant.practice_minutes ?? 10,
+        practice_room_scope: tenant.practice_room_scope ?? "all",
       },
       room: {
         id: room.id,
@@ -1081,7 +1109,17 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
         template,
       },
-      entries: filterVisible(withColor, room.name, tenant.past_grace_minutes),
+      entries: filterVisible(
+        expandPracticeEntries(withColor, {
+          teams,
+          practiceMinutes: tenant.practice_minutes ?? 10,
+          scope: tenant.practice_room_scope ?? "all",
+          roomId: room.id,
+          isOverview: false,
+        }),
+        room.name,
+        tenant.past_grace_minutes,
+      ),
       ads,
     };
 
