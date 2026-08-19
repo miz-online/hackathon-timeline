@@ -223,6 +223,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         focus_count: data.focus_count,
         focus_minutes: data.focus_minutes,
         focus_dim_opacity: data.focus_dim_opacity,
+        practice_minutes: data.practice_minutes,
+        practice_room_scope: data.practice_room_scope,
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
