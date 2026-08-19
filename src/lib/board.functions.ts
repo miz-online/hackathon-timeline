@@ -297,7 +297,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { data: rows, error } = await supabase
       .from("entries")
       .select(
-        "id, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
       )
       .eq("tenant_id", id)
       .order("time", { ascending: true });
@@ -315,6 +315,7 @@ export const listEntries = createServerFn({ method: "GET" })
 
 const entryInput = z.object({
   id: z.string().uuid().optional(),
+  kind: z.enum(ENTRY_KINDS).default("entry"),
   time: z.string().min(1),
   end_time: z.string().min(1).nullable().optional(),
   title: z.string().min(1).max(200),
