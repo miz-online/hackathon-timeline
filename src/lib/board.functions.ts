@@ -1529,7 +1529,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await requireTenantAdmin(data.key);
-    const [schemes, rooms, entries, adSets, ads, webhooks] = await Promise.all([
+    const [schemes, rooms, teams, entries, adSets, ads, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -1541,9 +1541,14 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .eq("tenant_id", tenant.id)
         .order("name", { ascending: true }),
       supabase
+        .from("teams")
+        .select("id, ref_id, name, members, project, room_id, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+      supabase
         .from("entries")
         .select(
-          "time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
+          "kind, time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
         )
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
@@ -1571,6 +1576,9 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const roomIds = refIdsFor(roomRows);
     const schemeIdByUuid = new Map(schemeRows.map((s, i) => [s.id, schemeIds[i]]));
     const roomIdByName = new Map(roomRows.map((r, i) => [r.name, roomIds[i]]));
+    const roomIdByUuid = new Map(roomRows.map((r, i) => [r.id, roomIds[i]]));
+    const teamRows = teams.data ?? [];
+    const teamIds = refIdsFor(teamRows);
     const webhookRows = webhooks.data ?? [];
     const webhookIds = refIdsFor(webhookRows);
     const webhookIdByUuid = new Map(webhookRows.map((w, i) => [w.id, webhookIds[i]]));
@@ -1643,6 +1651,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         }
       }
       entryItems.push({
+        kind: (e.kind ?? "entry") as "entry" | "practice",
         time: e.time,
         end_time: e.end_time,
         title: e.title,
@@ -1673,6 +1682,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         focus_count: tenant.focus_count ?? 3,
         focus_minutes: tenant.focus_minutes ?? 30,
         focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
+        practice_minutes: tenant.practice_minutes ?? 10,
+        practice_room_scope: (tenant.practice_room_scope ?? "all") as "assigned" | "all",
       },
       color_schemes: schemeRows.map((s, idx) => ({
         id: schemeIds[idx],
@@ -1684,6 +1695,13 @@ export const exportTenantData = createServerFn({ method: "GET" })
         name: r.name,
         template: templateRefOf(r.template),
         color_scheme: r.color_scheme_id ? (schemeIdByUuid.get(r.color_scheme_id) ?? null) : null,
+      })),
+      teams: teamRows.map((t, idx) => ({
+        id: teamIds[idx],
+        name: t.name,
+        members: t.members,
+        project: t.project,
+        room: t.room_id ? (roomIdByUuid.get(t.room_id) ?? null) : null,
       })),
       entries: entryItems,
 
@@ -1921,6 +1939,52 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
     }
 
+    // ---- teams ----
+    const roomUuidByRef = new Map<string, string>();
+    {
+      const { data: existingRooms } = await supabase
+        .from("rooms")
+        .select("id, ref_id, name")
+        .eq("tenant_id", tenant.id);
+      const taken = new Set<string>();
+      for (const row of existingRooms ?? []) {
+        const ref = uniqueRefId(effectiveRefId(row), taken, "room");
+        roomUuidByRef.set(ref, row.id);
+        roomUuidByRef.set(slugify(row.name), row.id);
+      }
+    }
+    if (wants("teams") && p.teams) {
+      if (replace) {
+        await supabase.from("teams").delete().eq("tenant_id", tenant.id);
+      }
+      const { data: existing } = await supabase
+        .from("teams")
+        .select("id, ref_id, name, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true });
+      const taken = new Set<string>();
+      for (const row of existing ?? []) uniqueRefId(effectiveRefId(row), taken, "team");
+      let order = (existing ?? []).length;
+      for (const t of p.teams) {
+        const ref = uniqueRefId(slugify(t.id) || slugify(t.name), taken, "team");
+        const roomUuid = t.room
+          ? (roomUuidByRef.get(t.room) ?? roomUuidByRef.get(slugify(t.room)) ?? null)
+          : null;
+        if (t.room && !roomUuid) warnings.push(`Team "${t.name}": unknown room "${t.room}"`);
+        const { error } = await supabase.from("teams").insert({
+          tenant_id: tenant.id,
+          name: t.name,
+          ref_id: ref,
+          members: t.members,
+          project: t.project,
+          room_id: roomUuid,
+          sort_order: order++,
+        });
+        if (!error) counts.teams = (counts.teams ?? 0) + 1;
+        else warnings.push(`Team "${t.name}" not imported: ${error.message}`);
+      }
+    }
+
     // ---- entries ----
     if (wants("entries") && p.entries) {
       if (replace) {
@@ -1937,6 +2001,7 @@ export const importTenantData = createServerFn({ method: "POST" })
       if (p.entries.length) {
         const rows: {
           tenant_id: string;
+          kind: string;
           time: string;
           end_time: string | null;
           title: string;
@@ -1984,6 +2049,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           }
           rows.push({
             tenant_id: tenant.id,
+            kind: e.kind,
             time: e.time,
             end_time: e.end_time ?? null,
             title: e.title,
@@ -2160,6 +2226,10 @@ export const importTenantData = createServerFn({ method: "POST" })
         if (p.tenant.focus_minutes !== undefined) update.focus_minutes = p.tenant.focus_minutes;
         if (p.tenant.focus_dim_opacity !== undefined)
           update.focus_dim_opacity = p.tenant.focus_dim_opacity;
+        if (p.tenant.practice_minutes !== undefined)
+          update.practice_minutes = p.tenant.practice_minutes;
+        if (p.tenant.practice_room_scope !== undefined)
+          update.practice_room_scope = p.tenant.practice_room_scope;
         counts.tenant = 1;
       }
       if (logoPath !== undefined) update.logo_url = logoPath;
