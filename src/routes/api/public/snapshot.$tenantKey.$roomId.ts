@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadAdsForTemplate } from "@/lib/ads.server";
+import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 
 
 export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")({
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
         const { data: tenant } = await supabaseAdmin
           .from("tenants")
           .select(
-            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity",
+            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
           )
           .eq("key", tenantKey)
           .maybeSingle();
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
         const { data: entries } = await supabaseAdmin
           .from("entries")
           .select(
-            "id, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
+            "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
           )
           .eq("tenant_id", tenant.id);
 
@@ -43,7 +44,29 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
           .from("color_schemes")
           .select("id, color")
           .eq("tenant_id", tenant.id);
+          const { data: teamRows } = await supabaseAdmin
+            .from("teams")
+            .select("id, name, room_id, sort_order, created_at")
+            .eq("tenant_id", tenant.id)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: true });
+          const { data: roomRows } = await supabaseAdmin
+            .from("rooms")
+            .select("id, color_scheme_id")
+            .eq("tenant_id", tenant.id);
         const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
+          const roomColorById = new Map(
+            (roomRows ?? []).map((r) => [
+              r.id,
+              r.color_scheme_id ? (colorById.get(r.color_scheme_id) ?? null) : null,
+            ]),
+          );
+          const teams: PracticeTeam[] = (teamRows ?? []).map((t) => ({
+            id: t.id,
+            name: t.name,
+            room_id: t.room_id,
+            color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
+          }));
 
         const effectiveTemplate = room.template || tenant.template;
         const { ads, adSeconds } = await loadAdsForTemplate({
@@ -57,15 +80,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const now = Date.now();
         const cutoff = now - tenant.past_grace_minutes * 60 * 1000;
-        const visible = (entries ?? [])
-          .filter((e) =>
-            e.end_time
-              ? new Date(e.end_time).getTime() >= now
-              : new Date(e.time).getTime() >= cutoff,
-          )
-          .filter((e) => isOverview || e.tags.length === 0 || e.tags.includes(room.name))
-          .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
-          .map((e) => ({
+        const mapped = (entries ?? []).map((e) => ({
+            kind: e.kind,
             id: e.id,
             time: e.time,
             end_time: e.end_time,
@@ -82,6 +98,21 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             background_margin: e.background_margin ?? 0,
             background_tint: e.background_tint ?? null,
           }));
+          const expanded = expandPracticeEntries(mapped, {
+            teams,
+            practiceMinutes: tenant.practice_minutes ?? 10,
+            scope: tenant.practice_room_scope ?? "all",
+            roomId: room.id,
+            isOverview,
+          });
+          const visible = expanded
+          .filter((e) =>
+            e.end_time
+              ? new Date(e.end_time).getTime() >= now
+              : new Date(e.time).getTime() >= cutoff,
+          )
+          .filter((e) => isOverview || e.tags.length === 0 || e.tags.includes(room.name))
+          .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
 
         return new Response(
@@ -98,6 +129,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               focus_count: tenant.focus_count ?? 3,
               focus_minutes: tenant.focus_minutes ?? 30,
               focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
+              practice_minutes: tenant.practice_minutes ?? 10,
+              practice_room_scope: tenant.practice_room_scope ?? "all",
             },
             room: {
               id: room.id,
