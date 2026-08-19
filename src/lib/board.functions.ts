@@ -688,6 +688,108 @@ export const deleteRoom = createServerFn({ method: "POST" })
     return { ok: true };
 });
 
+// ---------- teams ----------
+
+export const listTeams = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await requireTenantAdmin(data.key);
+    const { data: rows, error } = await supabase
+      .from("teams")
+      .select("id, ref_id, name, members, project, room_id, sort_order")
+      .eq("tenant_id", id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+const teamInput = z.object({
+  id: z.string().uuid().optional(),
+  ref_id: z.string().max(60).nullable().default(null),
+  name: z.string().min(1).max(120),
+  members: z.string().max(2000).default(""),
+  project: z.string().max(4000).default(""),
+  room_id: z.string().uuid().nullable().default(null),
+});
+
+export const upsertTeam = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; team: z.infer<typeof teamInput> }) =>
+    z.object({ key: z.string().min(1), team: teamInput }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await requireTenantAdmin(data.key);
+    const t = data.team;
+    const common = {
+      name: t.name,
+      ref_id: t.ref_id?.trim() ? slugify(t.ref_id) : slugify(t.name),
+      members: t.members,
+      project: t.project,
+      room_id: t.room_id ?? null,
+    };
+    if (t.id) {
+      const { error } = await supabase
+        .from("teams")
+        .update(common)
+        .eq("id", t.id)
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+      return { id: t.id };
+    }
+    const { data: last } = await supabase
+      .from("teams")
+      .select("sort_order")
+      .eq("tenant_id", tenantId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const { data: row, error } = await supabase
+      .from("teams")
+      .insert({ tenant_id: tenantId, ...common, sort_order: (last?.sort_order ?? -1) + 1 })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
+
+export const deleteTeam = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string }) =>
+    z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await requireTenantAdmin(data.key);
+    const { error } = await supabase
+      .from("teams")
+      .delete()
+      .eq("id", data.id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const reorderTeams = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; ids: string[] }) =>
+    z.object({ key: z.string().min(1), ids: z.array(z.string().uuid()).max(500) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id: tenantId } = await requireTenantAdmin(data.key);
+    for (let i = 0; i < data.ids.length; i++) {
+      const { error } = await supabase
+        .from("teams")
+        .update({ sort_order: i })
+        .eq("id", data.ids[i])
+        .eq("tenant_id", tenantId);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+
+
 // ---------- webhooks ----------
 
 export const listWebhooks = createServerFn({ method: "GET" })
