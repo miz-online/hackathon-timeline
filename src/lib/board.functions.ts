@@ -10,6 +10,12 @@ import {
 } from "@/lib/tenant-io";
 import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 import { entriesJsonSchema, type EntryJsonItem } from "@/lib/entries-json";
+import {
+  ENTRY_KINDS,
+  PRACTICE_SCOPES,
+  expandPracticeEntries,
+  type PracticeTeam,
+} from "@/lib/practice";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
