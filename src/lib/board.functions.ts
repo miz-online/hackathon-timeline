@@ -41,10 +41,12 @@ type TenantRow = {
   focus_count: number;
   focus_minutes: number;
   focus_dim_opacity: number;
+  practice_minutes: number;
+  practice_room_scope: string;
 };
 
 const TENANT_COLS =
-  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity";
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
