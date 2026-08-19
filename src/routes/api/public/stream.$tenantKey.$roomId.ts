@@ -213,6 +213,11 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
                 { event: "*", schema: "public", table: "color_schemes", filter: `tenant_id=eq.${tenantId}` },
                 () => void pushUpdate(),
               )
+              .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "teams", filter: `tenant_id=eq.${tenantId}` },
+                () => void pushUpdate(),
+              )
               .subscribe();
 
             const keepalive = setInterval(() => sendComment("ka"), 25_000);
