@@ -155,6 +155,7 @@ export type Database = {
           description: string
           end_time: string | null
           id: string
+          kind: string
           notified_at: string | null
           notify: boolean
           tags: string[]
@@ -176,6 +177,7 @@ export type Database = {
           description: string
           end_time?: string | null
           id?: string
+          kind?: string
           notified_at?: string | null
           notify?: boolean
           tags?: string[]
@@ -197,6 +199,7 @@ export type Database = {
           description?: string
           end_time?: string | null
           id?: string
+          kind?: string
           notified_at?: string | null
           notify?: boolean
           tags?: string[]
@@ -267,6 +270,60 @@ export type Database = {
           },
         ]
       }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          members: string
+          name: string
+          project: string
+          ref_id: string | null
+          room_id: string | null
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          members?: string
+          name: string
+          project?: string
+          ref_id?: string | null
+          room_id?: string | null
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          members?: string
+          name?: string
+          project?: string
+          ref_id?: string | null
+          room_id?: string | null
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           accent_color: string
@@ -283,6 +340,8 @@ export type Database = {
           name: string
           past_grace_minutes: number
           pin_hash: string | null
+          practice_minutes: number
+          practice_room_scope: string
           template: string
         }
         Insert: {
@@ -300,6 +359,8 @@ export type Database = {
           name?: string
           past_grace_minutes?: number
           pin_hash?: string | null
+          practice_minutes?: number
+          practice_room_scope?: string
           template?: string
         }
         Update: {
@@ -317,6 +378,8 @@ export type Database = {
           name?: string
           past_grace_minutes?: number
           pin_hash?: string | null
+          practice_minutes?: number
+          practice_room_scope?: string
           template?: string
         }
         Relationships: []
