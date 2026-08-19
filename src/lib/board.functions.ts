@@ -339,6 +339,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
     const { id: tenantId } = await requireTenantAdmin(data.key);
     const e = data.entry;
     const common = {
+      kind: e.kind,
       time: e.time,
       end_time: e.end_time ?? null,
       title: e.title,
