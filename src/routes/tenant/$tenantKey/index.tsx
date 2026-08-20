@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2 } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -23,6 +23,10 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
+  listTeams,
+  upsertTeam,
+  deleteTeam,
+  reorderTeams,
   listAdSets,
   upsertAdSet,
   deleteAdSet,
@@ -66,13 +70,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
-const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
+const TABS = ["entries", "ads", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
@@ -400,6 +410,7 @@ function AdminPage() {
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
               graceMinutes={tenant.past_grace_minutes}
+              practiceMinutes={tenant.practice_minutes ?? 10}
               showExpired={entriesShowAll}
               onChange={invalidate}
             />
@@ -407,6 +418,16 @@ function AdminPage() {
 
           <TabsContent value="rooms" className="space-y-4 pt-4">
             <RoomsPanel
+              tenantKey={tenantKey}
+              rooms={roomsQ.data ?? []}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
+              onChange={invalidate}
+            />
+          </TabsContent>
+
+          <TabsContent value="teams" className="space-y-4 pt-4">
+            <TeamsPanel
               tenantKey={tenantKey}
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
@@ -673,6 +694,7 @@ function EntriesPanel({
   schemes,
   defaultColor,
   graceMinutes,
+  practiceMinutes,
   showExpired,
   onChange,
 }: {
@@ -682,11 +704,18 @@ function EntriesPanel({
   schemes: SchemeRow[];
   defaultColor: string;
   graceMinutes: number;
+  practiceMinutes: number;
   showExpired: boolean;
   onChange: () => void;
 }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
+  const [newKind, setNewKind] = useState<"entry" | "practice">("entry");
+  const teamsQ = useQuery({
+    queryKey: ["teams", tenantKey],
+    queryFn: () => listTeams({ data: { key: tenantKey } }),
+  });
+  const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState<"form" | "json">("form");
   const upsertFn = useServerFn(upsertEntry);
@@ -770,15 +799,42 @@ function EntriesPanel({
             </Button>
           </div>
           {mode === "form" ? (
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(null);
-                setShowForm(true);
-              }}
-            >
-              {t("entries.new")}
-            </Button>
+            <div className="flex">
+              <Button
+                size="sm"
+                className="rounded-r-none"
+                onClick={() => {
+                  setEditing(null);
+                  setNewKind("entry");
+                  setShowForm(true);
+                }}
+              >
+                {t("entries.new")}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="rounded-l-none border-l border-primary-foreground/25 px-2"
+                    aria-label={t("entries.newPractice")}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditing(null);
+                      setNewKind("practice");
+                      setShowForm(true);
+                    }}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    {t("entries.newPractice")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : null}
         </div>
       </div>
@@ -788,12 +844,23 @@ function EntriesPanel({
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
           <DialogHeader>
-            <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
+            <DialogTitle>
+              {(editing?.kind ?? newKind) === "practice"
+                ? editing
+                  ? t("entries.editPractice")
+                  : t("entries.newPractice")
+                : editing
+                  ? t("entries.edit")
+                  : t("entries.new")}
+            </DialogTitle>
           </DialogHeader>
           {showForm ? (
             <EntryForm
               initial={editing}
               tenantKey={tenantKey}
+              kind={newKind}
+              teamCount={teamCount}
+              practiceMinutes={practiceMinutes}
 
               rooms={rooms}
               schemes={schemes}
