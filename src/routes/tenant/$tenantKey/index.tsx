@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2 } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -23,6 +23,10 @@ import {
   deleteAd,
   moveAd,
   reorderAds,
+  listTeams,
+  upsertTeam,
+  deleteTeam,
+  reorderTeams,
   listAdSets,
   upsertAdSet,
   deleteAdSet,
@@ -66,13 +70,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TeamsPanel } from "@/components/admin/TeamsPanel";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
-const TABS = ["entries", "ads", "messages", "rooms", "colors", "settings", "io"] as const;
+const TABS = ["entries", "ads", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
@@ -81,6 +92,7 @@ export const Route = createFileRoute("/tenant/$tenantKey/")({
 
 type EntryRow = {
   id: string;
+  kind?: string | null;
   time: string;
   end_time?: string | null;
   title: string;
@@ -399,6 +411,7 @@ function AdminPage() {
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
               graceMinutes={tenant.past_grace_minutes}
+              practiceMinutes={tenant.practice_minutes ?? 10}
               showExpired={entriesShowAll}
               onChange={invalidate}
             />
@@ -406,6 +419,16 @@ function AdminPage() {
 
           <TabsContent value="rooms" className="space-y-4 pt-4">
             <RoomsPanel
+              tenantKey={tenantKey}
+              rooms={roomsQ.data ?? []}
+              schemes={schemesQ.data ?? []}
+              defaultColor={tenant.accent_color}
+              onChange={invalidate}
+            />
+          </TabsContent>
+
+          <TabsContent value="teams" className="space-y-4 pt-4">
+            <TeamsPanel
               tenantKey={tenantKey}
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
@@ -451,6 +474,8 @@ function AdminPage() {
               focusCount={tenant.focus_count}
               focusMinutes={tenant.focus_minutes}
               focusDimOpacity={tenant.focus_dim_opacity}
+              practiceMinutes={tenant.practice_minutes ?? 10}
+              practiceRoomScope={tenant.practice_room_scope ?? "all"}
               onChange={invalidate}
             />
           </TabsContent>
@@ -672,6 +697,7 @@ function EntriesPanel({
   schemes,
   defaultColor,
   graceMinutes,
+  practiceMinutes,
   showExpired,
   onChange,
 }: {
@@ -681,11 +707,18 @@ function EntriesPanel({
   schemes: SchemeRow[];
   defaultColor: string;
   graceMinutes: number;
+  practiceMinutes: number;
   showExpired: boolean;
   onChange: () => void;
 }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
+  const [newKind, setNewKind] = useState<"entry" | "practice">("entry");
+  const teamsQ = useQuery({
+    queryKey: ["teams", tenantKey],
+    queryFn: () => listTeams({ data: { key: tenantKey } }),
+  });
+  const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState<"form" | "json">("form");
   const upsertFn = useServerFn(upsertEntry);
@@ -769,15 +802,42 @@ function EntriesPanel({
             </Button>
           </div>
           {mode === "form" ? (
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(null);
-                setShowForm(true);
-              }}
-            >
-              {t("entries.new")}
-            </Button>
+            <div className="flex">
+              <Button
+                size="sm"
+                className="rounded-r-none"
+                onClick={() => {
+                  setEditing(null);
+                  setNewKind("entry");
+                  setShowForm(true);
+                }}
+              >
+                {t("entries.new")}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="rounded-l-none border-l border-primary-foreground/25 px-2"
+                    aria-label={t("entries.newPractice")}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditing(null);
+                      setNewKind("practice");
+                      setShowForm(true);
+                    }}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    {t("entries.newPractice")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : null}
         </div>
       </div>
@@ -787,12 +847,23 @@ function EntriesPanel({
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
           <DialogHeader>
-            <DialogTitle>{editing ? t("entries.edit") : t("entries.new")}</DialogTitle>
+            <DialogTitle>
+              {(editing?.kind ?? newKind) === "practice"
+                ? editing
+                  ? t("entries.editPractice")
+                  : t("entries.newPractice")
+                : editing
+                  ? t("entries.edit")
+                  : t("entries.new")}
+            </DialogTitle>
           </DialogHeader>
           {showForm ? (
             <EntryForm
               initial={editing}
               tenantKey={tenantKey}
+              kind={newKind}
+              teamCount={teamCount}
+              practiceMinutes={practiceMinutes}
 
               rooms={rooms}
               schemes={schemes}
@@ -914,7 +985,15 @@ function EntriesPanel({
                     ))
                   )}
                 </div>
-                <div className="font-medium">{e.title}</div>
+                <div className="flex items-center gap-2 font-medium">
+                  {e.kind === "practice" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <Users className="h-3 w-3" />
+                      {t("entries.newPractice")}
+                    </Badge>
+                  ) : null}
+                  <span>{e.title}</span>
+                </div>
                 {e.description ? (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                     {e.description}
@@ -955,6 +1034,9 @@ function EntriesPanel({
 
 function EntryForm({
   initial,
+  kind: kindProp,
+  teamCount = 0,
+  practiceMinutes = 10,
   rooms,
   schemes,
   defaultColor,
@@ -968,10 +1050,15 @@ function EntryForm({
   schemes: SchemeRow[];
   defaultColor: string;
   tenantKey: string;
+  /** "practice" entries expand into one row per team on the displays */
+  kind?: "entry" | "practice";
+  teamCount?: number;
+  practiceMinutes?: number;
   onSaved: () => void;
 
   onSubmit: (entry: {
     id?: string;
+    kind: "entry" | "practice";
     time: string;
     end_time?: string | null;
     title: string;
@@ -988,6 +1075,9 @@ function EntryForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const kind: "entry" | "practice" =
+    (initial?.kind as "entry" | "practice" | undefined) ?? kindProp ?? "entry";
+  const isPractice = kind === "practice";
   const uploadBgFn = useServerFn(uploadEntryBackground);
   const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
@@ -1051,6 +1141,27 @@ function EntryForm({
             <Label>{t("entries.form.time")}</Label>
             <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
+          {isPractice ? (
+            <div className="space-y-1">
+              <Label>{t("entries.form.endTime")}</Label>
+              <Input
+                readOnly
+                disabled
+                value={(() => {
+                  const startMs = new Date(time).getTime();
+                  if (!Number.isFinite(startMs)) return "";
+                  const end = new Date(startMs + teamCount * practiceMinutes * 60_000);
+                  return end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                })()}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("entries.form.practiceEndHint", {
+                  teams: teamCount,
+                  minutes: practiceMinutes,
+                })}
+              </p>
+            </div>
+          ) : (
           <div className="space-y-1">
             <Label>{t("entries.form.endTime")}</Label>
             <div className="flex items-center gap-1">
@@ -1077,6 +1188,8 @@ function EntryForm({
               </Tooltip>
             </div>
           </div>
+          )}
+          {isPractice ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.scheme")}</Label>
             <div className="flex items-center gap-2">
@@ -1101,6 +1214,7 @@ function EntryForm({
             </div>
             <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
           </div>
+          )}
           <div className="flex items-center gap-2">
             <Checkbox
               id="notify"
@@ -1124,6 +1238,9 @@ function EntryForm({
               placeholder={t("entries.form.titlePh")}
             />
           </div>
+          {isPractice ? (
+            <p className="text-sm text-muted-foreground">{t("entries.form.practiceHint")}</p>
+          ) : (
           <div className="space-y-1">
             <Label>{t("entries.form.description")}</Label>
             <Textarea
@@ -1133,7 +1250,8 @@ function EntryForm({
               placeholder={t("entries.form.descriptionPh")}
             />
           </div>
-
+          )}
+          {isPractice ? null : (
           <div className="space-y-2">
             <Label>{t("entries.form.rooms")}</Label>
             <div className="flex flex-wrap gap-2">
@@ -1167,6 +1285,7 @@ function EntryForm({
             </div>
             <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
           </div>
+          )}
 
           {/* Background image */}
           <div className="space-y-2 border-t pt-3">
@@ -1411,12 +1530,13 @@ function EntryForm({
               const tags = selectedRooms.filter((n) => validNames.has(n));
               const id = await onSubmit({
                 id: initial?.id,
+                kind,
                 time: new Date(time).toISOString(),
-                end_time: endMs != null ? new Date(endMs).toISOString() : null,
+                end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
                 title: title.trim(),
-                description: description.trim(),
-                tags,
-                color_scheme_id: schemeId || null,
+                description: isPractice ? "" : description.trim(),
+                tags: isPractice ? [] : tags,
+                color_scheme_id: isPractice ? null : schemeId || null,
                 notify,
                 background_align: bgAlign,
                 background_height: bgHeight,
@@ -1741,6 +1861,8 @@ function SettingsPanel({
   focusCount,
   focusMinutes,
   focusDimOpacity,
+  practiceMinutes,
+  practiceRoomScope,
   onChange,
 }: {
   tenantKey: string;
@@ -1755,6 +1877,8 @@ function SettingsPanel({
   focusCount: number;
   focusMinutes: number;
   focusDimOpacity: number;
+  practiceMinutes: number;
+  practiceRoomScope: string;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -1771,6 +1895,10 @@ function SettingsPanel({
   const [fCount, setFCount] = useState(focusCount);
   const [fMinutes, setFMinutes] = useState(focusMinutes);
   const [fDim, setFDim] = useState(focusDimOpacity);
+  const [pMinutes, setPMinutes] = useState(practiceMinutes);
+  const [pScope, setPScope] = useState<"all" | "assigned">(
+    practiceRoomScope === "assigned" ? "assigned" : "all",
+  );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -1784,7 +1912,7 @@ function SettingsPanel({
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
   const [section, setSection] = useState<
-    "general" | "display" | "logo" | "webhooks" | "tenant"
+    "general" | "display" | "teams" | "logo" | "webhooks" | "tenant"
   >("general");
 
   const saveButton = (
@@ -1808,6 +1936,8 @@ function SettingsPanel({
                 focus_count: fCount,
                 focus_minutes: fMinutes,
                 focus_dim_opacity: fDim,
+                practice_minutes: pMinutes,
+                practice_room_scope: pScope,
               },
             });
             toast.success(t("settings.saved"));
@@ -1830,6 +1960,7 @@ function SettingsPanel({
         <TabsList>
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
+          <TabsTrigger value="teams">{t("settings.sec.teams")}</TabsTrigger>
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
           <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
@@ -1917,6 +2048,33 @@ function SettingsPanel({
                   onChange={(e) => setFDim(Number(e.target.value))}
                 />
               </div>
+            </div>
+            {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="teams" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
+              <Label>{t("settings.practiceMinutes")}</Label>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                value={pMinutes}
+                onChange={(e) => setPMinutes(Math.max(1, Number(e.target.value) || 1))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("settings.practiceScope")}</Label>
+              <select
+                value={pScope}
+                onChange={(e) => setPScope(e.target.value as "all" | "assigned")}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="all">{t("settings.practiceScope.all")}</option>
+                <option value="assigned">{t("settings.practiceScope.room")}</option>
+              </select>
             </div>
             {saveButton}
           </Card>
