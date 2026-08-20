@@ -70,6 +70,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TeamsPanel } from "@/components/admin/TeamsPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
