@@ -81,6 +81,7 @@ export const Route = createFileRoute("/tenant/$tenantKey/")({
 
 type EntryRow = {
   id: string;
+  kind?: string | null;
   time: string;
   end_time?: string | null;
   title: string;
@@ -955,6 +956,9 @@ function EntriesPanel({
 
 function EntryForm({
   initial,
+  kind: kindProp,
+  teamCount = 0,
+  practiceMinutes = 10,
   rooms,
   schemes,
   defaultColor,
@@ -968,10 +972,15 @@ function EntryForm({
   schemes: SchemeRow[];
   defaultColor: string;
   tenantKey: string;
+  /** "practice" entries expand into one row per team on the displays */
+  kind?: "entry" | "practice";
+  teamCount?: number;
+  practiceMinutes?: number;
   onSaved: () => void;
 
   onSubmit: (entry: {
     id?: string;
+    kind: "entry" | "practice";
     time: string;
     end_time?: string | null;
     title: string;
@@ -988,6 +997,9 @@ function EntryForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
+  const kind: "entry" | "practice" =
+    (initial?.kind as "entry" | "practice" | undefined) ?? kindProp ?? "entry";
+  const isPractice = kind === "practice";
   const uploadBgFn = useServerFn(uploadEntryBackground);
   const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
@@ -1051,6 +1063,27 @@ function EntryForm({
             <Label>{t("entries.form.time")}</Label>
             <Input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
+          {isPractice ? (
+            <div className="space-y-1">
+              <Label>{t("entries.form.endTime")}</Label>
+              <Input
+                readOnly
+                disabled
+                value={(() => {
+                  const startMs = new Date(time).getTime();
+                  if (!Number.isFinite(startMs)) return "";
+                  const end = new Date(startMs + teamCount * practiceMinutes * 60_000);
+                  return end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                })()}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("entries.form.practiceEndHint", {
+                  teams: teamCount,
+                  minutes: practiceMinutes,
+                })}
+              </p>
+            </div>
+          ) : (
           <div className="space-y-1">
             <Label>{t("entries.form.endTime")}</Label>
             <div className="flex items-center gap-1">
@@ -1077,6 +1110,8 @@ function EntryForm({
               </Tooltip>
             </div>
           </div>
+          )}
+          {isPractice ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.scheme")}</Label>
             <div className="flex items-center gap-2">
@@ -1101,6 +1136,7 @@ function EntryForm({
             </div>
             <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
           </div>
+          )}
           <div className="flex items-center gap-2">
             <Checkbox
               id="notify"
@@ -1124,6 +1160,9 @@ function EntryForm({
               placeholder={t("entries.form.titlePh")}
             />
           </div>
+          {isPractice ? (
+            <p className="text-sm text-muted-foreground">{t("entries.form.practiceHint")}</p>
+          ) : (
           <div className="space-y-1">
             <Label>{t("entries.form.description")}</Label>
             <Textarea
@@ -1133,7 +1172,8 @@ function EntryForm({
               placeholder={t("entries.form.descriptionPh")}
             />
           </div>
-
+          )}
+          {isPractice ? null : (
           <div className="space-y-2">
             <Label>{t("entries.form.rooms")}</Label>
             <div className="flex flex-wrap gap-2">
@@ -1167,6 +1207,7 @@ function EntryForm({
             </div>
             <p className="text-xs text-muted-foreground">{t("entries.form.roomsHint")}</p>
           </div>
+          )}
 
           {/* Background image */}
           <div className="space-y-2 border-t pt-3">
@@ -1411,12 +1452,13 @@ function EntryForm({
               const tags = selectedRooms.filter((n) => validNames.has(n));
               const id = await onSubmit({
                 id: initial?.id,
+                kind,
                 time: new Date(time).toISOString(),
-                end_time: endMs != null ? new Date(endMs).toISOString() : null,
+                end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
                 title: title.trim(),
-                description: description.trim(),
-                tags,
-                color_scheme_id: schemeId || null,
+                description: isPractice ? "" : description.trim(),
+                tags: isPractice ? [] : tags,
+                color_scheme_id: isPractice ? null : schemeId || null,
                 notify,
                 background_align: bgAlign,
                 background_height: bgHeight,
