@@ -278,7 +278,7 @@ const en: Dict = {
   "teams.form.membersHint": "Comma-separated names.",
   "teams.form.project": "Project",
   "teams.form.room": "Room",
-  "teams.form.roomHint": "The team inherits the room"s color scheme.",
+  "teams.form.roomHint": "The team inherits the color scheme of its room.",
   "entries.newPractice": "Practice time",
   "entries.editPractice": "Edit practice time",
   "entries.form.practiceHint": "Practice entries expand into one row per team on the displays.",
