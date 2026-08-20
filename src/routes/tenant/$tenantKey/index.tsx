@@ -474,6 +474,8 @@ function AdminPage() {
               focusCount={tenant.focus_count}
               focusMinutes={tenant.focus_minutes}
               focusDimOpacity={tenant.focus_dim_opacity}
+              practiceMinutes={tenant.practice_minutes ?? 10}
+              practiceRoomScope={tenant.practice_room_scope ?? "all"}
               onChange={invalidate}
             />
           </TabsContent>
@@ -1851,6 +1853,8 @@ function SettingsPanel({
   focusCount,
   focusMinutes,
   focusDimOpacity,
+  practiceMinutes,
+  practiceRoomScope,
   onChange,
 }: {
   tenantKey: string;
@@ -1865,6 +1869,8 @@ function SettingsPanel({
   focusCount: number;
   focusMinutes: number;
   focusDimOpacity: number;
+  practiceMinutes: number;
+  practiceRoomScope: string;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -1881,6 +1887,10 @@ function SettingsPanel({
   const [fCount, setFCount] = useState(focusCount);
   const [fMinutes, setFMinutes] = useState(focusMinutes);
   const [fDim, setFDim] = useState(focusDimOpacity);
+  const [pMinutes, setPMinutes] = useState(practiceMinutes);
+  const [pScope, setPScope] = useState<"all" | "room">(
+    practiceRoomScope === "room" ? "room" : "all",
+  );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -1894,7 +1904,7 @@ function SettingsPanel({
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
   const [section, setSection] = useState<
-    "general" | "display" | "logo" | "webhooks" | "tenant"
+    "general" | "display" | "teams" | "logo" | "webhooks" | "tenant"
   >("general");
 
   const saveButton = (
@@ -1918,6 +1928,8 @@ function SettingsPanel({
                 focus_count: fCount,
                 focus_minutes: fMinutes,
                 focus_dim_opacity: fDim,
+                practice_minutes: pMinutes,
+                practice_room_scope: pScope,
               },
             });
             toast.success(t("settings.saved"));
@@ -1940,6 +1952,7 @@ function SettingsPanel({
         <TabsList>
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
+          <TabsTrigger value="teams">{t("settings.sec.teams")}</TabsTrigger>
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
           <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
@@ -2027,6 +2040,33 @@ function SettingsPanel({
                   onChange={(e) => setFDim(Number(e.target.value))}
                 />
               </div>
+            </div>
+            {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="teams" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
+              <Label>{t("settings.practiceMinutes")}</Label>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                value={pMinutes}
+                onChange={(e) => setPMinutes(Math.max(1, Number(e.target.value) || 1))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("settings.practiceScope")}</Label>
+              <select
+                value={pScope}
+                onChange={(e) => setPScope(e.target.value as "all" | "room")}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="all">{t("settings.practiceScope.all")}</option>
+                <option value="room">{t("settings.practiceScope.room")}</option>
+              </select>
             </div>
             {saveButton}
           </Card>
