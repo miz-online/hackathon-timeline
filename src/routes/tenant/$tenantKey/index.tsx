@@ -985,7 +985,15 @@ function EntriesPanel({
                     ))
                   )}
                 </div>
-                <div className="font-medium">{e.title}</div>
+                <div className="flex items-center gap-2 font-medium">
+                  {e.kind === "practice" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <Users className="h-3 w-3" />
+                      {t("entries.newPractice")}
+                    </Badge>
+                  ) : null}
+                  <span>{e.title}</span>
+                </div>
                 {e.description ? (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                     {e.description}
