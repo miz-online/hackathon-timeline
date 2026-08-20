@@ -1888,8 +1888,8 @@ function SettingsPanel({
   const [fMinutes, setFMinutes] = useState(focusMinutes);
   const [fDim, setFDim] = useState(focusDimOpacity);
   const [pMinutes, setPMinutes] = useState(practiceMinutes);
-  const [pScope, setPScope] = useState<"all" | "room">(
-    practiceRoomScope === "room" ? "room" : "all",
+  const [pScope, setPScope] = useState<"all" | "assigned">(
+    practiceRoomScope === "assigned" ? "assigned" : "all",
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -2061,11 +2061,11 @@ function SettingsPanel({
               <Label>{t("settings.practiceScope")}</Label>
               <select
                 value={pScope}
-                onChange={(e) => setPScope(e.target.value as "all" | "room")}
+                onChange={(e) => setPScope(e.target.value as "all" | "assigned")}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               >
                 <option value="all">{t("settings.practiceScope.all")}</option>
-                <option value="room">{t("settings.practiceScope.room")}</option>
+                <option value="assigned">{t("settings.practiceScope.room")}</option>
               </select>
             </div>
             {saveButton}
