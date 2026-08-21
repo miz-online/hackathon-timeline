@@ -74,7 +74,7 @@ export function expandPracticeEntries<T extends ExpandableEntry>(
         time: new Date(start + idx * minutes * 60_000).toISOString(),
         end_time: new Date(start + (idx + 1) * minutes * 60_000).toISOString(),
         title: team.name,
-        description: "",
+        description: e.title,
         color: team.color ?? e.color,
       });
     });
