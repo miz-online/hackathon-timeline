@@ -791,6 +791,122 @@ export const reorderTeams = createServerFn({ method: "POST" })
 
 
 
+export const exportTeamsJson = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const maps = await entryRefMaps(tenant.id);
+    const { data: rooms } = await supabase
+      .from("rooms")
+      .select("id, name")
+      .eq("tenant_id", tenant.id);
+    const roomRefById = new Map(
+      (rooms ?? []).map((r) => [r.id, maps.roomRefByName.get(r.name) ?? slugify(r.name)]),
+    );
+    const { data: rows, error } = await supabase
+      .from("teams")
+      .select("id, ref_id, name, members, project, room_id, sort_order")
+      .eq("tenant_id", tenant.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return {
+      roomIds: maps.roomIds,
+      teams: (rows ?? []).map((tm) => ({
+        id: tm.id,
+        name: tm.name,
+        ref_id: tm.ref_id ?? null,
+        members: tm.members ?? "",
+        project: tm.project ?? "",
+        room: tm.room_id ? (roomRefById.get(tm.room_id) ?? null) : null,
+      })),
+    };
+  });
+
+export const replaceTeamsJson = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; teams: TeamJsonItem[] }) =>
+    z.object({ key: z.string().min(1), teams: teamsJsonSchema.shape.teams }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const maps = await entryRefMaps(tenant.id);
+    const { data: rooms } = await supabase
+      .from("rooms")
+      .select("id, name")
+      .eq("tenant_id", tenant.id);
+    const roomIdByRef = new Map<string, string>();
+    for (const r of rooms ?? []) {
+      const ref = maps.roomRefByName.get(r.name) ?? slugify(r.name);
+      roomIdByRef.set(ref, r.id);
+    }
+
+    const { data: existing, error: exErr } = await supabase
+      .from("teams")
+      .select("id")
+      .eq("tenant_id", tenant.id);
+    if (exErr) throw new Error(exErr.message);
+    const existingIds = new Set((existing ?? []).map((e) => e.id));
+
+    const problems: string[] = [];
+    const seen = new Set<string>();
+    data.teams.forEach((tm, i) => {
+      const at = `teams[${i}]`;
+      if (tm.id) {
+        if (!existingIds.has(tm.id)) problems.push(`${at}.id "${tm.id}" does not exist`);
+        if (seen.has(tm.id)) problems.push(`${at}.id "${tm.id}" is used more than once`);
+        seen.add(tm.id);
+      }
+      if (tm.room && !roomIdByRef.has(tm.room)) problems.push(`${at}: unknown room "${tm.room}"`);
+    });
+    if (problems.length) throw new Error(problems.slice(0, 20).join("\n"));
+
+    const toRow = (tm: TeamJsonItem, idx: number) => ({
+      tenant_id: tenant.id,
+      name: tm.name,
+      ref_id: tm.ref_id?.trim() ? slugify(tm.ref_id) : slugify(tm.name),
+      members: tm.members ?? "",
+      project: tm.project ?? "",
+      room_id: tm.room ? (roomIdByRef.get(tm.room) ?? null) : null,
+      sort_order: idx,
+    });
+
+    let updated = 0;
+    let created = 0;
+    for (let i = 0; i < data.teams.length; i++) {
+      const tm = data.teams[i];
+      if (tm.id) {
+        const { error } = await supabase
+          .from("teams")
+          .update(toRow(tm, i))
+          .eq("id", tm.id)
+          .eq("tenant_id", tenant.id);
+        if (error) throw new Error(error.message);
+        updated++;
+      } else {
+        const { error } = await supabase.from("teams").insert(toRow(tm, i));
+        if (error) throw new Error(error.message);
+        created++;
+      }
+    }
+
+    const removed = (existing ?? []).filter((e) => !seen.has(e.id));
+    if (removed.length) {
+      const { error } = await supabase
+        .from("teams")
+        .delete()
+        .in(
+          "id",
+          removed.map((r) => r.id),
+        )
+        .eq("tenant_id", tenant.id);
+      if (error) throw new Error(error.message);
+    }
+
+    return { updated, created, deleted: removed.length };
+  });
+
 // ---------- webhooks ----------
 
 export const listWebhooks = createServerFn({ method: "GET" })
