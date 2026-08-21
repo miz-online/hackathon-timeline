@@ -10,6 +10,7 @@ import {
 } from "@/lib/tenant-io";
 import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 import { entriesJsonSchema, type EntryJsonItem } from "@/lib/entries-json";
+import { teamsJsonSchema, type TeamJsonItem } from "@/lib/teams-json";
 import {
   ENTRY_KINDS,
   PRACTICE_SCOPES,
