@@ -646,6 +646,16 @@ const de: Dict = {
   "teams.form.project": "Projekt",
   "teams.form.room": "Raum",
   "teams.form.roomHint": "Das Team übernimmt das Farbschema des Raums.",
+  "teams.json.hint":
+    "Alle Teams als ein JSON-Dokument bearbeiten. Die Array-Reihenfolge ist die Team-Reihenfolge.",
+  "teams.park.title": "Parkplatz",
+  "teams.park.hint":
+    "Teams hierher ziehen, zur Zielposition scrollen und wieder einfügen. Verbleibende Teams werden beim Speichern am Ende angehängt.",
+  "teams.park.empty": "Teams hier ablegen",
+  "teams.park.save": "Reihenfolge speichern",
+  "teams.park.cancel": "Verwerfen",
+  "teams.park.saved": "Reihenfolge gespeichert",
+  "teams.park.action": "Parken",
   "entries.newPractice": "Teamzeit",
   "entries.editPractice": "Teamzeit bearbeiten",
   "entries.form.practiceHint": "Teamzeit-Einträge werden in der Anzeige je Team in eine Zeile aufgeteilt.",
