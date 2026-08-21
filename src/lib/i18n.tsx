@@ -279,6 +279,16 @@ const en: Dict = {
   "teams.form.project": "Project",
   "teams.form.room": "Room",
   "teams.form.roomHint": "The team inherits the color scheme of its room.",
+  "teams.json.hint":
+    "Edit all teams as one JSON document. The array order is the team order.",
+  "teams.park.title": "Parking lot",
+  "teams.park.hint":
+    "Drag teams here, scroll to the target position and drag them back in. Teams left here are appended at the end when saving.",
+  "teams.park.empty": "Drop teams here",
+  "teams.park.save": "Save order",
+  "teams.park.cancel": "Discard",
+  "teams.park.saved": "Order saved",
+  "teams.park.action": "Park",
   "entries.newPractice": "Team time",
   "entries.editPractice": "Edit team time",
   "entries.form.practiceHint": "Team-time entries expand into one row per team on the displays.",
