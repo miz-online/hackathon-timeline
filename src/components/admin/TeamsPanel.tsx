@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, ParkingSquare } from "lucide-react";
 import { toast } from "sonner";
 
 import { listTeams, upsertTeam, deleteTeam, reorderTeams } from "@/lib/board.functions";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 import { slugify } from "@/lib/ref-id";
+import { TeamsJsonPanel } from "@/components/admin/TeamsJsonPanel";
 
 type TeamRow = {
   id: string;
@@ -46,10 +47,14 @@ export function TeamsPanel({
   const deleteFn = useServerFn(deleteTeam);
   const reorderFn = useServerFn(reorderTeams);
 
+  const [mode, setMode] = useState<"form" | "json">("form");
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [overPark, setOverPark] = useState(false);
   const [order, setOrder] = useState<string[] | null>(null);
+  const [parked, setParked] = useState<string[]>([]);
 
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
@@ -61,10 +66,14 @@ export function TeamsPanel({
   };
 
   const raw = (teamsQ.data ?? []) as TeamRow[];
-  const teams =
-    order && order.length === raw.length
-      ? order.map((id) => raw.find((x) => x.id === id)).filter((x): x is TeamRow => !!x)
-      : raw;
+  const byId = new Map(raw.map((x) => [x.id, x]));
+  const ordered =
+    order && order.length
+      ? order.map((id) => byId.get(id)).filter((x): x is TeamRow => !!x)
+      : raw.filter((x) => !parked.includes(x.id));
+  const teams = ordered.filter((x) => !parked.includes(x.id));
+  const parkedTeams = parked.map((id) => byId.get(id)).filter((x): x is TeamRow => !!x);
+  const dirty = parked.length > 0 || (order !== null && parkedTeams.length > 0);
 
   const colorOf = (team: TeamRow) => {
     const room = rooms.find((r) => r.id === team.room_id);
@@ -76,6 +85,8 @@ export function TeamsPanel({
 
   const applyOrder = async (ids: string[]) => {
     setOrder(ids);
+    // While teams are parked the order is only local; it is written on save.
+    if (parked.length > 0) return;
     try {
       await reorderFn({ data: { key: tenantKey, ids } });
       refresh();
@@ -96,141 +107,300 @@ export function TeamsPanel({
 
   const drop = (fromId: string, toId: string) => {
     const ids = teams.map((x) => x.id);
-    const from = ids.indexOf(fromId);
     const to = ids.indexOf(toId);
-    if (from < 0 || to < 0 || from === to) return;
+    if (to < 0) return;
+    if (parked.includes(fromId)) {
+      // unpark at the drop position
+      setParked((p) => p.filter((x) => x !== fromId));
+      ids.splice(to, 0, fromId);
+      setOrder(ids);
+      return;
+    }
+    const from = ids.indexOf(fromId);
+    if (from < 0 || from === to) return;
     ids.splice(to, 0, ids.splice(from, 1)[0]);
     void applyOrder(ids);
   };
 
+  const park = (id: string) => {
+    if (parked.includes(id)) return;
+    setOrder(teams.filter((x) => x.id !== id).map((x) => x.id));
+    setParked((p) => [...p, id]);
+  };
+
+  const saveOrder = async () => {
+    const ids = [...teams.map((x) => x.id), ...parked];
+    try {
+      await reorderFn({ data: { key: tenantKey, ids } });
+      setParked([]);
+      setOrder(null);
+      toast.success(t("teams.park.saved"));
+      refresh();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const dropBorder = (id: string) =>
+    overId === id && dragId && dragId !== id ? "border-primary border-2" : "";
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-medium">{t("teams.title")}</h2>
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditing(null);
-            setShowForm(true);
-          }}
-        >
-          {t("teams.new")}
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">{t("teams.hint")}</p>
-
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? t("teams.edit") : t("teams.new")}</DialogTitle>
-          </DialogHeader>
-          {showForm ? (
-            <TeamForm
-              initial={editing}
-              rooms={rooms}
-              onCancel={() => setShowForm(false)}
-              onSubmit={async (team) => {
-                await upsertFn({ data: { key: tenantKey, team } });
-                toast.success(editing ? t("teams.updated") : t("teams.created"));
-                setShowForm(false);
-                setOrder(null);
-                refresh();
-              }}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      {teams.length === 0 ? (
-        <Card className="p-6 text-center text-sm text-muted-foreground">{t("teams.empty")}</Card>
-      ) : (
-        <div className="space-y-2">
-          {teams.map((team, idx) => (
-            <Card
-              key={team.id}
-              draggable
-              onDragStart={() => setDragId(team.id)}
-              onDragEnd={() => setDragId(null)}
-              onDragOver={(ev) => {
-                if (dragId && dragId !== team.id) ev.preventDefault();
-              }}
-              onDrop={(ev) => {
-                ev.preventDefault();
-                if (dragId) drop(dragId, team.id);
-                setDragId(null);
-              }}
-              className={`flex items-start gap-3 p-4 ${dragId === team.id ? "opacity-50" : ""}`}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border p-0.5">
+            <Button
+              size="sm"
+              variant={mode === "form" ? "secondary" : "ghost"}
+              onClick={() => setMode("form")}
             >
-              <GripVertical className="mt-1 h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
-              <span
-                className="mt-1 h-4 w-4 shrink-0 rounded-full border"
-                style={{ backgroundColor: colorOf(team) }}
-              />
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="font-medium">{team.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {rooms.find((r) => r.id === team.room_id)?.name ?? t("teams.noRoom")}
-                  </span>
-                </div>
-                {team.members ? (
-                  <div className="text-sm text-muted-foreground break-words">{team.members}</div>
-                ) : null}
-                {team.project ? (
-                  <div className="whitespace-pre-wrap break-words text-sm">{team.project}</div>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  disabled={idx === 0}
-                  aria-label={t("teams.moveUp")}
-                  onClick={() => move(team.id, -1)}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  disabled={idx === teams.length - 1}
-                  aria-label={t("teams.moveDown")}
-                  onClick={() => move(team.id, 1)}
-                >
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditing(team);
-                    setShowForm(true);
+              {t("entries.mode.form")}
+            </Button>
+            <Button
+              size="sm"
+              variant={mode === "json" ? "secondary" : "ghost"}
+              onClick={() => setMode("json")}
+            >
+              {t("entries.mode.json")}
+            </Button>
+          </div>
+          {mode === "form" ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditing(null);
+                setShowForm(true);
+              }}
+            >
+              {t("teams.new")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {mode === "json" ? (
+        <TeamsJsonPanel
+          tenantKey={tenantKey}
+          onChange={() => {
+            setOrder(null);
+            setParked([]);
+            refresh();
+          }}
+        />
+      ) : null}
+
+      {mode === "form" ? (
+        <>
+          <p className="text-xs text-muted-foreground">{t("teams.hint")}</p>
+
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>{editing ? t("teams.edit") : t("teams.new")}</DialogTitle>
+              </DialogHeader>
+              {showForm ? (
+                <TeamForm
+                  initial={editing}
+                  rooms={rooms}
+                  onCancel={() => setShowForm(false)}
+                  onSubmit={async (team) => {
+                    await upsertFn({ data: { key: tenantKey, team } });
+                    toast.success(editing ? t("teams.updated") : t("teams.created"));
+                    setShowForm(false);
+                    setOrder(null);
+                    refresh();
                   }}
-                >
-                  {t("teams.edit")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => {
-                    if (!confirm(t("teams.confirmDelete"))) return;
-                    try {
-                      await deleteFn({ data: { key: tenantKey, id: team.id } });
-                      toast.success(t("teams.deleted"));
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
+
+          <Card
+            onDragOver={(ev) => {
+              if (dragId && !parked.includes(dragId)) {
+                ev.preventDefault();
+                setOverPark(true);
+              }
+            }}
+            onDragLeave={() => setOverPark(false)}
+            onDrop={(ev) => {
+              ev.preventDefault();
+              if (dragId) park(dragId);
+              setDragId(null);
+              setOverPark(false);
+            }}
+            className={`space-y-2 p-3 ${overPark ? "border-2 border-primary" : ""}`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <ParkingSquare className="h-4 w-4" />
+                {t("teams.park.title")}
+              </div>
+              {dirty ? (
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setParked([]);
                       setOrder(null);
-                      refresh();
-                    } catch (e) {
-                      toast.error((e as Error).message);
+                    }}
+                  >
+                    {t("teams.park.cancel")}
+                  </Button>
+                  <Button size="sm" onClick={() => void saveOrder()}>
+                    {t("teams.park.save")}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("teams.park.hint")}</p>
+            {parkedTeams.length === 0 ? (
+              <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
+                {t("teams.park.empty")}
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {parkedTeams.map((team) => (
+                  <div
+                    key={team.id}
+                    draggable
+                    onDragStart={() => setDragId(team.id)}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverId(null);
+                    }}
+                    className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
+                      dragId === team.id ? "opacity-50" : ""
+                    }`}
+                  >
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full border"
+                      style={{ backgroundColor: colorOf(team) }}
+                    />
+                    <span className="max-w-[12rem] truncate">{team.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {teams.length === 0 ? (
+            <Card className="p-6 text-center text-sm text-muted-foreground">
+              {t("teams.empty")}
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {teams.map((team, idx) => (
+                <Card
+                  key={team.id}
+                  draggable
+                  onDragStart={() => setDragId(team.id)}
+                  onDragEnd={() => {
+                    setDragId(null);
+                    setOverId(null);
+                  }}
+                  onDragOver={(ev) => {
+                    if (dragId && dragId !== team.id) {
+                      ev.preventDefault();
+                      setOverId(team.id);
                     }
                   }}
+                  onDragLeave={() => setOverId((c) => (c === team.id ? null : c))}
+                  onDrop={(ev) => {
+                    ev.preventDefault();
+                    if (dragId) drop(dragId, team.id);
+                    setDragId(null);
+                    setOverId(null);
+                  }}
+                  className={`flex items-start gap-3 p-4 ${
+                    dragId === team.id ? "opacity-50" : ""
+                  } ${dropBorder(team.id)}`}
                 >
-                  {t("teams.delete")}
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                  <GripVertical className="mt-1 h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
+                  <span
+                    className="mt-1 h-4 w-4 shrink-0 rounded-full border"
+                    style={{ backgroundColor: colorOf(team) }}
+                  />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="font-medium">{team.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {rooms.find((r) => r.id === team.room_id)?.name ?? t("teams.noRoom")}
+                      </span>
+                    </div>
+                    {team.members ? (
+                      <div className="text-sm text-muted-foreground break-words">
+                        {team.members}
+                      </div>
+                    ) : null}
+                    {team.project ? (
+                      <div className="whitespace-pre-wrap break-words text-sm">{team.project}</div>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t("teams.park.action")}
+                      onClick={() => park(team.id)}
+                    >
+                      <ParkingSquare className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={idx === 0}
+                      aria-label={t("teams.moveUp")}
+                      onClick={() => move(team.id, -1)}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={idx === teams.length - 1}
+                      aria-label={t("teams.moveDown")}
+                      onClick={() => move(team.id, 1)}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditing(team);
+                        setShowForm(true);
+                      }}
+                    >
+                      {t("teams.edit")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        if (!confirm(t("teams.confirmDelete"))) return;
+                        try {
+                          await deleteFn({ data: { key: tenantKey, id: team.id } });
+                          toast.success(t("teams.deleted"));
+                          setOrder(null);
+                          setParked((p) => p.filter((x) => x !== team.id));
+                          refresh();
+                        } catch (e) {
+                          toast.error((e as Error).message);
+                        }
+                      }}
+                    >
+                      {t("teams.delete")}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

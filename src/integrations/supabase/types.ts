@@ -157,6 +157,7 @@ export type Database = {
           id: string
           kind: string
           notified_at: string | null
+          notified_teams: string[]
           notify: boolean
           tags: string[]
           tenant_id: string
@@ -179,6 +180,7 @@ export type Database = {
           id?: string
           kind?: string
           notified_at?: string | null
+          notified_teams?: string[]
           notify?: boolean
           tags?: string[]
           tenant_id: string
@@ -201,6 +203,7 @@ export type Database = {
           id?: string
           kind?: string
           notified_at?: string | null
+          notified_teams?: string[]
           notify?: boolean
           tags?: string[]
           tenant_id?: string

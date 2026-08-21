@@ -279,6 +279,16 @@ const en: Dict = {
   "teams.form.project": "Project",
   "teams.form.room": "Room",
   "teams.form.roomHint": "The team inherits the color scheme of its room.",
+  "teams.json.hint":
+    "Edit all teams as one JSON document. The array order is the team order.",
+  "teams.park.title": "Parking lot",
+  "teams.park.hint":
+    "Drag teams here, scroll to the target position and drag them back in. Teams left here are appended at the end when saving.",
+  "teams.park.empty": "Drop teams here",
+  "teams.park.save": "Save order",
+  "teams.park.cancel": "Discard",
+  "teams.park.saved": "Order saved",
+  "teams.park.action": "Park",
   "entries.newPractice": "Team time",
   "entries.editPractice": "Edit team time",
   "entries.form.practiceHint": "Team-time entries expand into one row per team on the displays.",
@@ -636,6 +646,16 @@ const de: Dict = {
   "teams.form.project": "Projekt",
   "teams.form.room": "Raum",
   "teams.form.roomHint": "Das Team übernimmt das Farbschema des Raums.",
+  "teams.json.hint":
+    "Alle Teams als ein JSON-Dokument bearbeiten. Die Array-Reihenfolge ist die Team-Reihenfolge.",
+  "teams.park.title": "Parkplatz",
+  "teams.park.hint":
+    "Teams hierher ziehen, zur Zielposition scrollen und wieder einfügen. Verbleibende Teams werden beim Speichern am Ende angehängt.",
+  "teams.park.empty": "Teams hier ablegen",
+  "teams.park.save": "Reihenfolge speichern",
+  "teams.park.cancel": "Verwerfen",
+  "teams.park.saved": "Reihenfolge gespeichert",
+  "teams.park.action": "Parken",
   "entries.newPractice": "Teamzeit",
   "entries.editPractice": "Teamzeit bearbeiten",
   "entries.form.practiceHint": "Teamzeit-Einträge werden in der Anzeige je Team in eine Zeile aufgeteilt.",
