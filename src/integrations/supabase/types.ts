@@ -141,6 +141,27 @@ export type Database = {
           },
         ]
       }
+      dispatch_config: {
+        Row: {
+          api_key: string
+          endpoint_url: string
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          endpoint_url: string
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          endpoint_url?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entries: {
         Row: {
           background_align: string
@@ -436,7 +457,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      next_webhook_dispatch_at: { Args: never; Returns: string }
+      reschedule_webhook_dispatch: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
