@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
 
         const { data: tenants } = await supabase
           .from("tenants")
-          .select("id, name, accent_color, past_grace_minutes");
+          .select("id, name, accent_color, past_grace_minutes, practice_minutes");
 
         for (const tenant of tenants ?? []) {
           const { data: webhooks } = await supabase
