@@ -60,6 +60,7 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
             )
             .eq("tenant_id", tenant.id)
             .eq("notify", true)
+            .eq("kind", "entry")
             .is("notified_at", null)
             .gt("time", windowStart.toISOString())
             .lte("time", now.toISOString());
