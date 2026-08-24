@@ -1081,6 +1081,9 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
         return { id: w.id, name: w.name, ok: result.ok, error: result.ok ? undefined : result.error };
       }),
     );
+    return { results };
+  });
+
 export const getNextWebhookDispatch = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
@@ -1093,6 +1096,7 @@ export const getNextWebhookDispatch = createServerFn({ method: "GET" })
 
 
 // ---------- snapshot for displays ----------
+
 
 
 export type RoomSnapshot = {
