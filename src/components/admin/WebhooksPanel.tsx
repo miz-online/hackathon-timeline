@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
+
 import {
   listWebhooks,
   upsertWebhook,
   deleteWebhook,
   testWebhook,
   sendWebhookMessage,
+  getNextWebhookDispatch,
 } from "@/lib/board.functions";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,8 @@ import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RefIdField } from "@/routes/tenant/$tenantKey";
+import { CalendarClock } from "lucide-react";
+
 
 type WebhookListItem = Awaited<ReturnType<typeof listWebhooks>>[number];
 
@@ -54,15 +58,32 @@ export function WebhookConfigPanel({
   tenantKey: string;
   onChange: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const listFn = useServerFn(listWebhooks);
   const { data: webhooks, refetch } = useQuery({
     queryKey: ["webhooks", tenantKey],
     queryFn: () => listFn({ data: { key: tenantKey } }),
   });
+  const nextFn = useServerFn(getNextWebhookDispatch);
+  const nextQ = useQuery({
+    queryKey: ["webhooks-next", tenantKey],
+    queryFn: () => nextFn({ data: { key: tenantKey } }),
+    refetchInterval: 10_000,
+  });
+
+  const formatNext = (iso: string | null | undefined): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString(lang === "de" ? "de-DE" : "en-GB", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+  };
 
   const deleteFn = useServerFn(deleteWebhook);
   const testFn = useServerFn(testWebhook);
+
 
   const [editing, setEditing] = useState<WebhookListItem | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -99,7 +120,19 @@ export function WebhookConfigPanel({
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">{t("messages.hint")}</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarClock className="h-4 w-4" />
+          <span>{t("messages.nextDispatch")}:</span>
+          {nextQ.isLoading ? (
+            <span className="italic">{t("admin.loading")}</span>
+          ) : nextQ.data?.at ? (
+            <span>{t("messages.nextDispatchAt", { time: formatNext(nextQ.data.at) })}</span>
+          ) : (
+            <span>{t("messages.nextDispatchNone")}</span>
+          )}
+        </div>
       </div>
+
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">

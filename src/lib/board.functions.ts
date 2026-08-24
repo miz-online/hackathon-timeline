@@ -1084,8 +1084,20 @@ export const sendWebhookMessage = createServerFn({ method: "POST" })
     return { results };
   });
 
+export const getNextWebhookDispatch = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    await requireTenantAdmin(data.key);
+    const { data: at, error } = await supabase.rpc("next_webhook_dispatch_at");
+    if (error) throw new Error(error.message);
+    return { at: at ? String(at) : null };
+  });
+
 
 // ---------- snapshot for displays ----------
+
+
 
 export type RoomSnapshot = {
   tenant: {

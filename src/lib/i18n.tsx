@@ -366,7 +366,11 @@ const en: Dict = {
   "messages.imageNone": "No image",
   "messages.imageUpload": "Upload image",
   "messages.imageRemove": "Remove image",
+  "messages.nextDispatch": "Next automatic dispatch",
+  "messages.nextDispatchNone": "No upcoming dispatch scheduled.",
+  "messages.nextDispatchAt": "at {time}",
 };
+
 
 const de: Dict = {
   "app.title": "Raum-Anzeige",
@@ -735,7 +739,11 @@ const de: Dict = {
   "messages.imageNone": "Kein Bild",
   "messages.imageUpload": "Bild hochladen",
   "messages.imageRemove": "Bild entfernen",
+  "messages.nextDispatch": "Nächster automatischer Versand",
+  "messages.nextDispatchNone": "Kein bevorstehender Versand geplant.",
+  "messages.nextDispatchAt": "um {time}",
 };
+
 
 const DICTS: Record<Lang, Dict> = { en, de };
 
