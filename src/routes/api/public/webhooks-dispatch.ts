@@ -236,7 +236,10 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
           }
         }
 
-        return Response.json({ ok: true, processed: results.length, results });
+        // Re-arm the single central trigger for the next due notification.
+        const { data: nextRun } = await supabase.rpc("reschedule_webhook_dispatch");
+
+        return Response.json({ ok: true, processed: results.length, nextRun, results });
       },
     },
   },
