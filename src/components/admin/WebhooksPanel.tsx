@@ -120,7 +120,19 @@ export function WebhookConfigPanel({
           </Button>
         </div>
         <p className="text-sm text-muted-foreground">{t("messages.hint")}</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarClock className="h-4 w-4" />
+          <span>{t("messages.nextDispatch")}:</span>
+          {nextQ.isLoading ? (
+            <span className="italic">{t("admin.loading")}</span>
+          ) : nextQ.data?.at ? (
+            <span>{t("messages.nextDispatchAt", { time: formatNext(nextQ.data.at) })}</span>
+          ) : (
+            <span>{t("messages.nextDispatchNone")}</span>
+          )}
+        </div>
       </div>
+
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
