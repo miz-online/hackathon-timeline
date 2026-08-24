@@ -58,15 +58,32 @@ export function WebhookConfigPanel({
   tenantKey: string;
   onChange: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const listFn = useServerFn(listWebhooks);
   const { data: webhooks, refetch } = useQuery({
     queryKey: ["webhooks", tenantKey],
     queryFn: () => listFn({ data: { key: tenantKey } }),
   });
+  const nextFn = useServerFn(getNextWebhookDispatch);
+  const nextQ = useQuery({
+    queryKey: ["webhooks-next", tenantKey],
+    queryFn: () => nextFn({ data: { key: tenantKey } }),
+    refetchInterval: 10_000,
+  });
+
+  const formatNext = (iso: string | null | undefined): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString(lang === "de" ? "de-DE" : "en-GB", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+  };
 
   const deleteFn = useServerFn(deleteWebhook);
   const testFn = useServerFn(testWebhook);
+
 
   const [editing, setEditing] = useState<WebhookListItem | null>(null);
   const [formOpen, setFormOpen] = useState(false);
