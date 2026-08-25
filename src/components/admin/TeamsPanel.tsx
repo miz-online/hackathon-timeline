@@ -300,31 +300,32 @@ export function TeamsPanel({
           ) : (
             <div className="space-y-2">
               {teams.map((team, idx) => (
-                <Card
-                  key={team.id}
-                  draggable
-                  onDragStart={() => setDragId(team.id)}
-                  onDragEnd={() => {
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  onDragOver={(ev) => {
-                    if (dragId && dragId !== team.id) {
+                <div key={team.id} className="space-y-2">
+                  <InsertMarker show={!!dragId && overIdx === idx} />
+                  <Card
+                    draggable
+                    onDragStart={() => setDragId(team.id)}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverIdx(null);
+                    }}
+                    onDragOver={(ev) => {
+                      if (!dragId) return;
                       ev.preventDefault();
-                      setOverId(team.id);
-                    }
-                  }}
-                  onDragLeave={() => setOverId((c) => (c === team.id ? null : c))}
-                  onDrop={(ev) => {
-                    ev.preventDefault();
-                    if (dragId) drop(dragId, team.id);
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  className={`flex items-start gap-3 p-4 ${
-                    dragId === team.id ? "opacity-50" : ""
-                  } ${dropBorder(team.id)}`}
-                >
+                      const r = ev.currentTarget.getBoundingClientRect();
+                      setOverIdx(ev.clientY - r.top > r.height / 2 ? idx + 1 : idx);
+                    }}
+                    onDrop={(ev) => {
+                      ev.preventDefault();
+                      if (dragId && overIdx !== null) dropAt(dragId, overIdx);
+                      setDragId(null);
+                      setOverIdx(null);
+                    }}
+                    className={`flex items-start gap-3 p-4 ${
+                      dragId === team.id ? "opacity-50" : ""
+                    }`}
+                  >
+
                   <GripVertical className="mt-1 h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
                   <span
                     className="mt-1 h-4 w-4 shrink-0 rounded-full border"
