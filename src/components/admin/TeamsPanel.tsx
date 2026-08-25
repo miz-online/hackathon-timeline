@@ -230,7 +230,9 @@ export function TeamsPanel({
               setDragId(null);
               setOverPark(false);
             }}
-            className={`space-y-2 p-3 ${overPark ? "border-2 border-primary" : ""}`}
+            className={`sticky top-0 z-20 space-y-2 border bg-background/95 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 ${
+              overPark ? "border-2 border-primary" : ""
+            }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm font-medium">
