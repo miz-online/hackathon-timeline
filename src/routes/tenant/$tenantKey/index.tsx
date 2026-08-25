@@ -2748,29 +2748,32 @@ function AdSetAds({
           <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
         ) : (
           ads.map((a, i, arr) => (
-            <Card
-              key={a.id}
-              draggable
-              onDragStart={() => setDragId(a.id)}
-              onDragEnd={() => {
-                setDragId(null);
-                setOverId(null);
-              }}
-              onDragOver={(ev) => {
-                ev.preventDefault();
-                if (dragId && dragId !== a.id) setOverId(a.id);
-              }}
-              onDragLeave={() => setOverId((p) => (p === a.id ? null : p))}
-              onDrop={(ev) => {
-                ev.preventDefault();
-                setOverId(null);
-                if (dragId) reorder(dragId, a.id);
-                setDragId(null);
-              }}
-              className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
-                dragId === a.id ? "opacity-50" : ""
-              } ${overId === a.id ? "ring-2 ring-primary" : ""}`}
-            >
+            <div key={a.id} className="space-y-2">
+              <InsertMarker show={!!dragId && overIdx === i} />
+              <Card
+                draggable
+                onDragStart={() => setDragId(a.id)}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setOverIdx(null);
+                }}
+                onDragOver={(ev) => {
+                  ev.preventDefault();
+                  if (!dragId) return;
+                  const r = ev.currentTarget.getBoundingClientRect();
+                  setOverIdx(ev.clientY - r.top > r.height / 2 ? i + 1 : i);
+                }}
+                onDrop={(ev) => {
+                  ev.preventDefault();
+                  if (dragId && overIdx !== null) void reorderAt(dragId, overIdx);
+                  setOverIdx(null);
+                  setDragId(null);
+                }}
+                className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
+                  dragId === a.id ? "opacity-50" : ""
+                }`}
+              >
+
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
               <img
                 src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
