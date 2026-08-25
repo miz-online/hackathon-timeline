@@ -2748,26 +2748,38 @@ function AdSetAds({
           <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
         ) : (
           ads.map((a, i, arr) => (
-            <div key={a.id} className="space-y-2">
+            <div
+              key={a.id}
+              className="space-y-2"
+              onDragOver={(ev) => {
+                if (!dragId) return;
+                ev.preventDefault();
+                ev.dataTransfer.dropEffect = "move";
+                const r = ev.currentTarget.getBoundingClientRect();
+                setOverIdx(ev.clientY - r.top > r.height / 2 ? i + 1 : i);
+              }}
+              onDrop={(ev) => {
+                if (!dragId) return;
+                ev.preventDefault();
+                ev.stopPropagation();
+                const r = ev.currentTarget.getBoundingClientRect();
+                const idx = overIdx ?? (ev.clientY - r.top > r.height / 2 ? i + 1 : i);
+                void reorderAt(dragId, idx);
+                setOverIdx(null);
+                setDragId(null);
+              }}
+            >
               <InsertMarker show={!!dragId && overIdx === i} />
               <Card
                 draggable
-                onDragStart={() => setDragId(a.id)}
+                onDragStart={(ev) => {
+                  setDragId(a.id);
+                  ev.dataTransfer.effectAllowed = "move";
+                  ev.dataTransfer.setData("text/plain", a.id);
+                }}
                 onDragEnd={() => {
                   setDragId(null);
                   setOverIdx(null);
-                }}
-                onDragOver={(ev) => {
-                  ev.preventDefault();
-                  if (!dragId) return;
-                  const r = ev.currentTarget.getBoundingClientRect();
-                  setOverIdx(ev.clientY - r.top > r.height / 2 ? i + 1 : i);
-                }}
-                onDrop={(ev) => {
-                  ev.preventDefault();
-                  if (dragId && overIdx !== null) void reorderAt(dragId, overIdx);
-                  setOverIdx(null);
-                  setDragId(null);
                 }}
                 className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
                   dragId === a.id ? "opacity-50" : ""

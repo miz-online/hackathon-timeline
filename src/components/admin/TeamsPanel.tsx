@@ -273,7 +273,11 @@ export function TeamsPanel({
                   <div
                     key={team.id}
                     draggable
-                    onDragStart={() => setDragId(team.id)}
+                    onDragStart={(ev) => {
+                      setDragId(team.id);
+                      ev.dataTransfer.effectAllowed = "move";
+                      ev.dataTransfer.setData("text/plain", team.id);
+                    }}
                     onDragEnd={() => {
                       setDragId(null);
                       setOverIdx(null);
@@ -300,24 +304,36 @@ export function TeamsPanel({
           ) : (
             <div className="space-y-2">
               {teams.map((team, idx) => (
-                <div key={team.id} className="space-y-2">
+                <div
+                  key={team.id}
+                  className="space-y-2"
+                  onDragOver={(ev) => {
+                    if (!dragId) return;
+                    ev.preventDefault();
+                    ev.dataTransfer.dropEffect = "move";
+                    const r = ev.currentTarget.getBoundingClientRect();
+                    setOverIdx(ev.clientY - r.top > r.height / 2 ? idx + 1 : idx);
+                  }}
+                  onDrop={(ev) => {
+                    if (!dragId) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const r = ev.currentTarget.getBoundingClientRect();
+                    const target = overIdx ?? (ev.clientY - r.top > r.height / 2 ? idx + 1 : idx);
+                    dropAt(dragId, target);
+                    setDragId(null);
+                    setOverIdx(null);
+                  }}
+                >
                   <InsertMarker show={!!dragId && overIdx === idx} />
                   <Card
                     draggable
-                    onDragStart={() => setDragId(team.id)}
+                    onDragStart={(ev) => {
+                      setDragId(team.id);
+                      ev.dataTransfer.effectAllowed = "move";
+                      ev.dataTransfer.setData("text/plain", team.id);
+                    }}
                     onDragEnd={() => {
-                      setDragId(null);
-                      setOverIdx(null);
-                    }}
-                    onDragOver={(ev) => {
-                      if (!dragId) return;
-                      ev.preventDefault();
-                      const r = ev.currentTarget.getBoundingClientRect();
-                      setOverIdx(ev.clientY - r.top > r.height / 2 ? idx + 1 : idx);
-                    }}
-                    onDrop={(ev) => {
-                      ev.preventDefault();
-                      if (dragId && overIdx !== null) dropAt(dragId, overIdx);
                       setDragId(null);
                       setOverIdx(null);
                     }}
