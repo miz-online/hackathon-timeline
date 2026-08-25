@@ -2646,7 +2646,7 @@ function AdSetAds({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const [order, setOrder] = useState<string[] | null>(null);
 
   useEffect(() => setOrder(null), [setId]);
