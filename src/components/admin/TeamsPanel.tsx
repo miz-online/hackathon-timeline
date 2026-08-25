@@ -51,7 +51,7 @@ export function TeamsPanel({
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const [overPark, setOverPark] = useState(false);
   const [order, setOrder] = useState<string[] | null>(null);
   const [parked, setParked] = useState<string[]>([]);
