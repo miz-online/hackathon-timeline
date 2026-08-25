@@ -2668,12 +2668,15 @@ function AdSetAds({
           .filter((a): a is (typeof raw)[number] => !!a)
       : raw;
 
-  const reorder = async (fromId: string, toId: string) => {
+  const reorderAt = async (fromId: string, insertIdx: number) => {
     const ids = ads.map((a) => a.id);
     const from = ids.indexOf(fromId);
-    const to = ids.indexOf(toId);
-    if (from < 0 || to < 0 || from === to) return;
-    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    if (from < 0) return;
+    let to = insertIdx;
+    if (from < to) to -= 1;
+    if (from === to) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
     setOrder(ids);
     try {
       await reorderFn({ data: { key: tenantKey, ids } });
@@ -2683,6 +2686,12 @@ function AdSetAds({
       toast.error((e as Error).message);
     }
   };
+
+  const InsertMarker = ({ show }: { show: boolean }) => (
+    <div
+      className={`h-1 rounded-full transition-colors ${show ? "bg-primary" : "bg-transparent"}`}
+    />
+  );
 
   return (
     <div className="space-y-4">
