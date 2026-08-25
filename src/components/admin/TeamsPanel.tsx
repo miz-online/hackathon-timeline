@@ -105,20 +105,22 @@ export function TeamsPanel({
     void applyOrder(ids);
   };
 
-  const drop = (fromId: string, toId: string) => {
+  const dropAt = (fromId: string, insertIdx: number) => {
     const ids = teams.map((x) => x.id);
-    const to = ids.indexOf(toId);
-    if (to < 0) return;
     if (parked.includes(fromId)) {
       // unpark at the drop position
       setParked((p) => p.filter((x) => x !== fromId));
-      ids.splice(to, 0, fromId);
+      ids.splice(Math.min(insertIdx, ids.length), 0, fromId);
       setOrder(ids);
       return;
     }
     const from = ids.indexOf(fromId);
-    if (from < 0 || from === to) return;
-    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    if (from < 0) return;
+    let to = insertIdx;
+    if (from < to) to -= 1;
+    if (from === to) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
     void applyOrder(ids);
   };
 
