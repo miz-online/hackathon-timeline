@@ -273,7 +273,11 @@ export function TeamsPanel({
                   <div
                     key={team.id}
                     draggable
-                    onDragStart={() => setDragId(team.id)}
+                    onDragStart={(ev) => {
+                      setDragId(team.id);
+                      ev.dataTransfer.effectAllowed = "move";
+                      ev.dataTransfer.setData("text/plain", team.id);
+                    }}
                     onDragEnd={() => {
                       setDragId(null);
                       setOverIdx(null);
