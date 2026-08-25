@@ -2826,6 +2826,10 @@ function AdSetAds({
                 </div>
               </div>
             </Card>
+              {i === arr.length - 1 ? (
+                <InsertMarker show={!!dragId && overIdx === arr.length} />
+              ) : null}
+            </div>
           ))
         )}
       </div>
