@@ -276,7 +276,7 @@ export function TeamsPanel({
                     onDragStart={() => setDragId(team.id)}
                     onDragEnd={() => {
                       setDragId(null);
-                      setOverId(null);
+                      setOverIdx(null);
                     }}
                     className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
                       dragId === team.id ? "opacity-50" : ""
