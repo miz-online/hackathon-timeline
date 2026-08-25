@@ -51,7 +51,7 @@ export function TeamsPanel({
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const [overPark, setOverPark] = useState(false);
   const [order, setOrder] = useState<string[] | null>(null);
   const [parked, setParked] = useState<string[]>([]);
@@ -105,20 +105,22 @@ export function TeamsPanel({
     void applyOrder(ids);
   };
 
-  const drop = (fromId: string, toId: string) => {
+  const dropAt = (fromId: string, insertIdx: number) => {
     const ids = teams.map((x) => x.id);
-    const to = ids.indexOf(toId);
-    if (to < 0) return;
     if (parked.includes(fromId)) {
       // unpark at the drop position
       setParked((p) => p.filter((x) => x !== fromId));
-      ids.splice(to, 0, fromId);
+      ids.splice(Math.min(insertIdx, ids.length), 0, fromId);
       setOrder(ids);
       return;
     }
     const from = ids.indexOf(fromId);
-    if (from < 0 || from === to) return;
-    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    if (from < 0) return;
+    let to = insertIdx;
+    if (from < to) to -= 1;
+    if (from === to) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
     void applyOrder(ids);
   };
 
@@ -141,8 +143,11 @@ export function TeamsPanel({
     }
   };
 
-  const dropBorder = (id: string) =>
-    overId === id && dragId && dragId !== id ? "border-primary border-2" : "";
+  const InsertMarker = ({ show }: { show: boolean }) => (
+    <div
+      className={`h-1 rounded-full transition-colors ${show ? "bg-primary" : "bg-transparent"}`}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -271,7 +276,7 @@ export function TeamsPanel({
                     onDragStart={() => setDragId(team.id)}
                     onDragEnd={() => {
                       setDragId(null);
-                      setOverId(null);
+                      setOverIdx(null);
                     }}
                     className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
                       dragId === team.id ? "opacity-50" : ""
@@ -295,31 +300,32 @@ export function TeamsPanel({
           ) : (
             <div className="space-y-2">
               {teams.map((team, idx) => (
-                <Card
-                  key={team.id}
-                  draggable
-                  onDragStart={() => setDragId(team.id)}
-                  onDragEnd={() => {
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  onDragOver={(ev) => {
-                    if (dragId && dragId !== team.id) {
+                <div key={team.id} className="space-y-2">
+                  <InsertMarker show={!!dragId && overIdx === idx} />
+                  <Card
+                    draggable
+                    onDragStart={() => setDragId(team.id)}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setOverIdx(null);
+                    }}
+                    onDragOver={(ev) => {
+                      if (!dragId) return;
                       ev.preventDefault();
-                      setOverId(team.id);
-                    }
-                  }}
-                  onDragLeave={() => setOverId((c) => (c === team.id ? null : c))}
-                  onDrop={(ev) => {
-                    ev.preventDefault();
-                    if (dragId) drop(dragId, team.id);
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  className={`flex items-start gap-3 p-4 ${
-                    dragId === team.id ? "opacity-50" : ""
-                  } ${dropBorder(team.id)}`}
-                >
+                      const r = ev.currentTarget.getBoundingClientRect();
+                      setOverIdx(ev.clientY - r.top > r.height / 2 ? idx + 1 : idx);
+                    }}
+                    onDrop={(ev) => {
+                      ev.preventDefault();
+                      if (dragId && overIdx !== null) dropAt(dragId, overIdx);
+                      setDragId(null);
+                      setOverIdx(null);
+                    }}
+                    className={`flex items-start gap-3 p-4 ${
+                      dragId === team.id ? "opacity-50" : ""
+                    }`}
+                  >
+
                   <GripVertical className="mt-1 h-4 w-4 shrink-0 cursor-grab text-muted-foreground" />
                   <span
                     className="mt-1 h-4 w-4 shrink-0 rounded-full border"
@@ -397,7 +403,11 @@ export function TeamsPanel({
                       {t("teams.delete")}
                     </Button>
                   </div>
-                </Card>
+                  </Card>
+                  {idx === teams.length - 1 ? (
+                    <InsertMarker show={!!dragId && overIdx === teams.length} />
+                  ) : null}
+                </div>
               ))}
             </div>
           )}

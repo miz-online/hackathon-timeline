@@ -2646,7 +2646,7 @@ function AdSetAds({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
   const [order, setOrder] = useState<string[] | null>(null);
 
   useEffect(() => setOrder(null), [setId]);
@@ -2668,12 +2668,15 @@ function AdSetAds({
           .filter((a): a is (typeof raw)[number] => !!a)
       : raw;
 
-  const reorder = async (fromId: string, toId: string) => {
+  const reorderAt = async (fromId: string, insertIdx: number) => {
     const ids = ads.map((a) => a.id);
     const from = ids.indexOf(fromId);
-    const to = ids.indexOf(toId);
-    if (from < 0 || to < 0 || from === to) return;
-    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    if (from < 0) return;
+    let to = insertIdx;
+    if (from < to) to -= 1;
+    if (from === to) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
     setOrder(ids);
     try {
       await reorderFn({ data: { key: tenantKey, ids } });
@@ -2683,6 +2686,12 @@ function AdSetAds({
       toast.error((e as Error).message);
     }
   };
+
+  const InsertMarker = ({ show }: { show: boolean }) => (
+    <div
+      className={`h-1 rounded-full transition-colors ${show ? "bg-primary" : "bg-transparent"}`}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -2739,29 +2748,32 @@ function AdSetAds({
           <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
         ) : (
           ads.map((a, i, arr) => (
-            <Card
-              key={a.id}
-              draggable
-              onDragStart={() => setDragId(a.id)}
-              onDragEnd={() => {
-                setDragId(null);
-                setOverId(null);
-              }}
-              onDragOver={(ev) => {
-                ev.preventDefault();
-                if (dragId && dragId !== a.id) setOverId(a.id);
-              }}
-              onDragLeave={() => setOverId((p) => (p === a.id ? null : p))}
-              onDrop={(ev) => {
-                ev.preventDefault();
-                setOverId(null);
-                if (dragId) reorder(dragId, a.id);
-                setDragId(null);
-              }}
-              className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
-                dragId === a.id ? "opacity-50" : ""
-              } ${overId === a.id ? "ring-2 ring-primary" : ""}`}
-            >
+            <div key={a.id} className="space-y-2">
+              <InsertMarker show={!!dragId && overIdx === i} />
+              <Card
+                draggable
+                onDragStart={() => setDragId(a.id)}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setOverIdx(null);
+                }}
+                onDragOver={(ev) => {
+                  ev.preventDefault();
+                  if (!dragId) return;
+                  const r = ev.currentTarget.getBoundingClientRect();
+                  setOverIdx(ev.clientY - r.top > r.height / 2 ? i + 1 : i);
+                }}
+                onDrop={(ev) => {
+                  ev.preventDefault();
+                  if (dragId && overIdx !== null) void reorderAt(dragId, overIdx);
+                  setOverIdx(null);
+                  setDragId(null);
+                }}
+                className={`flex items-center gap-4 p-3 cursor-grab active:cursor-grabbing ${
+                  dragId === a.id ? "opacity-50" : ""
+                }`}
+              >
+
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
               <img
                 src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
@@ -2814,6 +2826,10 @@ function AdSetAds({
                 </div>
               </div>
             </Card>
+              {i === arr.length - 1 ? (
+                <InsertMarker show={!!dragId && overIdx === arr.length} />
+              ) : null}
+            </div>
           ))
         )}
       </div>
