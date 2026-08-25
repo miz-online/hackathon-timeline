@@ -403,7 +403,11 @@ export function TeamsPanel({
                       {t("teams.delete")}
                     </Button>
                   </div>
-                </Card>
+                  </Card>
+                  {idx === teams.length - 1 ? (
+                    <InsertMarker show={!!dragId && overIdx === teams.length} />
+                  ) : null}
+                </div>
               ))}
             </div>
           )}
