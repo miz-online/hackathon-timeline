@@ -143,8 +143,11 @@ export function TeamsPanel({
     }
   };
 
-  const dropBorder = (id: string) =>
-    overId === id && dragId && dragId !== id ? "border-primary border-2" : "";
+  const InsertMarker = ({ show }: { show: boolean }) => (
+    <div
+      className={`h-1 rounded-full transition-colors ${show ? "bg-primary" : "bg-transparent"}`}
+    />
+  );
 
   return (
     <div className="space-y-4">
