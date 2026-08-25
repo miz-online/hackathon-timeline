@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -141,6 +141,27 @@ export type Database = {
           },
         ]
       }
+      dispatch_config: {
+        Row: {
+          api_key: string
+          endpoint_url: string
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          endpoint_url: string
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          endpoint_url?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entries: {
         Row: {
           background_align: string
@@ -155,7 +176,9 @@ export type Database = {
           description: string
           end_time: string | null
           id: string
+          kind: string
           notified_at: string | null
+          notified_teams: string[]
           notify: boolean
           tags: string[]
           tenant_id: string
@@ -176,7 +199,9 @@ export type Database = {
           description: string
           end_time?: string | null
           id?: string
+          kind?: string
           notified_at?: string | null
+          notified_teams?: string[]
           notify?: boolean
           tags?: string[]
           tenant_id: string
@@ -197,7 +222,9 @@ export type Database = {
           description?: string
           end_time?: string | null
           id?: string
+          kind?: string
           notified_at?: string | null
+          notified_teams?: string[]
           notify?: boolean
           tags?: string[]
           tenant_id?: string
@@ -267,6 +294,60 @@ export type Database = {
           },
         ]
       }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          members: string
+          name: string
+          project: string
+          ref_id: string | null
+          room_id: string | null
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          members?: string
+          name: string
+          project?: string
+          ref_id?: string | null
+          room_id?: string | null
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          members?: string
+          name?: string
+          project?: string
+          ref_id?: string | null
+          room_id?: string | null
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           accent_color: string
@@ -283,6 +364,8 @@ export type Database = {
           name: string
           past_grace_minutes: number
           pin_hash: string | null
+          practice_minutes: number
+          practice_room_scope: string
           template: string
         }
         Insert: {
@@ -300,6 +383,8 @@ export type Database = {
           name?: string
           past_grace_minutes?: number
           pin_hash?: string | null
+          practice_minutes?: number
+          practice_room_scope?: string
           template?: string
         }
         Update: {
@@ -317,6 +402,8 @@ export type Database = {
           name?: string
           past_grace_minutes?: number
           pin_hash?: string | null
+          practice_minutes?: number
+          practice_room_scope?: string
           template?: string
         }
         Relationships: []
@@ -370,7 +457,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      next_webhook_dispatch_at: { Args: never; Returns: string }
+      reschedule_webhook_dispatch: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
