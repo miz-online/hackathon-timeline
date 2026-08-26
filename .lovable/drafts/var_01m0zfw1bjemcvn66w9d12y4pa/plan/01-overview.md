@@ -5,7 +5,7 @@ Teams tragen sich selbst ein: Im Raum-Display erscheint zur Registrierungszeit e
 ## Neuer Eintragstyp "Registrierung"
 
 - Dritte Variante neben "Neuer Eintrag" und "Teamzeit" (gleiches Dropdown).
-- Felder: Startzeit, Endzeit, Titel, Beschreibung, Räume, Farbschema. Kein Hintergrundbild (Bild-Bereich wird für diesen Typ ausgeblendet).
+- Felder: Startzeit, Endzeit, Titel, Beschreibung. Kein Raum, kein Farbschema — der Eintrag wird in allen Räumen eingeblendet. Kein Hintergrundbild (Bild-Bereich wird für diesen Typ ausgeblendet).
 - Beim Anlegen wird ein kurzer, nicht erratbarer Token erzeugt (10 Zeichen, Krypto-Zufall) → öffentliche URL `domain/tr/<token>`.
 - Im Admin-Formular wird die URL angezeigt, mit Kopieren-Button und Möglichkeit, den Token neu zu erzeugen (alte URL wird damit ungültig).
 
