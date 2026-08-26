@@ -11,7 +11,7 @@ Teams tragen sich selbst ein: Im Raum-Display erscheint zur Registrierungszeit e
 
 ## Anzeige im Raum
 
-Der Eintrag rendert wie ein normaler Eintrag (Zeit, Titel, Beschreibung). Die URL `<domain>/tr/<token>` wird automatisch an die Beschreibung angehängt; zusätzlich rechts ein QR-Code. Der QR-Code nimmt den Platz ein, den sonst das Hintergrundbild hätte.
+Der Eintrag rendert wie ein normaler Eintrag (Zeit, Titel, Beschreibung). Die URL `<domain>/tr/<token>` wird automatisch an die Beschreibung angehängt; zusätzlich rechts ein QR-Code. Der QR-Code nimmt den Platz ein, den sonst das Hintergrundbild hätte. Tenant-Logo und Tenant-Titel bleiben im bestehenden Layout oben sichtbar; die Karte selbst nutzt die Akzentfarbe des Tenants.
 
 ## Öffentliche Registrierungsseite
 
