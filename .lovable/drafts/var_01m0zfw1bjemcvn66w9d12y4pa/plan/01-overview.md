@@ -1,6 +1,6 @@
 # Team-Selbstregistrierung
 
-Teams tragen sich selbst ein: Im Raum-Display erscheint zur Registrierungszeit ein Eintrag mit QR-Code und kurzer URL. Wer sie öffnet, legt ein Team an (Titel, Teilnehmer, Projektbeschreibung) und bekommt danach eine eigene Bearbeitungs-URL mit Zugangscode zum Merken — damit lässt sich das Team auch nach Ende der Registrierungszeit noch ändern.
+Teams tragen sich selbst ein: Im Raum-Display erscheint zur Registrierungszeit ein Eintrag mit QR-Code und kurzer URL. Wer sie öffnet, legt ein Team an (Titel, Teilnehmer, Projektbeschreibung) und bekommt danach eine eigene Bearbeitungs-URL mit Zugangscode in einer URL zum Bookmarken zum Merken — damit lässt sich das Team auch nach Ende der Registrierungszeit noch ändern.
 
 ## Neuer Eintragstyp "Registrierung"
 
