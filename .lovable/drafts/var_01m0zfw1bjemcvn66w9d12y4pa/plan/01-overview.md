@@ -17,7 +17,7 @@ Der Eintrag rendert wie ein normaler Eintrag (Zeit, Titel, Beschreibung). Die UR
 
 - `/tr/<token>` ist nur zwischen Start- und Endzeit des Eintrags aktiv.
 - Davor/danach: Hinweisseite "Registrierung nicht geöffnet — bitte an die Organisatoren wenden".
-- Formular: Teamname, Teilnehmer (komma-separiert), Projektbeschreibung. Keine Raumauswahl — neue Teams entstehen ohne Raum, die Zuordnung macht der Admin.
+- Formular: Teamname, Teilnehmer (komma-separiert), Projektbeschreibung. Der Raum ist vorbelegt: jedes Display zeigt einen QR-Code mit angehängtem kurzen Raum-Kürzel (`/tr/<token><raum-ziffer>`, 1 Zeichen, also weiterhin sehr kurz), das den Raum des Displays bestimmt. Das Feld bleibt änderbar; ohne Kürzel (Übersicht) entsteht das Team ohne Raum und der Admin ordnet zu.
 - Nach dem Absenden: Bestätigungsseite mit der persönlichen Bearbeitungs-URL `domain/tr/<token>/<zugangscode>`, QR-Code dazu und deutlichem Hinweis, sie zu speichern.
 
 ## Bearbeitungs-URL
