@@ -1,0 +1,27 @@
+# Team-Selbstregistrierung
+
+Teams tragen sich selbst ein: Im Raum-Display erscheint zur Registrierungszeit ein Eintrag mit QR-Code und kurzer URL. Wer sie öffnet, legt ein Team an (Titel, Teilnehmer, Projektbeschreibung) und bekommt danach eine eigene Bearbeitungs-URL mit Zugangscode zum Merken — damit lässt sich das Team auch nach Ende der Registrierungszeit noch ändern.
+
+## Neuer Eintragstyp "Registrierung"
+
+- Dritte Variante neben "Neuer Eintrag" und "Teamzeit" (gleiches Dropdown).
+- Felder: Startzeit, Endzeit, Titel, Beschreibung, Räume, Farbschema. Kein Hintergrundbild (Bild-Bereich wird für diesen Typ ausgeblendet).
+- Beim Anlegen wird ein kurzer, nicht erratbarer Token erzeugt (10 Zeichen, Krypto-Zufall) → öffentliche URL `domain/tr/<token>`.
+- Im Admin-Formular wird die URL angezeigt, mit Kopieren-Button und Möglichkeit, den Token neu zu erzeugen (alte URL wird damit ungültig).
+
+## Anzeige im Raum
+
+Der Eintrag rendert wie ein normaler Eintrag (Zeit, Titel, Beschreibung) und zusätzlich rechts einen QR-Code plus die URL als Text darunter. Der QR-Code nimmt den Platz ein, den sonst das Hintergrundbild hätte.
+
+## Öffentliche Registrierungsseite
+
+- `/tr/<token>` ist nur zwischen Start- und Endzeit des Eintrags aktiv.
+- Davor/danach: Hinweisseite "Registrierung nicht geöffnet — bitte an die Organisatoren wenden".
+- Formular: Teamname, Teilnehmer (komma-separiert), Projektbeschreibung. Keine Raumauswahl — neue Teams entstehen ohne Raum, die Zuordnung macht der Admin.
+- Nach dem Absenden: Bestätigungsseite mit der persönlichen Bearbeitungs-URL `domain/tr/<token>/<zugangscode>`, QR-Code dazu und deutlichem Hinweis, sie zu speichern.
+
+## Bearbeitungs-URL
+
+- Öffnet das gleiche Formular vorbelegt; Speichern aktualisiert das Team, auch nach Ablauf der Registrierungszeit.
+- In den Einstellungen (Bereich "Teams") ein Schalter "Team-Bearbeitung gesperrt". Ist er aktiv, zeigt die Seite die Daten nur noch lesend mit dem Hinweis, sich an die Organisatoren zu wenden.
+- Im Teams-Tab bekommt jedes selbst registrierte Team ein Icon zum Kopieren seiner Bearbeitungs-URL.

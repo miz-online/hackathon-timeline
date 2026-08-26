@@ -1,0 +1,50 @@
+<svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" style="font-family: var(--font-sans)">
+  <style>
+    .b { fill: none; stroke: hsl(var(--muted-foreground)); stroke-width: 1; }
+    .l { fill: hsl(var(--foreground)); font-size: 14px; font-weight: 480; }
+    .n { fill: hsl(var(--muted-foreground)); font-size: 12px; }
+    .m { fill: hsl(var(--muted-foreground)); font-size: 12px; font-family: var(--font-mono); }
+    .w { stroke: hsl(var(--muted-foreground)); stroke-width: 1; fill: none; }
+    .z { fill: none; stroke: hsl(var(--border)); stroke-width: 1; stroke-dasharray: 4 3; }
+  </style>
+  <defs>
+    <marker id="cv" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L8 4 L0 8" fill="none" stroke="hsl(var(--muted-foreground))" stroke-width="1"/>
+    </marker>
+  </defs>
+
+  <rect class="z" x="8" y="8" width="200" height="130" rx="8"/>
+  <text class="n" x="18" y="26">raum-display</text>
+  <rect class="b" x="24" y="38" width="168" height="84" rx="8"/>
+  <text class="l" x="38" y="64">Registrierung</text>
+  <text class="n" x="38" y="84">14:00 – 15:00</text>
+  <rect x="140" y="52" width="40" height="40" rx="4" fill="hsl(var(--muted))" stroke="hsl(var(--muted-foreground))"/>
+  <text class="n" x="146" y="106">QR</text>
+
+  <line class="w" x1="208" y1="80" x2="252" y2="80" marker-end="url(#cv)"/>
+
+  <rect class="b" x="256" y="38" width="160" height="84" rx="8"/>
+  <text class="l" x="270" y="64">Registrierung</text>
+  <text class="m" x="270" y="84">/tr/&lt;token&gt;</text>
+  <text class="n" x="270" y="104">Name · Team · Projekt</text>
+
+  <line class="w" x1="416" y1="80" x2="460" y2="80" marker-end="url(#cv)"/>
+
+  <rect class="b" x="464" y="38" width="168" height="84" rx="8"/>
+  <text class="l" x="478" y="64">Team angelegt</text>
+  <text class="n" x="478" y="84">ohne Raum</text>
+  <text class="n" x="478" y="104">+ Zugangscode</text>
+
+  <circle cx="480" cy="160" r="10" fill="hsl(var(--accent))"/>
+  <text x="480" y="164" text-anchor="middle" style="font-size:12px; fill:hsl(var(--accent-foreground))">1</text>
+  <line class="w" x1="548" y1="122" x2="548" y2="196" marker-end="url(#cv)"/>
+
+  <rect class="b" x="464" y="200" width="168" height="72" rx="8"/>
+  <text class="l" x="478" y="226">Später ändern</text>
+  <text class="m" x="478" y="248">/tr/&lt;token&gt;/&lt;code&gt;</text>
+
+  <text class="n" x="24" y="212">1 · Bearbeitungs-URL bookmarken —</text>
+  <text class="n" x="24" y="230">gilt auch nach Ende der Registrierungszeit,</text>
+  <text class="n" x="24" y="248">bis der Admin die Bearbeitung sperrt.</text>
+  <text class="n" x="24" y="272">Vor/nach der Zeit: Hinweis „an Organisatoren wenden“.</text>
+</svg>
