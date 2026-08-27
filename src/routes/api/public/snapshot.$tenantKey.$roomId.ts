@@ -98,6 +98,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             background_opacity: e.background_opacity ?? 100,
             background_margin: e.background_margin ?? 0,
             background_tint: e.background_tint ?? null,
+            register_token: (e as { register_token?: string | null }).register_token ?? null,
           }));
           const expanded = expandPracticeEntries(mapped, {
             teams,
@@ -106,7 +107,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             roomId: room.id,
             isOverview,
           });
-          const visible = expanded
+          const withTokens = await withRoomRegisterTokens(expanded, room.id, isOverview);
+          const visible = withTokens
           .filter((e) =>
             e.end_time
               ? new Date(e.end_time).getTime() >= now
