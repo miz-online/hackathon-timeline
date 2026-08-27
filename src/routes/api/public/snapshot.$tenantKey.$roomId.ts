@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadAdsForTemplate } from "@/lib/ads.server";
+import { withOptionalColumns } from "@/lib/optional-columns";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
 

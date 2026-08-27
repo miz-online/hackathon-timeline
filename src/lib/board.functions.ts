@@ -1252,13 +1252,20 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .maybeSingle();
     if (roomErr) throw new Error(roomErr.message);
     if (!room) throw new Error("Unknown room");
-    const { data: entries, error: entriesErr } = await supabase
-      .from("entries")
-      .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint", // register_token appended below when available
-      )
-      .eq("tenant_id", tenant.id);
-    if (entriesErr) throw new Error(entriesErr.message);
+    // register_token only exists once the pending migration is applied.
+    const { withOptionalColumns: withCols } = await import("@/lib/optional-columns");
+    const entryCols =
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+    const readEntries = (cols: string) =>
+      supabase.from("entries").select(cols).eq("tenant_id", tenant.id) as unknown as Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    const { data: entries, error: entriesErr } = await withCols(
+      () => readEntries(`${entryCols}, register_token`),
+      () => readEntries(entryCols),
+    );
+    if (entriesErr) throw new Error((entriesErr as { message?: string }).message ?? String(entriesErr));
     const { data: schemes } = await supabase
       .from("color_schemes")
       .select("id, color")

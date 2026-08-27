@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { withOptionalColumns } from "@/lib/optional-columns";
 import { loadAdsForTemplate } from "@/lib/ads.server";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
@@ -53,12 +54,18 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
                   .maybeSingle()
               ).data;
           if (!tNow || !rNow) return null;
-          const { data: entries } = await supabaseAdmin
-            .from("entries")
-            .select(
-              "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint", // register_token appended below when available
-            )
-            .eq("tenant_id", tenantId);
+          // register_token only exists once the pending migration is applied.
+          const entryCols =
+            "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+          const readEntries = (cols: string) =>
+            supabaseAdmin.from("entries").select(cols).eq("tenant_id", tenantId) as unknown as Promise<{
+              data: unknown;
+              error: unknown;
+            }>;
+          const { data: entries } = await withOptionalColumns(
+            () => readEntries(`${entryCols}, register_token`),
+            () => readEntries(entryCols),
+          );
 
           const { data: schemes } = await supabaseAdmin
             .from("color_schemes")
