@@ -18,7 +18,30 @@ type Entry = {
   background_opacity?: number | null;
   background_margin?: number | null;
   background_tint?: "base" | "deep" | "peak" | "highlight" | "onBase" | null;
+  kind?: string | null;
+  register_token?: string | null;
 };
+
+/** Renders a QR code for a self-registration link (client-side only). */
+function RegisterQr({ url, color }: { url: string; color: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import("qrcode").then(async (QR) => {
+      const data = await QR.toDataURL(url, {
+        margin: 1,
+        width: 512,
+        color: { dark: color, light: "#ffffff" },
+      });
+      if (alive) setSrc(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url, color]);
+  if (!src) return null;
+  return <img src={src} alt="" aria-hidden style={{ height: "100%", width: "auto", display: "block" }} />;
+}
 
 /**
  * Renders an entry image, optionally recolored with a palette color.
@@ -348,6 +371,10 @@ export function ZeitplanTemplate({
 
 
 
+                const isRegister = e.kind === "register" && !!e.register_token;
+                const registerUrl =
+                  isRegister && origin ? `${origin}/tr/${e.register_token}` : null;
+
                 const entryNode = (
                   <motion.div
                     key={e.id}
@@ -471,7 +498,20 @@ export function ZeitplanTemplate({
                         gap: 4,
                       }}
                     >
-                      {bg && bgAlign !== "time" && bgStyle ? (
+                      {isRegister && registerUrl ? (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "clamp(8px, 1vw, 14px)",
+                            bottom: "clamp(8px, 1vw, 14px)",
+                            right: "clamp(8px, 1vw, 14px)",
+                            zIndex: 1,
+                          }}
+                        >
+                          <RegisterQr url={registerUrl} color={p.deep} />
+                        </div>
+                      ) : null}
+                      {!isRegister && bg && bgAlign !== "time" && bgStyle ? (
                         <EntryImage
                           src={bg}
                           tintColor={bgTint}
@@ -509,6 +549,22 @@ export function ZeitplanTemplate({
                           }}
                         >
                           {e.description}
+                        </div>
+                      ) : null}
+                      {isRegister && registerUrl ? (
+                        <div
+                          style={{
+                            position: "relative",
+                            zIndex: 1,
+                            marginTop: 4,
+                            fontWeight: 700,
+                            fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                            color: p.deep,
+                            fontSize: "clamp(14px, 1.4vw, 20px)",
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {registerUrl.replace(/^https?:\/\//, "")}
                         </div>
                       ) : null}
 
