@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadAdsForTemplate } from "@/lib/ads.server";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
-import { withRoomRegisterTokens } from "@/lib/register-url";
+import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
 
 
 export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")({
@@ -81,7 +81,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const now = Date.now();
         const cutoff = now - tenant.past_grace_minutes * 60 * 1000;
-        const mapped = (entries ?? []).map((e) => ({
+        const mapped = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
             kind: e.kind,
             id: e.id,
             time: e.time,

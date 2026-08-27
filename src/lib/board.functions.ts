@@ -23,6 +23,7 @@ import {
   roomForToken,
   roomTokenVariant,
 } from "@/lib/registration";
+import type { DisplayEntryRow } from "@/lib/register-url";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
@@ -1259,7 +1260,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       room_id: t.room_id,
       color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
     }));
-    const withColor = (entries ?? []).map((e) => ({
+    const withColor = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
       id: e.id,
       kind: e.kind,
       time: e.time,
