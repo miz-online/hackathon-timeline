@@ -778,9 +778,9 @@ const de: Dict = {
   "entries.newRegister": "Neuer Registrierungseintrag",
   "entries.kind.register": "Registrierung",
   "entries.form.registerHint":
-    "Zeigt Titel und einen QR-Code mit dem Selbstregistrierungs-Link. Kein Bild moeglich.",
+    "Zeigt Titel und einen QR-Code mit dem Selbstregistrierungs-Link. Kein Bild möglich.",
   "entries.form.registerToken": "Registrierungs-Link",
-  "reg.closedTitle": "Registrierung nicht geoeffnet",
+  "reg.closedTitle": "Registrierung nicht geöffnet",
   "reg.closedBody":
     "Dieser Registrierungslink ist derzeit nicht aktiv. Bitte wende dich an die Organisatoren.",
   "reg.unknown": "Unbekannter Registrierungslink.",
@@ -791,14 +791,14 @@ const de: Dict = {
   "reg.membersHint": "Komma-separierte Namen.",
   "reg.project": "Projektbeschreibung",
   "reg.room": "Raum",
-  "reg.roomHint": "Vorbelegt durch das gescannte Display. Die Organisatoren koennen ihn aendern.",
+  "reg.roomHint": "Vorbelegt durch das gescannte Display. Die Organisatoren können ihn ändern.",
   "reg.noRoom": "Noch kein Raum",
   "reg.submit": "Team registrieren",
   "reg.saving": "Speichern...",
-  "reg.save": "Aenderungen speichern",
+  "reg.save": "Änderungen speichern",
   "reg.saved": "Gespeichert.",
   "reg.doneTitle": "Team registriert",
-  "reg.doneBody": "Speichere diesen Link — damit kannst du dein Team spaeter aktualisieren.",
+  "reg.doneBody": "Speichere diesen Link — damit kannst du dein Team später aktualisieren.",
   "reg.editTitle": "Team bearbeiten",
   "reg.lockedBody": "Die Bearbeitung wurde von den Organisatoren geschlossen.",
   "reg.copy": "Link kopieren",
@@ -807,7 +807,7 @@ const de: Dict = {
   "teams.copyEditLink": "Bearbeitungslink kopieren",
   "teams.lockEdit": "Selbst-Bearbeitung sperren",
   "teams.lockEditHint":
-    "Wenn gesperrt, koennen selbstregistrierte Teams ihren Eintrag nicht mehr aendern.",
+    "Wenn gesperrt, können selbstregistrierte Teams ihren Eintrag nicht mehr ändern.",
 };
 
 
