@@ -60,21 +60,29 @@ type TenantRow = {
   team_edit_locked: boolean;
 };
 
-const TENANT_COLS =
-  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope, team_edit_locked";
+const TENANT_COLS_BASE =
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
+const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked`;
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
-  const { data, error } = await supabase
-    .from("tenants")
-    .select(`${TENANT_COLS}, pin_hash`)
-    .eq("key", key)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
+  const { withOptionalColumns } = await import("@/lib/optional-columns");
+  const read = (cols: string) =>
+    supabase
+      .from("tenants")
+      .select(`${cols}, pin_hash`)
+      .eq("key", key)
+      .maybeSingle() as unknown as Promise<{ data: unknown; error: unknown }>;
+  const { data, error } = await withOptionalColumns(
+    () => read(TENANT_COLS),
+    () => read(TENANT_COLS_BASE),
+  );
+  if (error) throw new Error((error as { message?: string }).message ?? String(error));
   if (!data) throw new Error("Unknown tenant key");
-  const row = data as unknown as TenantRow & { pin_hash: string | null };
+  const row = data as TenantRow & { pin_hash: string | null };
   return { ...row, team_edit_locked: row.team_edit_locked === true };
 }
+
 
 /** Public read of tenant settings (no admin session required). */
 async function resolveTenant(key: string): Promise<TenantRow> {
