@@ -311,9 +311,26 @@ export const listEntries = createServerFn({ method: "GET" })
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
-    const entries = (rows ?? []) as unknown as Array<
-      Record<string, unknown> & { id: string; notified_at: string | null; background_path: string | null }
-    >;
+    const entries = (rows ?? []) as unknown as Array<{
+      id: string;
+      kind: string | null;
+      time: string;
+      end_time: string | null;
+      title: string;
+      description: string;
+      tags: string[];
+      color_scheme_id: string | null;
+      notify: boolean;
+      notified_at: string | null;
+      background_path: string | null;
+      background_content_type: string | null;
+      background_align: string | null;
+      background_height: number | null;
+      background_opacity: number | null;
+      background_margin: number | null;
+      background_tint: string | null;
+      register_token: string | null;
+    }>;
 
     return entries.map((e) => ({
       ...e,
