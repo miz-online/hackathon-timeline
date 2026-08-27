@@ -71,7 +71,8 @@ async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: st
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Unknown tenant key");
-  return data;
+  const row = data as unknown as TenantRow & { pin_hash: string | null };
+  return { ...row, team_edit_locked: row.team_edit_locked === true };
 }
 
 /** Public read of tenant settings (no admin session required). */
