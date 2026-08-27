@@ -477,6 +477,7 @@ function AdminPage() {
               focusDimOpacity={tenant.focus_dim_opacity}
               practiceMinutes={tenant.practice_minutes ?? 10}
               practiceRoomScope={tenant.practice_room_scope ?? "all"}
+              teamEditLocked={tenant.team_edit_locked === true}
               onChange={invalidate}
             />
           </TabsContent>
@@ -1900,6 +1901,7 @@ function SettingsPanel({
   focusDimOpacity,
   practiceMinutes,
   practiceRoomScope,
+  teamEditLocked,
   onChange,
 }: {
   tenantKey: string;
@@ -1916,6 +1918,7 @@ function SettingsPanel({
   focusDimOpacity: number;
   practiceMinutes: number;
   practiceRoomScope: string;
+  teamEditLocked?: boolean;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -1936,6 +1939,7 @@ function SettingsPanel({
   const [pScope, setPScope] = useState<"all" | "assigned">(
     practiceRoomScope === "assigned" ? "assigned" : "all",
   );
+  const [teamLock, setTeamLock] = useState(teamEditLocked === true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -1975,6 +1979,7 @@ function SettingsPanel({
                 focus_dim_opacity: fDim,
                 practice_minutes: pMinutes,
                 practice_room_scope: pScope,
+                team_edit_locked: teamLock,
               },
             });
             toast.success(t("settings.saved"));
@@ -2112,6 +2117,19 @@ function SettingsPanel({
                 <option value="all">{t("settings.practiceScope.all")}</option>
                 <option value="assigned">{t("settings.practiceScope.room")}</option>
               </select>
+            </div>
+            <div className="flex items-start gap-2 border-t pt-3">
+              <Checkbox
+                id="team-lock"
+                checked={teamLock}
+                onCheckedChange={(c) => setTeamLock(c === true)}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="team-lock" className="text-sm font-normal">
+                  {t("teams.lockEdit")}
+                </Label>
+                <p className="text-xs text-muted-foreground">{t("teams.lockEditHint")}</p>
+              </div>
             </div>
             {saveButton}
           </Card>
