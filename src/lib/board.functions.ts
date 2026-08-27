@@ -306,12 +306,14 @@ export const listEntries = createServerFn({ method: "GET" })
     const { data: rows, error } = await supabase
       .from("entries")
       .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
       )
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
-    const entries = rows ?? [];
+    const entries = (rows ?? []) as unknown as Array<
+      Record<string, unknown> & { id: string; notified_at: string | null; background_path: string | null }
+    >;
 
     return entries.map((e) => ({
       ...e,
@@ -319,6 +321,7 @@ export const listEntries = createServerFn({ method: "GET" })
       background_url: entryBgUrl(data.key, e.id, e.background_path),
       background_align: (e.background_align ?? "right-top") as EntryBgAlign,
       background_tint: (e.background_tint ?? null) as EntryBgTint | null,
+      register_token: (e.register_token ?? null) as string | null,
     }));
   });
 
