@@ -193,6 +193,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       focus_dim_opacity: number;
       practice_minutes?: number;
       practice_room_scope?: string;
+      team_edit_locked?: boolean;
     }) =>
       z
         .object({
@@ -213,6 +214,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           focus_dim_opacity: z.number().int().min(0).max(100).default(35),
           practice_minutes: z.number().int().min(1).max(600).default(10),
           practice_room_scope: z.enum(PRACTICE_SCOPES).default("all"),
+          team_edit_locked: z.boolean().default(false),
         })
         .parse(d),
   )
@@ -234,7 +236,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         focus_dim_opacity: data.focus_dim_opacity,
         practice_minutes: data.practice_minutes,
         practice_room_scope: data.practice_room_scope,
-      })
+        team_edit_locked: data.team_edit_locked,
+      } as never)
       .eq("id", id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -742,12 +745,22 @@ export const listTeams = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("teams")
-      .select("id, ref_id, name, members, project, room_id, sort_order")
+      .select("id, ref_id, name, members, project, room_id, sort_order, edit_code, self_registered")
       .eq("tenant_id", id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return (rows ?? []) as unknown as Array<{
+      id: string;
+      ref_id: string | null;
+      name: string;
+      members: string;
+      project: string;
+      room_id: string | null;
+      sort_order: number;
+      edit_code: string | null;
+      self_registered: boolean;
+    }>;
   });
 
 const teamInput = z.object({
@@ -1158,6 +1171,7 @@ export type RoomSnapshot = {
     focus_dim_opacity: number;
     practice_minutes: number;
     practice_room_scope: string;
+    team_edit_locked?: boolean;
   };
   room: {
     id: string;
@@ -1181,6 +1195,8 @@ export type RoomSnapshot = {
     background_margin: number;
     background_tint: EntryBgTint | null;
     team_id?: string | null;
+    kind?: string | null;
+    register_token?: string | null;
   }[];
 
   ads: { id: string; name: string; url: string; content_type: string }[];
@@ -1204,7 +1220,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
       .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
       )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
@@ -1258,7 +1274,20 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       background_opacity: e.background_opacity ?? 100,
       background_margin: e.background_margin ?? 0,
       background_tint: (e.background_tint ?? null) as EntryBgTint | null,
+      register_token: (e as { register_token?: string | null }).register_token ?? null,
     }));
+    const { withRoomRegisterTokens } = await import("@/lib/register-url");
+    const expandedEntries = await withRoomRegisterTokens(
+      expandPracticeEntries(withColor, {
+        teams,
+        practiceMinutes: tenant.practice_minutes ?? 10,
+        scope: tenant.practice_room_scope ?? "all",
+        roomId: room.id,
+        isOverview: false,
+      }),
+      room.id,
+      false,
+    );
 
     return {
       tenant: {
@@ -1275,6 +1304,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
         practice_minutes: tenant.practice_minutes ?? 10,
         practice_room_scope: tenant.practice_room_scope ?? "all",
+        team_edit_locked: tenant.team_edit_locked === true,
       },
       room: {
         id: room.id,
@@ -1282,17 +1312,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
         template,
       },
-      entries: filterVisible(
-        expandPracticeEntries(withColor, {
-          teams,
-          practiceMinutes: tenant.practice_minutes ?? 10,
-          scope: tenant.practice_room_scope ?? "all",
-          roomId: room.id,
-          isOverview: false,
-        }),
-        room.name,
-        tenant.past_grace_minutes,
-      ),
+      entries: filterVisible(expandedEntries, room.name, tenant.past_grace_minutes),
       ads,
     };
 
