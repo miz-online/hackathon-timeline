@@ -1307,8 +1307,24 @@ function EntryForm({
           </div>
           )}
 
+          {isRegister ? (
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm text-muted-foreground">{t("entries.form.registerHint")}</p>
+              {initial?.register_token ? (
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("entries.form.registerToken")}</Label>
+                  <Input
+                    readOnly
+                    className="font-mono text-xs"
+                    value={`${typeof window === "undefined" ? "" : window.location.origin}/tr/${initial.register_token}`}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Background image */}
-          <div className="space-y-2 border-t pt-3">
+          <div className={`space-y-2 border-t pt-3 ${isRegister ? "hidden" : ""}`}>
             <Label>{t("entries.form.bg")}</Label>
             <input
               ref={bgInputRef}
