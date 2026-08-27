@@ -33,13 +33,18 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             ).data;
         if (!room) return new Response("Not found", { status: 404 });
 
-        const { data: entries } = await (async () => { const base =
-          supabaseAdmin
-          .from("entries")
-          .select(
-            "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint", // register_token appended below when available
-          )
-          .eq("tenant_id", tenant.id);
+        // register_token only exists once the pending migration is applied.
+        const entryCols =
+          "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+        const readEntries = (cols: string) =>
+          supabaseAdmin.from("entries").select(cols).eq("tenant_id", tenant.id) as unknown as Promise<{
+            data: unknown;
+            error: unknown;
+          }>;
+        const { data: entries } = await withOptionalColumns(
+          () => readEntries(`${entryCols}, register_token`),
+          () => readEntries(entryCols),
+        );
 
 
         const { data: schemes } = await supabaseAdmin
