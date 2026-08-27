@@ -17,6 +17,12 @@ import {
   expandPracticeEntries,
   type PracticeTeam,
 } from "@/lib/practice";
+import {
+  EDIT_CODE_LENGTH,
+  randomToken,
+  roomForToken,
+  roomTokenVariant,
+} from "@/lib/registration";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
