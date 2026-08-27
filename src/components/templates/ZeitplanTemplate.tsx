@@ -125,6 +125,9 @@ export function ZeitplanTemplate({
 }) {
   const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now());
+  // registration links are absolute; the origin is only known in the browser
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
