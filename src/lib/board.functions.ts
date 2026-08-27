@@ -410,6 +410,10 @@ export const upsertEntry = createServerFn({ method: "POST" })
       background_margin: e.background_margin,
       background_tint: e.background_tint ?? null,
     };
+    // register_token only exists once the pending migration is applied.
+    const { omitKeys: omit, withOptionalColumns: withCols } = await import(
+      "@/lib/optional-columns"
+    );
     if (e.id) {
       // Registration entries always need a token; keep an existing one stable.
       let extra: Record<string, unknown> = {};
@@ -423,25 +427,37 @@ export const upsertEntry = createServerFn({ method: "POST" })
         const token = (cur as unknown as { register_token: string | null } | null)?.register_token;
         if (!token) extra = { register_token: randomToken() };
       }
-      const { error } = await supabase
-        .from("entries")
-        .update({ ...common, ...extra } as never)
-        .eq("id", e.id)
-        .eq("tenant_id", tenantId);
-      if (error) throw new Error(error.message);
+      const write = (payload: Record<string, unknown>) =>
+        supabase
+          .from("entries")
+          .update(payload as never)
+          .eq("id", e.id!)
+          .eq("tenant_id", tenantId) as unknown as Promise<{ data: unknown; error: unknown }>;
+      const payload = { ...common, ...extra };
+      const { error } = await withCols(
+        () => write(payload),
+        () => write(omit(payload, ["register_token"])),
+      );
+      if (error) throw new Error((error as { message?: string }).message ?? String(error));
       return { id: e.id };
     }
-    const { data: row, error } = await supabase
-      .from("entries")
-      .insert({
-        tenant_id: tenantId,
-        ...common,
-        ...(e.kind === "register" ? { register_token: randomToken() } : {}),
-      } as never)
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    return { id: row.id };
+    const insert = (payload: Record<string, unknown>) =>
+      supabase
+        .from("entries")
+        .insert(payload as never)
+        .select("id")
+        .single() as unknown as Promise<{ data: { id: string } | null; error: unknown }>;
+    const insertPayload = {
+      tenant_id: tenantId,
+      ...common,
+      ...(e.kind === "register" ? { register_token: randomToken() } : {}),
+    };
+    const { data: row, error } = await withCols(
+      () => insert(insertPayload),
+      () => insert(omit(insertPayload, ["register_token"])),
+    );
+    if (error) throw new Error((error as { message?: string }).message ?? String(error));
+    return { id: row!.id };
   });
 
 
