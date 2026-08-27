@@ -33,7 +33,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             ).data;
         if (!room) return new Response("Not found", { status: 404 });
 
-        const { data: entries } = await supabaseAdmin
+        const { data: entries } = await (async () => { const base =
+          supabaseAdmin
           .from("entries")
           .select(
             "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint", // register_token appended below when available
