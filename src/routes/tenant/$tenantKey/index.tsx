@@ -713,7 +713,7 @@ function EntriesPanel({
 }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
-  const [newKind, setNewKind] = useState<"entry" | "practice">("entry");
+  const [newKind, setNewKind] = useState<"entry" | "practice" | "register">("entry");
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listTeams({ data: { key: tenantKey } }),
@@ -835,6 +835,16 @@ function EntriesPanel({
                     <Users className="mr-2 h-4 w-4" />
                     {t("entries.newPractice")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditing(null);
+                      setNewKind("register");
+                      setShowForm(true);
+                    }}
+                  >
+                    <QrCode className="mr-2 h-4 w-4" />
+                    {t("entries.newRegister")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -848,7 +858,9 @@ function EntriesPanel({
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
           <DialogHeader>
             <DialogTitle>
-              {(editing?.kind ?? newKind) === "practice"
+              {(editing?.kind ?? newKind) === "register"
+                ? t("entries.newRegister")
+                : (editing?.kind ?? newKind) === "practice"
                 ? editing
                   ? t("entries.editPractice")
                   : t("entries.newPractice")
@@ -992,6 +1004,12 @@ function EntriesPanel({
                       {t("entries.newPractice")}
                     </Badge>
                   ) : null}
+                  {e.kind === "register" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <QrCode className="h-3 w-3" />
+                      {t("entries.kind.register")}
+                    </Badge>
+                  ) : null}
                   <span>{e.title}</span>
                 </div>
                 {e.description ? (
@@ -1051,14 +1069,14 @@ function EntryForm({
   defaultColor: string;
   tenantKey: string;
   /** "practice" entries expand into one row per team on the displays */
-  kind?: "entry" | "practice";
+  kind?: "entry" | "practice" | "register";
   teamCount?: number;
   practiceMinutes?: number;
   onSaved: () => void;
 
   onSubmit: (entry: {
     id?: string;
-    kind: "entry" | "practice";
+    kind: "entry" | "practice" | "register";
     time: string;
     end_time?: string | null;
     title: string;
@@ -1075,9 +1093,11 @@ function EntryForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
-  const kind: "entry" | "practice" =
-    (initial?.kind as "entry" | "practice" | undefined) ?? kindProp ?? "entry";
+  const kind: "entry" | "practice" | "register" =
+    (initial?.kind as "entry" | "practice" | "register" | undefined) ?? kindProp ?? "entry";
   const isPractice = kind === "practice";
+  // registration entries render a QR code instead of an image
+  const isRegister = kind === "register";
   const uploadBgFn = useServerFn(uploadEntryBackground);
   const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
