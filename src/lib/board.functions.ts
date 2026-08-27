@@ -383,9 +383,21 @@ export const upsertEntry = createServerFn({ method: "POST" })
       background_tint: e.background_tint ?? null,
     };
     if (e.id) {
+      // Registration entries always need a token; keep an existing one stable.
+      let extra: Record<string, unknown> = {};
+      if (e.kind === "register") {
+        const { data: cur } = await supabase
+          .from("entries")
+          .select("register_token")
+          .eq("id", e.id)
+          .eq("tenant_id", tenantId)
+          .maybeSingle();
+        const token = (cur as unknown as { register_token: string | null } | null)?.register_token;
+        if (!token) extra = { register_token: randomToken() };
+      }
       const { error } = await supabase
         .from("entries")
-        .update(common)
+        .update({ ...common, ...extra } as never)
         .eq("id", e.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -393,7 +405,11 @@ export const upsertEntry = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await supabase
       .from("entries")
-      .insert({ tenant_id: tenantId, ...common })
+      .insert({
+        tenant_id: tenantId,
+        ...common,
+        ...(e.kind === "register" ? { register_token: randomToken() } : {}),
+      } as never)
       .select("id")
       .single();
     if (error) throw new Error(error.message);
