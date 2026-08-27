@@ -60,21 +60,29 @@ type TenantRow = {
   team_edit_locked: boolean;
 };
 
-const TENANT_COLS =
-  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope, team_edit_locked";
+const TENANT_COLS_BASE =
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
+const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked`;
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
-  const { data, error } = await supabase
-    .from("tenants")
-    .select(`${TENANT_COLS}, pin_hash`)
-    .eq("key", key)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
+  const { withOptionalColumns } = await import("@/lib/optional-columns");
+  const read = (cols: string) =>
+    supabase
+      .from("tenants")
+      .select(`${cols}, pin_hash`)
+      .eq("key", key)
+      .maybeSingle() as unknown as Promise<{ data: unknown; error: unknown }>;
+  const { data, error } = await withOptionalColumns(
+    () => read(TENANT_COLS),
+    () => read(TENANT_COLS_BASE),
+  );
+  if (error) throw new Error((error as { message?: string }).message ?? String(error));
   if (!data) throw new Error("Unknown tenant key");
-  const row = data as unknown as TenantRow & { pin_hash: string | null };
+  const row = data as TenantRow & { pin_hash: string | null };
   return { ...row, team_edit_locked: row.team_edit_locked === true };
 }
+
 
 /** Public read of tenant settings (no admin session required). */
 async function resolveTenant(key: string): Promise<TenantRow> {
@@ -222,9 +230,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await requireTenantAdmin(data.key);
-    const { error } = await supabase
-      .from("tenants")
-      .update({
+    const { omitKeys, withOptionalColumns } = await import("@/lib/optional-columns");
+    const patch = {
         name: data.name,
         past_grace_minutes: data.past_grace_minutes,
         template: data.template,
@@ -238,9 +245,17 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         practice_minutes: data.practice_minutes,
         practice_room_scope: data.practice_room_scope,
         team_edit_locked: data.team_edit_locked,
-      } as never)
-      .eq("id", id);
-    if (error) throw new Error(error.message);
+    };
+    const write = (payload: Record<string, unknown>) =>
+      supabase
+        .from("tenants")
+        .update(payload as never)
+        .eq("id", id) as unknown as Promise<{ data: unknown; error: unknown }>;
+    const { error } = await withOptionalColumns(
+      () => write(patch),
+      () => write(omitKeys(patch, ["team_edit_locked"])),
+    );
+    if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return { ok: true };
   });
 
@@ -307,15 +322,24 @@ export const listEntries = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await requireTenantAdmin(data.key);
-    const { data: rows, error } = await supabase
-      .from("entries")
-      .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
-      )
-      .eq("tenant_id", id)
-      .order("time", { ascending: true });
-    if (error) throw new Error(error.message);
-    const entries = (rows ?? []) as unknown as Array<{
+    const { withOptionalColumns } = await import("@/lib/optional-columns");
+    const baseCols =
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint";
+    const read = (cols: string) =>
+      supabase
+        .from("entries")
+        .select(cols)
+        .eq("tenant_id", id)
+        .order("time", { ascending: true }) as unknown as Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    const { data: rows, error } = await withOptionalColumns(
+      () => read(`${baseCols}, register_token`),
+      () => read(baseCols),
+    );
+    if (error) throw new Error((error as { message?: string }).message ?? String(error));
+    const entries = ((rows ?? []) as unknown[]) as Array<{
       id: string;
       kind: string | null;
       time: string;
@@ -392,7 +416,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       if (e.kind === "register") {
         const { data: cur } = await supabase
           .from("entries")
-          .select("register_token")
+          .select("register_token" as never)
           .eq("id", e.id)
           .eq("tenant_id", tenantId)
           .maybeSingle();
@@ -744,14 +768,24 @@ export const listTeams = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await requireTenantAdmin(data.key);
-    const { data: rows, error } = await supabase
-      .from("teams")
-      .select("id, ref_id, name, members, project, room_id, sort_order, edit_code, self_registered")
-      .eq("tenant_id", id)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (rows ?? []) as unknown as Array<{
+    const { withOptionalColumns } = await import("@/lib/optional-columns");
+    const baseCols = "id, ref_id, name, members, project, room_id, sort_order";
+    const read = (cols: string) =>
+      supabase
+        .from("teams")
+        .select(cols)
+        .eq("tenant_id", id)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true }) as unknown as Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    const { data: rows, error } = await withOptionalColumns(
+      () => read(`${baseCols}, edit_code, self_registered`),
+      () => read(baseCols),
+    );
+    if (error) throw new Error((error as { message?: string }).message ?? String(error));
+    return ((rows ?? []) as unknown[]) as Array<{
       id: string;
       ref_id: string | null;
       name: string;
@@ -1218,13 +1252,20 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .maybeSingle();
     if (roomErr) throw new Error(roomErr.message);
     if (!room) throw new Error("Unknown room");
-    const { data: entries, error: entriesErr } = await supabase
-      .from("entries")
-      .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
-      )
-      .eq("tenant_id", tenant.id);
-    if (entriesErr) throw new Error(entriesErr.message);
+    // register_token only exists once the pending migration is applied.
+    const { withOptionalColumns: withCols } = await import("@/lib/optional-columns");
+    const entryCols =
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+    const readEntries = (cols: string) =>
+      supabase.from("entries").select(cols).eq("tenant_id", tenant.id) as unknown as Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    const { data: entries, error: entriesErr } = await withCols(
+      () => readEntries(`${entryCols}, register_token`),
+      () => readEntries(entryCols),
+    );
+    if (entriesErr) throw new Error((entriesErr as { message?: string }).message ?? String(entriesErr));
     const { data: schemes } = await supabase
       .from("color_schemes")
       .select("id, color")
