@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -108,6 +108,7 @@ type EntryRow = {
   background_margin?: number | null;
   background_tint?: (typeof ENTRY_BG_TINTS)[number] | null;
   background_content_type?: string | null;
+  register_token?: string | null;
 };
 
 type RoomRow = {
@@ -476,6 +477,7 @@ function AdminPage() {
               focusDimOpacity={tenant.focus_dim_opacity}
               practiceMinutes={tenant.practice_minutes ?? 10}
               practiceRoomScope={tenant.practice_room_scope ?? "all"}
+              teamEditLocked={tenant.team_edit_locked === true}
               onChange={invalidate}
             />
           </TabsContent>
@@ -713,7 +715,7 @@ function EntriesPanel({
 }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
-  const [newKind, setNewKind] = useState<"entry" | "practice">("entry");
+  const [newKind, setNewKind] = useState<"entry" | "practice" | "register">("entry");
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listTeams({ data: { key: tenantKey } }),
@@ -835,6 +837,16 @@ function EntriesPanel({
                     <Users className="mr-2 h-4 w-4" />
                     {t("entries.newPractice")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditing(null);
+                      setNewKind("register");
+                      setShowForm(true);
+                    }}
+                  >
+                    <QrCode className="mr-2 h-4 w-4" />
+                    {t("entries.newRegister")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -848,7 +860,9 @@ function EntriesPanel({
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
           <DialogHeader>
             <DialogTitle>
-              {(editing?.kind ?? newKind) === "practice"
+              {(editing?.kind ?? newKind) === "register"
+                ? t("entries.newRegister")
+                : (editing?.kind ?? newKind) === "practice"
                 ? editing
                   ? t("entries.editPractice")
                   : t("entries.newPractice")
@@ -992,6 +1006,12 @@ function EntriesPanel({
                       {t("entries.newPractice")}
                     </Badge>
                   ) : null}
+                  {e.kind === "register" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <QrCode className="h-3 w-3" />
+                      {t("entries.kind.register")}
+                    </Badge>
+                  ) : null}
                   <span>{e.title}</span>
                 </div>
                 {e.description ? (
@@ -1051,14 +1071,14 @@ function EntryForm({
   defaultColor: string;
   tenantKey: string;
   /** "practice" entries expand into one row per team on the displays */
-  kind?: "entry" | "practice";
+  kind?: "entry" | "practice" | "register";
   teamCount?: number;
   practiceMinutes?: number;
   onSaved: () => void;
 
   onSubmit: (entry: {
     id?: string;
-    kind: "entry" | "practice";
+    kind: "entry" | "practice" | "register";
     time: string;
     end_time?: string | null;
     title: string;
@@ -1075,9 +1095,11 @@ function EntryForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
-  const kind: "entry" | "practice" =
-    (initial?.kind as "entry" | "practice" | undefined) ?? kindProp ?? "entry";
+  const kind: "entry" | "practice" | "register" =
+    (initial?.kind as "entry" | "practice" | "register" | undefined) ?? kindProp ?? "entry";
   const isPractice = kind === "practice";
+  // registration entries render a QR code instead of an image
+  const isRegister = kind === "register";
   const uploadBgFn = useServerFn(uploadEntryBackground);
   const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
@@ -1287,8 +1309,24 @@ function EntryForm({
           </div>
           )}
 
+          {isRegister ? (
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm text-muted-foreground">{t("entries.form.registerHint")}</p>
+              {initial?.register_token ? (
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("entries.form.registerToken")}</Label>
+                  <Input
+                    readOnly
+                    className="font-mono text-xs"
+                    value={`${typeof window === "undefined" ? "" : window.location.origin}/tr/${initial.register_token}`}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {/* Background image */}
-          <div className="space-y-2 border-t pt-3">
+          <div className={`space-y-2 border-t pt-3 ${isRegister ? "hidden" : ""}`}>
             <Label>{t("entries.form.bg")}</Label>
             <input
               ref={bgInputRef}
@@ -1863,6 +1901,7 @@ function SettingsPanel({
   focusDimOpacity,
   practiceMinutes,
   practiceRoomScope,
+  teamEditLocked,
   onChange,
 }: {
   tenantKey: string;
@@ -1879,6 +1918,7 @@ function SettingsPanel({
   focusDimOpacity: number;
   practiceMinutes: number;
   practiceRoomScope: string;
+  teamEditLocked?: boolean;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -1899,6 +1939,7 @@ function SettingsPanel({
   const [pScope, setPScope] = useState<"all" | "assigned">(
     practiceRoomScope === "assigned" ? "assigned" : "all",
   );
+  const [teamLock, setTeamLock] = useState(teamEditLocked === true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -1938,6 +1979,7 @@ function SettingsPanel({
                 focus_dim_opacity: fDim,
                 practice_minutes: pMinutes,
                 practice_room_scope: pScope,
+                team_edit_locked: teamLock,
               },
             });
             toast.success(t("settings.saved"));
@@ -2075,6 +2117,19 @@ function SettingsPanel({
                 <option value="all">{t("settings.practiceScope.all")}</option>
                 <option value="assigned">{t("settings.practiceScope.room")}</option>
               </select>
+            </div>
+            <div className="flex items-start gap-2 border-t pt-3">
+              <Checkbox
+                id="team-lock"
+                checked={teamLock}
+                onCheckedChange={(c) => setTeamLock(c === true)}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="team-lock" className="text-sm font-normal">
+                  {t("teams.lockEdit")}
+                </Label>
+                <p className="text-xs text-muted-foreground">{t("teams.lockEditHint")}</p>
+              </div>
             </div>
             {saveButton}
           </Card>

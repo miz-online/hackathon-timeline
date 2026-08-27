@@ -8,7 +8,7 @@
  * scheme — colors come from the room a team is assigned to.
  */
 
-export const ENTRY_KINDS = ["entry", "practice"] as const;
+export const ENTRY_KINDS = ["entry", "practice", "register"] as const;
 export type EntryKind = (typeof ENTRY_KINDS)[number];
 
 export const PRACTICE_SCOPES = ["assigned", "all"] as const;

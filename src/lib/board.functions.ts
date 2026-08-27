@@ -17,6 +17,13 @@ import {
   expandPracticeEntries,
   type PracticeTeam,
 } from "@/lib/practice";
+import {
+  EDIT_CODE_LENGTH,
+  randomToken,
+  roomForToken,
+  roomTokenVariant,
+} from "@/lib/registration";
+import type { DisplayEntryRow } from "@/lib/register-url";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
@@ -50,10 +57,11 @@ type TenantRow = {
   focus_dim_opacity: number;
   practice_minutes: number;
   practice_room_scope: string;
+  team_edit_locked: boolean;
 };
 
 const TENANT_COLS =
-  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope, team_edit_locked";
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
@@ -64,7 +72,8 @@ async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: st
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Unknown tenant key");
-  return data;
+  const row = data as unknown as TenantRow & { pin_hash: string | null };
+  return { ...row, team_edit_locked: row.team_edit_locked === true };
 }
 
 /** Public read of tenant settings (no admin session required). */
@@ -185,6 +194,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       focus_dim_opacity: number;
       practice_minutes?: number;
       practice_room_scope?: string;
+      team_edit_locked?: boolean;
     }) =>
       z
         .object({
@@ -205,6 +215,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           focus_dim_opacity: z.number().int().min(0).max(100).default(35),
           practice_minutes: z.number().int().min(1).max(600).default(10),
           practice_room_scope: z.enum(PRACTICE_SCOPES).default("all"),
+          team_edit_locked: z.boolean().default(false),
         })
         .parse(d),
   )
@@ -226,7 +237,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         focus_dim_opacity: data.focus_dim_opacity,
         practice_minutes: data.practice_minutes,
         practice_room_scope: data.practice_room_scope,
-      })
+        team_edit_locked: data.team_edit_locked,
+      } as never)
       .eq("id", id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -298,12 +310,31 @@ export const listEntries = createServerFn({ method: "GET" })
     const { data: rows, error } = await supabase
       .from("entries")
       .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
       )
       .eq("tenant_id", id)
       .order("time", { ascending: true });
     if (error) throw new Error(error.message);
-    const entries = rows ?? [];
+    const entries = (rows ?? []) as unknown as Array<{
+      id: string;
+      kind: string | null;
+      time: string;
+      end_time: string | null;
+      title: string;
+      description: string;
+      tags: string[];
+      color_scheme_id: string | null;
+      notify: boolean;
+      notified_at: string | null;
+      background_path: string | null;
+      background_content_type: string | null;
+      background_align: string | null;
+      background_height: number | null;
+      background_opacity: number | null;
+      background_margin: number | null;
+      background_tint: string | null;
+      register_token: string | null;
+    }>;
 
     return entries.map((e) => ({
       ...e,
@@ -311,6 +342,7 @@ export const listEntries = createServerFn({ method: "GET" })
       background_url: entryBgUrl(data.key, e.id, e.background_path),
       background_align: (e.background_align ?? "right-top") as EntryBgAlign,
       background_tint: (e.background_tint ?? null) as EntryBgTint | null,
+      register_token: (e.register_token ?? null) as string | null,
     }));
   });
 
@@ -355,9 +387,21 @@ export const upsertEntry = createServerFn({ method: "POST" })
       background_tint: e.background_tint ?? null,
     };
     if (e.id) {
+      // Registration entries always need a token; keep an existing one stable.
+      let extra: Record<string, unknown> = {};
+      if (e.kind === "register") {
+        const { data: cur } = await supabase
+          .from("entries")
+          .select("register_token")
+          .eq("id", e.id)
+          .eq("tenant_id", tenantId)
+          .maybeSingle();
+        const token = (cur as unknown as { register_token: string | null } | null)?.register_token;
+        if (!token) extra = { register_token: randomToken() };
+      }
       const { error } = await supabase
         .from("entries")
-        .update(common)
+        .update({ ...common, ...extra } as never)
         .eq("id", e.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
@@ -365,7 +409,11 @@ export const upsertEntry = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await supabase
       .from("entries")
-      .insert({ tenant_id: tenantId, ...common })
+      .insert({
+        tenant_id: tenantId,
+        ...common,
+        ...(e.kind === "register" ? { register_token: randomToken() } : {}),
+      } as never)
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -698,12 +746,22 @@ export const listTeams = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("teams")
-      .select("id, ref_id, name, members, project, room_id, sort_order")
+      .select("id, ref_id, name, members, project, room_id, sort_order, edit_code, self_registered")
       .eq("tenant_id", id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return (rows ?? []) as unknown as Array<{
+      id: string;
+      ref_id: string | null;
+      name: string;
+      members: string;
+      project: string;
+      room_id: string | null;
+      sort_order: number;
+      edit_code: string | null;
+      self_registered: boolean;
+    }>;
   });
 
 const teamInput = z.object({
@@ -1114,6 +1172,7 @@ export type RoomSnapshot = {
     focus_dim_opacity: number;
     practice_minutes: number;
     practice_room_scope: string;
+    team_edit_locked?: boolean;
   };
   room: {
     id: string;
@@ -1137,6 +1196,8 @@ export type RoomSnapshot = {
     background_margin: number;
     background_tint: EntryBgTint | null;
     team_id?: string | null;
+    kind?: string | null;
+    register_token?: string | null;
   }[];
 
   ads: { id: string; name: string; url: string; content_type: string }[];
@@ -1160,7 +1221,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
       .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
       )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);
@@ -1199,7 +1260,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       room_id: t.room_id,
       color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
     }));
-    const withColor = (entries ?? []).map((e) => ({
+    const withColor = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
       id: e.id,
       kind: e.kind,
       time: e.time,
@@ -1214,7 +1275,20 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       background_opacity: e.background_opacity ?? 100,
       background_margin: e.background_margin ?? 0,
       background_tint: (e.background_tint ?? null) as EntryBgTint | null,
+      register_token: (e as { register_token?: string | null }).register_token ?? null,
     }));
+    const { withRoomRegisterTokens } = await import("@/lib/register-url");
+    const expandedEntries = await withRoomRegisterTokens(
+      expandPracticeEntries(withColor, {
+        teams,
+        practiceMinutes: tenant.practice_minutes ?? 10,
+        scope: tenant.practice_room_scope ?? "all",
+        roomId: room.id,
+        isOverview: false,
+      }),
+      room.id,
+      false,
+    );
 
     return {
       tenant: {
@@ -1231,6 +1305,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
         practice_minutes: tenant.practice_minutes ?? 10,
         practice_room_scope: tenant.practice_room_scope ?? "all",
+        team_edit_locked: tenant.team_edit_locked === true,
       },
       room: {
         id: room.id,
@@ -1238,17 +1313,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
         template,
       },
-      entries: filterVisible(
-        expandPracticeEntries(withColor, {
-          teams,
-          practiceMinutes: tenant.practice_minutes ?? 10,
-          scope: tenant.practice_room_scope ?? "all",
-          roomId: room.id,
-          isOverview: false,
-        }),
-        room.name,
-        tenant.past_grace_minutes,
-      ),
+      entries: filterVisible(expandedEntries, room.name, tenant.past_grace_minutes),
       ads,
     };
 

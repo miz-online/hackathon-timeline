@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadAdsForTemplate } from "@/lib/ads.server";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
+import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
 
 
 export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")({
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
         const { data: entries } = await supabaseAdmin
           .from("entries")
           .select(
-            "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint",
+            "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
           )
           .eq("tenant_id", tenant.id);
 
@@ -80,7 +81,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const now = Date.now();
         const cutoff = now - tenant.past_grace_minutes * 60 * 1000;
-        const mapped = (entries ?? []).map((e) => ({
+        const mapped = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
             kind: e.kind,
             id: e.id,
             time: e.time,
@@ -97,6 +98,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             background_opacity: e.background_opacity ?? 100,
             background_margin: e.background_margin ?? 0,
             background_tint: e.background_tint ?? null,
+            register_token: (e as { register_token?: string | null }).register_token ?? null,
           }));
           const expanded = expandPracticeEntries(mapped, {
             teams,
@@ -105,7 +107,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             roomId: room.id,
             isOverview,
           });
-          const visible = expanded
+          const withTokens = await withRoomRegisterTokens(expanded, room.id, isOverview);
+          const visible = withTokens
           .filter((e) =>
             e.end_time
               ? new Date(e.end_time).getTime() >= now
