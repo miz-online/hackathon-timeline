@@ -8,12 +8,26 @@
 
 export function isMissingColumnError(error: unknown): boolean {
   if (!error) return false;
-  const message =
-    typeof error === "object" && error !== null && "message" in error
-      ? String((error as { message?: unknown }).message ?? "")
-      : String(error);
-  return /column .* does not exist/i.test(message) || /42703/.test(message);
+  const obj = (typeof error === "object" && error !== null ? error : {}) as {
+    message?: unknown;
+    code?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+  const text = [obj.message, obj.code, obj.details, obj.hint]
+    .filter((v) => v != null)
+    .map(String)
+    .join(" ")
+    .concat(typeof error === "object" ? "" : ` ${String(error)}`);
+  return (
+    /column .* does not exist/i.test(text) ||
+    /42703/.test(text) ||
+    /PGRST204/.test(text) ||
+    // PostgREST write path: "Could not find the 'x' column of 'y' in the schema cache"
+    /could not find the '.*' column/i.test(text)
+  );
 }
+
 
 /** Runs `attempt`, falling back to `withoutColumns` when a column is missing. */
 export async function withOptionalColumns<T>(
