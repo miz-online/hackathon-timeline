@@ -108,6 +108,7 @@ type EntryRow = {
   background_margin?: number | null;
   background_tint?: (typeof ENTRY_BG_TINTS)[number] | null;
   background_content_type?: string | null;
+  register_token?: string | null;
 };
 
 type RoomRow = {
