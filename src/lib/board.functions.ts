@@ -768,14 +768,24 @@ export const listTeams = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await requireTenantAdmin(data.key);
-    const { data: rows, error } = await supabase
-      .from("teams")
-      .select(TEAM_COLS)
-      .eq("tenant_id", id)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (rows ?? []) as unknown as Array<{
+    const { withOptionalColumns } = await import("@/lib/optional-columns");
+    const baseCols = "id, ref_id, name, members, project, room_id, sort_order";
+    const read = (cols: string) =>
+      supabase
+        .from("teams")
+        .select(cols)
+        .eq("tenant_id", id)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true }) as unknown as Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    const { data: rows, error } = await withOptionalColumns(
+      () => read(`${baseCols}, edit_code, self_registered`),
+      () => read(baseCols),
+    );
+    if (error) throw new Error((error as { message?: string }).message ?? String(error));
+    return ((rows ?? []) as unknown[]) as Array<{
       id: string;
       ref_id: string | null;
       name: string;
@@ -1245,7 +1255,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     const { data: entries, error: entriesErr } = await supabase
       .from("entries")
       .select(
-        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
+        "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint", // register_token appended below when available
       )
       .eq("tenant_id", tenant.id);
     if (entriesErr) throw new Error(entriesErr.message);

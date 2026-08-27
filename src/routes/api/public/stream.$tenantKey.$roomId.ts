@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           const { data: entries } = await supabaseAdmin
             .from("entries")
             .select(
-              "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint, register_token",
+              "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint", // register_token appended below when available
             )
             .eq("tenant_id", tenantId);
 
