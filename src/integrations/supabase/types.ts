@@ -180,6 +180,7 @@ export type Database = {
           notified_at: string | null
           notified_teams: string[]
           notify: boolean
+          register_token: string | null
           tags: string[]
           tenant_id: string
           time: string
@@ -203,6 +204,7 @@ export type Database = {
           notified_at?: string | null
           notified_teams?: string[]
           notify?: boolean
+          register_token?: string | null
           tags?: string[]
           tenant_id: string
           time: string
@@ -226,6 +228,7 @@ export type Database = {
           notified_at?: string | null
           notified_teams?: string[]
           notify?: boolean
+          register_token?: string | null
           tags?: string[]
           tenant_id?: string
           time?: string
@@ -297,36 +300,42 @@ export type Database = {
       teams: {
         Row: {
           created_at: string
+          edit_code: string | null
           id: string
           members: string
           name: string
           project: string
           ref_id: string | null
           room_id: string | null
+          self_registered: boolean
           sort_order: number
           tenant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          edit_code?: string | null
           id?: string
           members?: string
           name: string
           project?: string
           ref_id?: string | null
           room_id?: string | null
+          self_registered?: boolean
           sort_order?: number
           tenant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          edit_code?: string | null
           id?: string
           members?: string
           name?: string
           project?: string
           ref_id?: string | null
           room_id?: string | null
+          self_registered?: boolean
           sort_order?: number
           tenant_id?: string
           updated_at?: string
@@ -366,6 +375,7 @@ export type Database = {
           pin_hash: string | null
           practice_minutes: number
           practice_room_scope: string
+          team_edit_locked: boolean
           template: string
         }
         Insert: {
@@ -385,6 +395,7 @@ export type Database = {
           pin_hash?: string | null
           practice_minutes?: number
           practice_room_scope?: string
+          team_edit_locked?: boolean
           template?: string
         }
         Update: {
@@ -404,6 +415,7 @@ export type Database = {
           pin_hash?: string | null
           practice_minutes?: number
           practice_room_scope?: string
+          team_edit_locked?: boolean
           template?: string
         }
         Relationships: []
