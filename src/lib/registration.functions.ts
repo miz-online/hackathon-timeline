@@ -174,6 +174,8 @@ export const getRegisteredTeam = createServerFn({ method: "GET" })
       found: true as const,
       locked: res.teamEditLocked,
       tenantName: res.tenantName,
+      logoUrl: res.logoUrl,
+      logoHeight: res.logoHeight,
       title: res.entry.title,
       rooms: res.rooms,
       team: row as unknown as {
