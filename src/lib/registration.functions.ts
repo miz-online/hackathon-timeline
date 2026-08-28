@@ -6,6 +6,8 @@ type Resolved = {
   tenantId: string;
   tenantKey: string;
   tenantName: string;
+  logoUrl: string | null;
+  logoHeight: number;
   teamEditLocked: boolean;
   entry: { id: string; title: string; description: string; time: string; end_time: string | null };
   rooms: { id: string; name: string }[];
