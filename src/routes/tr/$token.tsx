@@ -36,15 +36,11 @@ function RegisterPage() {
   const [name, setName] = useState("");
   const [members, setMembers] = useState("");
   const [project, setProject] = useState("");
-  const [roomId, setRoomId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [doneCode, setDoneCode] = useState<string | null>(null);
 
   useEffect(() => {
-    void getRegistration({ data: { token } }).then((r) => {
-      setInfo(r);
-      if (r.found && r.roomId) setRoomId(r.roomId);
-    });
+    void getRegistration({ data: { token } }).then(setInfo);
   }, [token]);
 
   if (!info) return <Shell>&nbsp;</Shell>;
@@ -99,29 +95,13 @@ function RegisterPage() {
           <Label>{t("reg.project")}</Label>
           <Textarea rows={5} value={project} onChange={(e) => setProject(e.target.value)} />
         </div>
-        <div className="space-y-1">
-          <Label>{t("reg.room")}</Label>
-          <select
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">{t("reg.noRoom")}</option>
-            {info.rooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground">{t("reg.roomHint")}</p>
-        </div>
         <Button
           disabled={saving || !name.trim()}
           onClick={async () => {
             setSaving(true);
             try {
               const { code } = await submitRegistration({
-                data: { token, name, members, project, room_id: roomId || null },
+                data: { token, name, members, project },
               });
               setDoneCode(code);
             } catch (e) {
