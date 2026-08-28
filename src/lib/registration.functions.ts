@@ -49,15 +49,23 @@ async function resolveToken(token: string): Promise<Resolved | null> {
     if (!isBase && !roomId) continue;
     const { data: tenant } = await supabaseAdmin
       .from("tenants")
-      .select("key, name, team_edit_locked")
+      .select("key, name, logo_url, logo_height, team_edit_locked")
       .eq("id", e.tenant_id)
       .maybeSingle();
-    const t = tenant as unknown as { key: string; name: string; team_edit_locked: boolean } | null;
+    const t = tenant as unknown as {
+      key: string;
+      name: string;
+      logo_url: string | null;
+      logo_height: number | null;
+      team_edit_locked: boolean;
+    } | null;
     if (!t) return null;
     return {
       tenantId: e.tenant_id,
       tenantKey: t.key,
       tenantName: t.name,
+      logoUrl: t.logo_url ? `/api/public/logo/${t.key}` : null,
+      logoHeight: t.logo_height ?? 64,
       teamEditLocked: t.team_edit_locked === true,
       entry: {
         id: e.id,
