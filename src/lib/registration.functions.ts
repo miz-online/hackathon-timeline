@@ -99,6 +99,8 @@ export const getRegistration = createServerFn({ method: "GET" })
       found: true as const,
       open: windowOpen(res.entry),
       tenantName: res.tenantName,
+      logoUrl: res.logoUrl,
+      logoHeight: res.logoHeight,
       title: res.entry.title,
       description: res.entry.description,
       time: res.entry.time,
