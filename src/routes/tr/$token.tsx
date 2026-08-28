@@ -92,14 +92,11 @@ function RegisterPage() {
 
   return (
     <Shell
-      title={info.title || t("reg.formTitle")}
+      title={t("reg.formTitle")}
       tenantName={info.tenantName}
       logoUrl={info.logoUrl}
       logoHeight={info.logoHeight}
     >
-      {info.description ? (
-        <p className="mb-4 whitespace-pre-wrap text-sm text-muted-foreground">{info.description}</p>
-      ) : null}
       <div className="space-y-3">
         <div className="space-y-1">
           <Label>{t("reg.name")}</Label>
