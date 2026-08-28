@@ -1211,7 +1211,7 @@ function EntryForm({
             </div>
           </div>
           )}
-          {isPractice ? null : (
+          {isPractice || isRegister ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.scheme")}</Label>
             <div className="flex items-center gap-2">
@@ -1273,7 +1273,7 @@ function EntryForm({
             />
           </div>
           )}
-          {isPractice ? null : (
+          {isPractice || isRegister ? null : (
           <div className="space-y-2">
             <Label>{t("entries.form.rooms")}</Label>
             <div className="flex flex-wrap gap-2">
@@ -1573,8 +1573,8 @@ function EntryForm({
                 end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
                 title: title.trim(),
                 description: isPractice ? "" : description.trim(),
-                tags: isPractice ? [] : tags,
-                color_scheme_id: isPractice ? null : schemeId || null,
+                tags: isPractice || isRegister ? [] : tags,
+                color_scheme_id: isPractice || isRegister ? null : schemeId || null,
                 notify,
                 background_align: bgAlign,
                 background_height: bgHeight,
