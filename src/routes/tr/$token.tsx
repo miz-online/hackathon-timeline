@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
 import { getRegistration, submitRegistration } from "@/lib/registration.functions";
+import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 
 export const Route = createFileRoute("/tr/$token")({
   ssr: false,
@@ -44,14 +45,31 @@ function RegisterPage() {
   }, [token]);
 
   if (!info) return <Shell>&nbsp;</Shell>;
-  if (!info.found) return <Shell title={t("reg.closedTitle")}>{t("reg.unknown")}</Shell>;
+  if (!info.found)
+    return (
+      <Shell title={t("reg.closedTitle")}>{t("reg.unknown")}</Shell>
+    );
   if (!info.open && !doneCode)
-    return <Shell title={t("reg.closedTitle")}>{t("reg.closedBody")}</Shell>;
+    return (
+      <Shell
+        title={t("reg.closedTitle")}
+        tenantName={info.tenantName}
+        logoUrl={info.logoUrl}
+        logoHeight={info.logoHeight}
+      >
+        {t("reg.closedBody")}
+      </Shell>
+    );
 
   if (doneCode) {
     const url = `${window.location.origin}/tr/${token}/${doneCode}`;
     return (
-      <Shell title={t("reg.doneTitle")}>
+      <Shell
+        title={t("reg.doneTitle")}
+        tenantName={info.tenantName}
+        logoUrl={info.logoUrl}
+        logoHeight={info.logoHeight}
+      >
         <p className="mb-3 text-sm text-muted-foreground">{t("reg.doneBody")}</p>
         <div className="flex items-center gap-2">
           <Input readOnly value={url} className="font-mono text-xs" />
@@ -73,7 +91,12 @@ function RegisterPage() {
   }
 
   return (
-    <Shell title={info.title || t("reg.formTitle")}>
+    <Shell
+      title={info.title || t("reg.formTitle")}
+      tenantName={info.tenantName}
+      logoUrl={info.logoUrl}
+      logoHeight={info.logoHeight}
+    >
       {info.description ? (
         <p className="mb-4 whitespace-pre-wrap text-sm text-muted-foreground">{info.description}</p>
       ) : null}
@@ -118,10 +141,38 @@ function RegisterPage() {
   );
 }
 
-export function Shell({ title, children }: { title?: string; children: React.ReactNode }) {
+export function Shell({
+  title,
+  tenantName,
+  logoUrl,
+  logoHeight,
+  children,
+}: {
+  title?: string;
+  tenantName?: string;
+  logoUrl?: string | null;
+  logoHeight?: number;
+  children: React.ReactNode;
+}) {
+  const src = logoUrl || defaultLogo.url;
+  const height = logoHeight ? `${logoHeight}px` : "64px";
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl items-center px-4 py-10">
-      <Card className="w-full">
+    <main className="flex min-h-screen flex-col items-center bg-background px-4 py-8">
+      <div className="mb-6 flex w-full max-w-xl flex-col items-center text-center">
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          className="max-w-full object-contain"
+          style={{ height, maxHeight: "120px" }}
+        />
+        {tenantName ? (
+          <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
+            {tenantName}
+          </h2>
+        ) : null}
+      </div>
+      <Card className="w-full max-w-xl shadow-lg">
         <CardHeader>
           <CardTitle>{title ?? ""}</CardTitle>
         </CardHeader>

@@ -6,6 +6,8 @@ type Resolved = {
   tenantId: string;
   tenantKey: string;
   tenantName: string;
+  logoUrl: string | null;
+  logoHeight: number;
   teamEditLocked: boolean;
   entry: { id: string; title: string; description: string; time: string; end_time: string | null };
   rooms: { id: string; name: string }[];
@@ -47,15 +49,23 @@ async function resolveToken(token: string): Promise<Resolved | null> {
     if (!isBase && !roomId) continue;
     const { data: tenant } = await supabaseAdmin
       .from("tenants")
-      .select("key, name, team_edit_locked")
+      .select("key, name, logo_url, logo_height, team_edit_locked")
       .eq("id", e.tenant_id)
       .maybeSingle();
-    const t = tenant as unknown as { key: string; name: string; team_edit_locked: boolean } | null;
+    const t = tenant as unknown as {
+      key: string;
+      name: string;
+      logo_url: string | null;
+      logo_height: number | null;
+      team_edit_locked: boolean;
+    } | null;
     if (!t) return null;
     return {
       tenantId: e.tenant_id,
       tenantKey: t.key,
       tenantName: t.name,
+      logoUrl: t.logo_url ? `/api/public/logo/${t.key}` : null,
+      logoHeight: t.logo_height ?? 64,
       teamEditLocked: t.team_edit_locked === true,
       entry: {
         id: e.id,
@@ -89,6 +99,8 @@ export const getRegistration = createServerFn({ method: "GET" })
       found: true as const,
       open: windowOpen(res.entry),
       tenantName: res.tenantName,
+      logoUrl: res.logoUrl,
+      logoHeight: res.logoHeight,
       title: res.entry.title,
       description: res.entry.description,
       time: res.entry.time,
@@ -162,6 +174,8 @@ export const getRegisteredTeam = createServerFn({ method: "GET" })
       found: true as const,
       locked: res.teamEditLocked,
       tenantName: res.tenantName,
+      logoUrl: res.logoUrl,
+      logoHeight: res.logoHeight,
       title: res.entry.title,
       rooms: res.rooms,
       team: row as unknown as {

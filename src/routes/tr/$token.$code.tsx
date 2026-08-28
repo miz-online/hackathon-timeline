@@ -50,10 +50,25 @@ function EditTeamPage() {
 
   if (!info) return <Shell>&nbsp;</Shell>;
   if (!info.found) return <Shell title={t("reg.closedTitle")}>{t("reg.unknown")}</Shell>;
-  if (info.locked) return <Shell title={t("reg.editTitle")}>{t("reg.lockedBody")}</Shell>;
+  if (info.locked)
+    return (
+      <Shell
+        title={t("reg.editTitle")}
+        tenantName={info.tenantName}
+        logoUrl={info.logoUrl}
+        logoHeight={info.logoHeight}
+      >
+        {t("reg.lockedBody")}
+      </Shell>
+    );
 
   return (
-    <Shell title={t("reg.editTitle")}>
+    <Shell
+      title={t("reg.editTitle")}
+      tenantName={info.tenantName}
+      logoUrl={info.logoUrl}
+      logoHeight={info.logoHeight}
+    >
       <div className="space-y-3">
         <div className="space-y-1">
           <Label>{t("reg.name")}</Label>
