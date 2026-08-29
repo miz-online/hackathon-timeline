@@ -14,19 +14,19 @@ neues Team an.
    `Shell`, das exportiert bleibt).
 2. Das bisherige Registrierungsformular zieht unverändert nach `tr/$token.index.tsx` (URL
    bleibt `/tr/<token>`), mit eigenem `head()`.
-3. Nach erfolgreicher Registrierung wird direkt auf `/tr/<token>/<code>?new=1` navigiert —
+3. Nach erfolgreicher Registrierung wird direkt auf `/tr/<token>/<code>` navigiert —
    diese URL ist die bookmarkbare Team-Seite.
 
 ## „Das erste Mal“ — technischer Vorschlag
 
-Kombination aus URL-Parameter und lokalem Merker, ohne neue Datenbankspalte:
+Lokaler Merker, ohne URL-Parameter und ohne neue Datenbankspalte:
 
-- Die Weiterleitung nach der Registrierung setzt `?new=1`.
-- Ist `new=1` gesetzt, zeigt die Bearbeitungsseite oben einen Erfolgs-/Willkommensblock:
+- Nach erfolgreicher Registrierung wird `localStorage["tr-seen:<code>"] = "1"` gesetzt.
+- Beim Laden der Bearbeitungsseite prüft die Komponente, ob dieser Schlüssel bereits
+  existiert. Falls nicht, zeigt sie oben einen Erfolgs-/Willkommensblock:
   Kurzbeschreibung, Link zum Kopieren und den Hinweis „Diese Seite als Lesezeichen speichern“
   (inkl. Hinweis auf Strg/Cmd+D).
-- Gleichzeitig wird `localStorage["tr-seen:<code>"] = "1"` gesetzt. Bei späteren Aufrufen —
-  auch wenn die gemerkte URL noch `?new=1` enthält — wird der Block nicht mehr angezeigt.
+- Bei späteren Aufrufen (z. B. aus einem Lesezeichen) wird der Block nicht mehr angezeigt.
   So bleibt genau der erste Besuch besonders, ohne Serverzustand.
 
 ## Weitere Details
