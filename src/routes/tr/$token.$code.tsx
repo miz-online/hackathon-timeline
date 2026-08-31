@@ -121,21 +121,6 @@ function EditTeamPage() {
             <Label>{t("reg.project")}</Label>
             <Textarea rows={5} value={project} onChange={(e) => setProject(e.target.value)} />
           </div>
-          <div className="space-y-1">
-            <Label>{t("reg.room")}</Label>
-            <select
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <option value="">{t("reg.noRoom")}</option>
-              {info.rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <Button
             disabled={saving || !name.trim()}
             onClick={async () => {
