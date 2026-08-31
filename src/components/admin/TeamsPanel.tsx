@@ -57,10 +57,17 @@ export function TeamsPanel({
   const [order, setOrder] = useState<string[] | null>(null);
   const [parked, setParked] = useState<string[]>([]);
 
+  // Live updates (e.g. teams registering/editing themselves) — paused while the
+  // user has unsaved local state: open dialog, JSON mode, drag or manual order.
+  const busy =
+    showForm || !!editing || mode === "json" || !!dragId || !!order || parked.length > 0;
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listFn({ data: { key: tenantKey } }),
+    refetchInterval: busy ? false : 10_000,
+    refetchOnWindowFocus: !busy,
   });
+
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["teams", tenantKey] });
     onChange();

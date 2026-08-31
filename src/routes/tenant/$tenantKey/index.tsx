@@ -719,7 +719,10 @@ function EntriesPanel({
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listTeams({ data: { key: tenantKey } }),
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
+
   const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState<"form" | "json">("form");
