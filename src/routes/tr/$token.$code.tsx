@@ -35,7 +35,6 @@ function EditTeamPage() {
   const [name, setName] = useState("");
   const [members, setMembers] = useState("");
   const [project, setProject] = useState("");
-  const [roomId, setRoomId] = useState("");
   const [saving, setSaving] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -47,7 +46,6 @@ function EditTeamPage() {
         setName(r.team.name);
         setMembers(r.team.members);
         setProject(r.team.project);
-        setRoomId(r.team.room_id ?? "");
         const key = seenKey(code);
         if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
           setShowWelcome(true);
@@ -127,7 +125,7 @@ function EditTeamPage() {
               setSaving(true);
               try {
                 await updateRegisteredTeam({
-                  data: { token, code, name, members, project, room_id: roomId || null },
+                  data: { token, code, name, members, project },
                 });
                 toast.success(t("reg.saved"));
               } catch (e) {
