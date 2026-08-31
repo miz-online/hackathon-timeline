@@ -190,19 +190,14 @@ export const getRegisteredTeam = createServerFn({ method: "GET" })
 
 export const updateRegisteredTeam = createServerFn({ method: "POST" })
   .inputValidator(
-    (d: {
-      token: string;
-      code: string;
-      name: string;
-      members?: string;
-      project?: string;
-      room_id?: string | null;
-    }) =>
+    (d: { token: string; code: string; name: string; members?: string; project?: string }) =>
       z
         .object({
           token: z.string().min(4).max(40),
           code: z.string().min(6).max(40),
-          ...teamFields,
+          name: teamFields.name,
+          members: teamFields.members,
+          project: teamFields.project,
         })
         .parse(d),
   )
@@ -217,10 +212,10 @@ export const updateRegisteredTeam = createServerFn({ method: "POST" })
         name: data.name.trim(),
         members: data.members ?? "",
         project: data.project ?? "",
-        room_id: data.room_id ?? null,
       })
       .eq("tenant_id", res.tenantId)
       .eq("edit_code" as never, data.code as never);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
