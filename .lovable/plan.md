@@ -17,7 +17,7 @@ All backend access already goes through one server-side client object. That obje
 2. **File storage** — the three buckets (logos, ads, entry backgrounds) become directories under the data volume. Upload, download, delete, list, and the signed-URL calls used for ad previews map to short-lived local tokens served by the existing public file routes.
 3. **Live updates (SSE)** — Cloud uses database change streams. Local uses an in-process event bus: every write through the adapter publishes a change event, and the existing SSE route subscribes to it. The client-side snapshot/poll fallback already in place keeps behaviour identical.
 4. **Webhook scheduling** — Cloud keeps the database cron + RPC pair. Local computes the next due moment in Node with the same rules (entries and per-team slots, grace period) and arms a single timer, re-armed whenever entries, teams, webhooks or tenant settings change. The "next dispatch at" display in the Webhooks settings works in both.
-5. **Session/PIN secret** — read from env in both variants; the Docker setup generates one on first start if not provided, so PIN sessions survive restarts.
+5. **Session secret** — one server-wide env variable used to encrypt PIN session cookies; the Docker setup generates it on first start if not provided, so PIN sessions survive container restarts. The per-tenant PIN hash itself stays in the database (as today).
 6. **Image helpers and greyscale conversion** — already pure JS, kept as-is; only the runtime target changes.
 
 ## SQLite schema
