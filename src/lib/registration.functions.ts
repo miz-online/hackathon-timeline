@@ -1,3 +1,4 @@
+import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EDIT_CODE_LENGTH, randomToken, roomForToken } from "@/lib/registration";
@@ -19,7 +20,7 @@ type Resolved = {
  * entry, or one of its room-specific variants (which preselects that room).
  */
 async function resolveToken(token: string): Promise<Resolved | null> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const supabaseAdmin = await getBackendAdmin();
   const { data: rows } = await supabaseAdmin
     .from("entries")
     .select("id, tenant_id, title, description, time, end_time, register_token")
@@ -131,7 +132,7 @@ export const submitRegistration = createServerFn({ method: "POST" })
     const res = await resolveToken(data.token);
     if (!res) throw new Error("Unknown registration link");
     if (!windowOpen(res.entry)) throw new Error("Registration is closed");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getBackendAdmin();
     const { data: last } = await supabaseAdmin
       .from("teams")
       .select("sort_order")
@@ -162,7 +163,7 @@ export const getRegisteredTeam = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const res = await resolveToken(data.token);
     if (!res) return { found: false as const };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getBackendAdmin();
     const { data: row } = await supabaseAdmin
       .from("teams")
       .select("id, name, members, project, room_id")
@@ -205,7 +206,7 @@ export const updateRegisteredTeam = createServerFn({ method: "POST" })
     const res = await resolveToken(data.token);
     if (!res) throw new Error("Unknown registration link");
     if (res.teamEditLocked) throw new Error("Team editing is locked");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = await getBackendAdmin();
     const { error } = await supabaseAdmin
       .from("teams")
       .update({
