@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
 import { sendWebhook, type WebhookType } from "@/lib/webhooks";
 
 
@@ -8,21 +7,22 @@ export const Route = createFileRoute("/api/public/webhooks-dispatch")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const provided = request.headers.get("apikey");
-        const allowed = [
-          process.env["SUPABASE_ANON_KEY"],
-          process.env["SUPABASE_PUBLISHABLE_KEY"],
-          process.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
-        ].filter((v): v is string => !!v);
-        if (!provided || !allowed.includes(provided)) {
-          return new Response("Unauthorized", { status: 401 });
+        const { getBackendAdmin, isLocalBackend } = await import("@/lib/backend/admin.server");
+        const local = isLocalBackend();
+        if (!local) {
+          const provided = request.headers.get("apikey");
+          const allowed = [
+            process.env["SUPABASE_ANON_KEY"],
+            process.env["SUPABASE_PUBLISHABLE_KEY"],
+            process.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
+          ].filter((v): v is string => !!v);
+          if (!provided || !allowed.includes(provided)) {
+            return new Response("Unauthorized", { status: 401 });
+          }
         }
 
-        const supabase = createClient(
-          process.env["SUPABASE_URL"] ?? process.env["VITE_SUPABASE_URL"]!,
-          process.env["SUPABASE_SERVICE_ROLE_KEY"]!,
-          { auth: { autoRefreshToken: false, persistSession: false } },
-        );
+        const supabase = await getBackendAdmin();
+
 
         const now = new Date();
         const results: {
