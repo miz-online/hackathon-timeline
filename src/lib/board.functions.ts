@@ -1,4 +1,3 @@
-import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { effectiveRefId, refIdsFor, slugify, uniqueRefId } from "@/lib/ref-id";
@@ -30,6 +29,7 @@ import type { TablesUpdate } from "@/integrations/supabase/types";
 // ---------- helpers ----------
 
 async function getAdmin() {
+  const { getBackendAdmin } = await import("@/lib/backend/admin.server");
   const supabaseAdmin = await getBackendAdmin();
   return supabaseAdmin;
 }

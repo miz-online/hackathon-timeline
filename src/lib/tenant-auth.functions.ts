@@ -1,8 +1,8 @@
-import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function getAdmin() {
+  const { getBackendAdmin } = await import("@/lib/backend/admin.server");
   const supabaseAdmin = await getBackendAdmin();
   return supabaseAdmin;
 }
