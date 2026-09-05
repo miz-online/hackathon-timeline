@@ -154,7 +154,18 @@ class SqliteQuery<T> implements PromiseLike<Result<T>> {
   private async run(): Promise<Result<unknown>> {
     const db = await getDb();
     const table = this.table;
-    const shape = (rows: Record<string, unknown>[]) => rows.map((r) => fromDbRow(table, r));
+    const project = (row: Record<string, unknown>) => {
+      if (this.mode === "select" || !this.cols || this.cols.trim() === "*") return row;
+      const keep = new Set(
+        this.cols
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean),
+      );
+      return Object.fromEntries(Object.entries(row).filter(([k]) => keep.has(k)));
+    };
+    const shape = (rows: Record<string, unknown>[]) => rows.map((r) => project(fromDbRow(table, r)));
+
 
     if (this.mode === "select") {
       const cols = quoteCols(table, this.cols);
