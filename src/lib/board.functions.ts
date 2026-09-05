@@ -29,7 +29,8 @@ import type { TablesUpdate } from "@/integrations/supabase/types";
 // ---------- helpers ----------
 
 async function getAdmin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { getBackendAdmin } = await import("@/lib/backend/admin.server");
+  const supabaseAdmin = await getBackendAdmin();
   return supabaseAdmin;
 }
 
