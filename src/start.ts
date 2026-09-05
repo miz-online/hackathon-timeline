@@ -1,7 +1,10 @@
 import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+// Intentionally replaces the generated attachSupabaseAuth: it must not run in
+// the self-hosted variant, which has no Cloud environment variables.
+import { attachAuthIfAvailable } from "@/lib/backend/auth-attach";
+
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
