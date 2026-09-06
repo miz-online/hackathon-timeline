@@ -17,6 +17,44 @@ docker compose up -d --build
 Open http://localhost:3000. The database and image folders are created
 automatically inside the volume on first start.
 
+## Configure
+
+All configuration is done with environment variables. The easiest way is to
+edit `docker-compose.yml` or create a `.env` file next to it:
+
+```bash
+# .env example
+data
+BACKEND=local
+DATA_DIR=/data
+PORT=3000
+PUBLIC_BASE_URL=http://127.0.0.1:3000
+# SESSION_SECRET=change-me-to-a-random-32-byte-hex-string
+```
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `BACKEND` | `cloud` | Must be `local` for the Docker image. |
+| `DATA_DIR` | `/data` | Where SQLite and uploaded files are stored. |
+| `PORT` | `3000` | HTTP port inside the container. |
+| `PUBLIC_BASE_URL` | — | External URL used for scheduled webhook posts. |
+| `SESSION_SECRET` | auto-generated | Key for PIN session cookies. |
+
+The `SESSION_SECRET` is generated automatically on first start and persisted in
+the volume at `/data/session-secret`. Set it explicitly if you want PIN logins
+to survive a complete volume reset.
+
+### Change the host port
+
+Edit `docker-compose.yml`:
+
+```yaml
+ports:
+  - "8080:3000"
+```
+
+Then open http://localhost:8080.
+
 ## Data
 
 Everything lives under `/data` in the container (volume `timeline-data`):
@@ -37,15 +75,6 @@ new columns are added automatically on start.
 Use the built-in **Import/Export** tab: export the ZIP in the hosted app and
 import it here. Images, entries, teams, rooms, ads and settings come along;
 webhook URLs are intentionally not exported and must be re-entered.
-
-## Configuration
-
-See `.env.example`. Useful values:
-
-- `PORT` — HTTP port (default 3000)
-- `DATA_DIR` — data location inside the container (default `/data`)
-- `SESSION_SECRET` — set it to keep PIN logins valid across volume resets
-- `PUBLIC_BASE_URL` — used internally for scheduled webhook posts
 
 ## Build without Docker
 
