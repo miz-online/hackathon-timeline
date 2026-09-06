@@ -55,3 +55,14 @@ BACKEND=local DATA_DIR=./data node .output/server/index.mjs
 ```
 
 Requires Node 24 or newer (uses the built-in SQLite support).
+
+## Automatic image builds
+
+A GitHub Actions workflow (`.github/workflows/docker-image.yml`) builds the
+image on every push to `main`, on version tags (`v*`), and for pull requests
+(build only, no publish). Published images land in the repository's GitHub
+Container Registry:
+
+```bash
+docker run -d -p 3000:3000 -v timeline-data:/data ghcr.io/<owner>/<repo>:latest
+```
