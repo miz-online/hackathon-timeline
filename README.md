@@ -127,5 +127,5 @@ image on every push to `main`, on version tags (`v*`), and for pull requests
 Container Registry:
 
 ```bash
-docker run -d -p 3000:3000 -v timeline-data:/data ghcr.io/<owner>/<repo>:latest
+docker run -d -p 3000:3000 -v timeline-data:/data ghcr.io/miz-online/hackathon-timeline:latest
 ```
