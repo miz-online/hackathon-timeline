@@ -91,7 +91,7 @@ export async function verifyPin(pin: string, stored: string | null): Promise<boo
 }
 
 async function session() {
-  return useSession<TenantSession>(sessionConfig());
+  return useSession<TenantSession>(await sessionConfig());
 }
 
 /** Marks a tenant as unlocked and refreshes the sliding expiry. */
