@@ -1,0 +1,20 @@
+services:
+  timeline:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND: local
+      DATA_DIR: /data
+      PORT: "3000"
+      # Optional: fixed secret for PIN session cookies. Generated on first
+      # start and stored in the volume when omitted.
+      # SESSION_SECRET: change-me
+      # Public base URL, used for internal webhook scheduling calls.
+      PUBLIC_BASE_URL: http://127.0.0.1:3000
+    volumes:
+      - timeline-data:/data
+    restart: unless-stopped
+
+volumes:
+  timeline-data:

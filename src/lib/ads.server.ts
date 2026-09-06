@@ -1,3 +1,4 @@
+import { getBackendAdmin } from "@/lib/backend/admin.server";
 /** Ads are grouped in sets; a display template selects one set: "ads:<setId>". */
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,7 +32,7 @@ export async function loadAdsForTemplate(opts: {
   const parsed = parseAdsTemplate(opts.template);
   if (!parsed) return { ads: [], adSeconds: opts.fallbackSeconds };
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const supabaseAdmin = await getBackendAdmin();
 
   let query = supabaseAdmin
     .from("ad_sets")

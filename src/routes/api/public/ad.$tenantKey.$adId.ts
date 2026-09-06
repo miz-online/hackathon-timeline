@@ -1,3 +1,4 @@
+import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/api/public/ad/$tenantKey/$adId")({
@@ -5,7 +6,7 @@ export const Route = createFileRoute("/api/public/ad/$tenantKey/$adId")({
     handlers: {
       GET: async ({ params }) => {
         const { tenantKey, adId } = params;
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const supabaseAdmin = await getBackendAdmin();
 
         const { data: tenant } = await supabaseAdmin
           .from("tenants")

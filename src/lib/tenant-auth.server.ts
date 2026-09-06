@@ -8,11 +8,27 @@ const ITERATIONS = MAX_ITERATIONS;
 
 type TenantSession = { tenants?: string[] };
 
-function sessionConfig() {
-  const password = process.env["SESSION_SECRET"];
-  if (!password) throw new Error("SESSION_SECRET is not set");
+let cachedKey: { input: string; hex: string } | null = null;
+
+/**
+ * SESSION_SECRET may be any human-friendly string (a passphrase). The actual
+ * cookie key is a 32-byte value derived from it via SHA-256, rendered as hex.
+ */
+async function sessionKey(): Promise<string> {
+  const input = process.env["SESSION_SECRET"];
+  if (!input) throw new Error("SESSION_SECRET is not set");
+  if (cachedKey && cachedKey.input === input) return cachedKey.hex;
+  const bits = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  const hex = Array.from(new Uint8Array(bits))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  cachedKey = { input, hex };
+  return hex;
+}
+
+async function sessionConfig() {
   return {
-    password,
+    password: await sessionKey(),
     name: "tenant-admin",
     maxAge: MAX_AGE_SECONDS,
     cookie: {
@@ -27,6 +43,7 @@ function sessionConfig() {
     },
   };
 }
+
 
 function toB64(bytes: Uint8Array): string {
   let s = "";
@@ -74,7 +91,7 @@ export async function verifyPin(pin: string, stored: string | null): Promise<boo
 }
 
 async function session() {
-  return useSession<TenantSession>(sessionConfig());
+  return useSession<TenantSession>(await sessionConfig());
 }
 
 /** Marks a tenant as unlocked and refreshes the sliding expiry. */

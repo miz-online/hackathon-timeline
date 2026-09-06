@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 async function getAdmin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { getBackendAdmin } = await import("@/lib/backend/admin.server");
+  const supabaseAdmin = await getBackendAdmin();
   return supabaseAdmin;
 }
 
