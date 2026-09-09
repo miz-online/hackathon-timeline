@@ -2969,6 +2969,59 @@ function SlideSetSlides({
           ))
         )}
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("slides.editTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>{t("slides.filename")}</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("slides.duration")}</Label>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                placeholder={String(defaultSeconds)}
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("slides.durationHint")}</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditing(null)}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={async () => {
+                  const name = editName.trim();
+                  if (!name || !editing) return;
+                  const value =
+                    editDuration.trim() === ""
+                      ? null
+                      : Math.min(600, Math.max(1, Number(editDuration) || 1));
+                  try {
+                    await updateFn({
+                      data: { key: tenantKey, id: editing, name, duration_seconds: value },
+                    });
+                    toast.success(t("slides.saved"));
+                    setEditing(null);
+                    refresh();
+                  } catch (err) {
+                    toast.error((err as Error).message);
+                  }
+                }}
+              >
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
