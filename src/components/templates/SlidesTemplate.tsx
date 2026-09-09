@@ -118,7 +118,7 @@ export function SlidesTemplate({
           )}
         </AnimatePresence>
 
-        {(slideOverlay?.show_room_name ?? true) && (
+        {(slideOverlay?.show_room_name ?? true || slideOverlay?.show_clock ?? true) && (
           <header
             style={{
               position: "absolute",
@@ -134,31 +134,35 @@ export function SlidesTemplate({
               pointerEvents: "none",
             }}
           >
-            <div
-              style={{
-                fontSize: "clamp(24px, 3vw, 38px)",
-                fontWeight: 700,
-                lineHeight: 1.1,
-                flex: 1,
-                minWidth: 0,
-                color: palette.base,
-                textShadow: GLOW,
-              }}
-            >
-              {overview ? tenantName : roomName}
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                textAlign: "center",
-                flexShrink: 0,
-                textShadow: GLOW,
-              }}
-            >
-              {overview ? "" : tenantName}
-            </div>
+            {(slideOverlay?.show_room_name ?? true) && (
+              <>
+                <div
+                  style={{
+                    fontSize: "clamp(24px, 3vw, 38px)",
+                    fontWeight: 700,
+                    lineHeight: 1.1,
+                    flex: 1,
+                    minWidth: 0,
+                    color: palette.base,
+                    textShadow: GLOW,
+                  }}
+                >
+                  {overview ? tenantName : roomName}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    textAlign: "center",
+                    flexShrink: 0,
+                    textShadow: GLOW,
+                  }}
+                >
+                  {overview ? "" : tenantName}
+                </div>
+              </>
+            )}
             {(slideOverlay?.show_clock ?? true) && (
               <div
                 style={{
