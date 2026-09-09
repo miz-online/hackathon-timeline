@@ -2731,10 +2731,12 @@ function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () 
 function SlideSetSlides({
   tenantKey,
   setId,
+  defaultSeconds,
   onChange,
 }: {
   tenantKey: string;
   setId: string;
+  defaultSeconds: number;
   onChange: () => void;
 }) {
   const { t } = useI18n();
