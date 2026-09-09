@@ -1,7 +1,7 @@
 import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { withOptionalColumns } from "@/lib/optional-columns";
-import { loadAdsForTemplate } from "@/lib/ads.server";
+import { loadSlidesForTemplate } from "@/lib/slides.server";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
 
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           const { data: tNow } = await supabaseAdmin
             .from("tenants")
             .select(
-              "name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
+              "name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
             )
             .eq("id", tenantId)
             .maybeSingle();
@@ -73,11 +73,17 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             .select("id, color")
             .eq("tenant_id", tenantId);
           const effectiveTemplate = rNow.template || tNow.template;
-          const { ads, adSeconds } = await loadAdsForTemplate({
+          const {
+            slides,
+            slideSeconds,
+            showRoomName,
+            showClock,
+            showLogo,
+          } = await loadSlidesForTemplate({
             tenantId,
             tenantKey,
             template: effectiveTemplate,
-            fallbackSeconds: tNow.ad_seconds,
+            fallbackSeconds: tNow.slide_seconds,
           });
 
           const { data: teamRows } = await supabaseAdmin
@@ -149,7 +155,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               logo_url: tNow.logo_url,
               logo_height: tNow.logo_height,
               accent_color: tNow.accent_color,
-              ad_seconds: adSeconds,
+              slide_seconds: slideSeconds,
               focus_mode: tNow.focus_mode ?? "count",
               focus_count: tNow.focus_count ?? 3,
               focus_minutes: tNow.focus_minutes ?? 30,
@@ -165,7 +171,8 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               is_overview: isOverview,
             },
             entries: visible,
-            ads,
+            slides,
+            slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
 
 
           };

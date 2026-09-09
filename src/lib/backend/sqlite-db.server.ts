@@ -22,9 +22,50 @@ async function openDb(): Promise<Db> {
   const instance = new DatabaseSync(path.join(dir, "app.db"));
   instance.exec("pragma journal_mode = wal;");
   instance.exec("pragma busy_timeout = 5000;");
+  migrateSchema(instance);
   instance.exec(schemaSql());
   applyMissingColumns(instance);
   return instance;
+}
+
+function tableExists(instance: Db, name: string): boolean {
+  const rows = instance
+    .prepare("select name from sqlite_master where type = 'table' and name = ?")
+    .all(name) as { name: string }[];
+  return rows.length > 0;
+}
+
+function columnExists(instance: Db, table: string, column: string): boolean {
+  const rows = instance.prepare(`pragma table_info("${table}")`).all() as { name: string }[];
+  return rows.some((r) => r.name === column);
+}
+
+/** One-time migration from the old "ad_sets"/"ads" names to "slide_sets"/"slides". */
+function migrateSchema(instance: Db): void {
+  // Rename tables
+  if (tableExists(instance, "ad_sets") && !tableExists(instance, "slide_sets")) {
+    instance.exec('alter table "ad_sets" rename to "slide_sets"');
+  }
+  if (tableExists(instance, "ads") && !tableExists(instance, "slides")) {
+    instance.exec('alter table "ads" rename to "slides"');
+  }
+
+  // Rename columns
+  if (columnExists(instance, "slide_sets", "ad_seconds")) {
+    instance.exec('alter table "slide_sets" rename column "ad_seconds" to "slide_seconds"');
+  }
+  if (columnExists(instance, "slides", "ad_set_id")) {
+    instance.exec('alter table "slides" rename column "ad_set_id" to "slide_set_id"');
+  }
+  if (columnExists(instance, "tenants", "ad_seconds")) {
+    instance.exec('alter table "tenants" rename column "ad_seconds" to "slide_seconds"');
+  }
+
+  // Migrate template values
+  instance.exec("update tenants set template = 'slides' where template = 'ads'");
+  instance.exec("update tenants set template = 'slides:' || substr(template, 5) where template like 'ads:%'");
+  instance.exec("update rooms set template = 'slides' where template = 'ads'");
+  instance.exec("update rooms set template = 'slides:' || substr(template, 5) where template like 'ads:%'");
 }
 
 /** Adds columns introduced after a volume was first created. */

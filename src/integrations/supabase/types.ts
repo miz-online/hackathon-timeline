@@ -14,98 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      ad_sets: {
-        Row: {
-          ad_seconds: number
-          created_at: string
-          id: string
-          name: string
-          ref_id: string | null
-          sort_order: number
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          ad_seconds?: number
-          created_at?: string
-          id?: string
-          name?: string
-          ref_id?: string | null
-          sort_order?: number
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          ad_seconds?: number
-          created_at?: string
-          id?: string
-          name?: string
-          ref_id?: string | null
-          sort_order?: number
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ad_sets_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ads: {
-        Row: {
-          ad_set_id: string
-          content_type: string
-          created_at: string
-          id: string
-          name: string
-          path: string
-          sort_order: number
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          ad_set_id: string
-          content_type?: string
-          created_at?: string
-          id?: string
-          name?: string
-          path: string
-          sort_order?: number
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          ad_set_id?: string
-          content_type?: string
-          created_at?: string
-          id?: string
-          name?: string
-          path?: string
-          sort_order?: number
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ads_ad_set_id_fkey"
-            columns: ["ad_set_id"]
-            isOneToOne: false
-            referencedRelation: "ad_sets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ads_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       color_schemes: {
         Row: {
           color: string
@@ -297,6 +205,110 @@ export type Database = {
           },
         ]
       }
+      slide_sets: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          ref_id: string | null
+          show_clock: boolean
+          show_logo: boolean
+          show_room_name: boolean
+          slide_seconds: number
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          ref_id?: string | null
+          show_clock?: boolean
+          show_logo?: boolean
+          show_room_name?: boolean
+          slide_seconds?: number
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          ref_id?: string | null
+          show_clock?: boolean
+          show_logo?: boolean
+          show_room_name?: boolean
+          slide_seconds?: number
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_sets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slides: {
+        Row: {
+          content_type: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          name: string
+          path: string
+          slide_set_id: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          name?: string
+          path: string
+          slide_set_id: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          name?: string
+          path?: string
+          slide_set_id?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_ad_set_id_fkey"
+            columns: ["slide_set_id"]
+            isOneToOne: false
+            referencedRelation: "slide_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           created_at: string
@@ -360,7 +372,6 @@ export type Database = {
       tenants: {
         Row: {
           accent_color: string
-          ad_seconds: number
           created_at: string
           focus_count: number
           focus_dim_opacity: number
@@ -375,12 +386,12 @@ export type Database = {
           pin_hash: string | null
           practice_minutes: number
           practice_room_scope: string
+          slide_seconds: number
           team_edit_locked: boolean
           template: string
         }
         Insert: {
           accent_color?: string
-          ad_seconds?: number
           created_at?: string
           focus_count?: number
           focus_dim_opacity?: number
@@ -395,12 +406,12 @@ export type Database = {
           pin_hash?: string | null
           practice_minutes?: number
           practice_room_scope?: string
+          slide_seconds?: number
           team_edit_locked?: boolean
           template?: string
         }
         Update: {
           accent_color?: string
-          ad_seconds?: number
           created_at?: string
           focus_count?: number
           focus_dim_opacity?: number
@@ -415,6 +426,7 @@ export type Database = {
           pin_hash?: string | null
           practice_minutes?: number
           practice_room_scope?: string
+          slide_seconds?: number
           team_edit_locked?: boolean
           template?: string
         }

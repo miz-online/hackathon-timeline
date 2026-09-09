@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const IO_VERSION = 5;
+export const IO_VERSION = 6;
 
 export const SECTIONS = [
   "tenant",
@@ -8,8 +8,8 @@ export const SECTIONS = [
   "rooms",
   "teams",
   "entries",
-  "ad_sets",
-  "ads",
+  "slide_sets",
+  "slides",
   "webhooks",
   "logo",
 ] as const;
@@ -17,7 +17,7 @@ export type Section = (typeof SECTIONS)[number];
 
 export const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
-/** "zeitplan", "ads" (first set) or "ads:<ad set reference id>" */
+/** "zeitplan", "slides" (first set) or "slides:<slide set reference id>" */
 export const templateRef = z.string().min(1).max(80);
 
 export const tenantSection = z.object({
@@ -26,7 +26,7 @@ export const tenantSection = z.object({
   template: templateRef,
   logo_height: z.number().int().min(16).max(400),
   accent_color: hexColor,
-  ad_seconds: z.number().int().min(1).max(600),
+  slide_seconds: z.number().int().min(1).max(600),
   focus_mode: z.enum(["count", "minutes"]).optional(),
   focus_count: z.number().int().min(0).max(50).optional(),
   focus_minutes: z.number().int().min(0).max(1440).optional(),
@@ -84,18 +84,23 @@ export const entryItem = z.object({
 });
 
 
-export const adSetItem = z.object({
+export const slideSetItem = z.object({
   id: z.string().min(1).max(60),
   name: z.string().min(1).max(120),
-  ad_seconds: z.number().int().min(1).max(600).default(10),
+  slide_seconds: z.number().int().min(1).max(600).default(10),
+  show_room_name: z.boolean().default(true),
+  show_clock: z.boolean().default(true),
+  show_logo: z.boolean().default(true),
 });
 
-export const adItem = z.object({
+export const slideItem = z.object({
   name: z.string().min(1).max(120),
   file: z.string().min(1).max(300),
   content_type: z.string().min(1).max(100).default("image/png"),
-  /** id of an entry in ad_sets; null falls back to the first set */
+  /** id of an entry in slide_sets; null falls back to the first set */
   set: z.string().max(60).nullable().default(null),
+  /** Optional per-image display duration in seconds. Falls back to the set duration. */
+  duration_seconds: z.number().int().min(1).max(600).nullable().default(null),
 });
 
 export const webhookItem = z.object({
@@ -121,8 +126,8 @@ export const tenantDataSchema = z.object({
   rooms: z.array(roomItem).optional(),
   teams: z.array(teamItem).optional(),
   entries: z.array(entryItem).optional(),
-  ad_sets: z.array(adSetItem).optional(),
-  ads: z.array(adItem).optional(),
+  slide_sets: z.array(slideSetItem).optional(),
+  slides: z.array(slideItem).optional(),
   webhooks: z.array(webhookItem).optional(),
   logo: logoSection.nullable().optional(),
 });
@@ -155,12 +160,12 @@ export const TENANT_JSON_SCHEMA = {
         past_grace_minutes: { type: "integer", minimum: 0, maximum: 1440 },
         template: {
           type: "string",
-          description: '"zeitplan", "ads" (first ad set) or "ads:<ad set id>"',
+          description: '"zeitplan", "slides" (first slide set) or "slides:<slide set id>"',
         },
 
         logo_height: { type: "integer", minimum: 16, maximum: 400 },
         accent_color: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
-        ad_seconds: { type: "integer", minimum: 1, maximum: 600 },
+        slide_seconds: { type: "integer", minimum: 1, maximum: 600 },
         focus_mode: { type: "string", enum: ["count", "minutes"] },
         focus_count: { type: "integer", minimum: 0, maximum: 50 },
         focus_minutes: { type: "integer", minimum: 0, maximum: 1440 },
@@ -210,7 +215,7 @@ export const TENANT_JSON_SCHEMA = {
           template: {
             type: ["string", "null"],
             description:
-              'Overrides the organization template: "zeitplan", "ads" or "ads:<ad set id>"',
+              'Overrides the organization template: "zeitplan", "slides" or "slides:<slide set id>"',
           },
 
           color_scheme: {
@@ -276,9 +281,9 @@ export const TENANT_JSON_SCHEMA = {
         },
       },
     },
-    ad_sets: {
+    slide_sets: {
       type: "array",
-      description: "Ad sets; a display template selects one of them",
+      description: "Slide sets; a display template selects one of them",
       items: {
         type: "object",
         additionalProperties: false,
@@ -291,18 +296,21 @@ export const TENANT_JSON_SCHEMA = {
             description: "Reference id, derived from the name when not set explicitly",
           },
           name: { type: "string", minLength: 1, maxLength: 120 },
-          ad_seconds: {
+          slide_seconds: {
             type: "integer",
             minimum: 1,
             maximum: 600,
-            description: "Display duration per ad in this set",
+            description: "Default display duration per slide in this set",
           },
+          show_room_name: { type: "boolean", default: true, description: "Show the room name in this set" },
+          show_clock: { type: "boolean", default: true, description: "Show the clock in this set" },
+          show_logo: { type: "boolean", default: true, description: "Show the organization logo in this set" },
         },
       },
     },
-    ads: {
+    slides: {
       type: "array",
-      description: "Images shown by the ads template, in display order",
+      description: "Images shown by the slides template, in display order",
       items: {
         type: "object",
         additionalProperties: false,
@@ -311,12 +319,18 @@ export const TENANT_JSON_SCHEMA = {
           name: { type: "string", minLength: 1, maxLength: 120 },
           file: {
             type: "string",
-            description: "Path of the image inside the export archive, e.g. images/ads/01-logo.png",
+            description: "Path of the image inside the export archive, e.g. images/slides/01-logo.png",
           },
           content_type: { type: "string" },
           set: {
             type: ["string", "null"],
-            description: "id of an entry in ad_sets; null uses the first set",
+            description: "id of an entry in slide_sets; null uses the first set",
+          },
+          duration_seconds: {
+            type: ["integer", "null"],
+            minimum: 1,
+            maximum: 600,
+            description: "Optional display duration for this slide in seconds; null falls back to the set duration",
           },
         },
       },

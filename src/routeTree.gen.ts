@@ -22,8 +22,8 @@ import { Route as TenantTenantKeyRoomRoomIdRouteImport } from './routes/tenant/$
 import { Route as ApiPublicLogoTenantKeyRouteImport } from './routes/api/public/logo.$tenantKey'
 import { Route as ApiPublicStreamTenantKeyRoomIdRouteImport } from './routes/api/public/stream.$tenantKey.$roomId'
 import { Route as ApiPublicSnapshotTenantKeyRoomIdRouteImport } from './routes/api/public/snapshot.$tenantKey.$roomId'
+import { Route as ApiPublicSlideTenantKeySlideIdRouteImport } from './routes/api/public/slide.$tenantKey.$slideId'
 import { Route as ApiPublicEntryBgTenantKeyEntryIdRouteImport } from './routes/api/public/entry-bg.$tenantKey.$entryId'
-import { Route as ApiPublicAdTenantKeyAdIdRouteImport } from './routes/api/public/ad.$tenantKey.$adId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,16 +94,16 @@ const ApiPublicSnapshotTenantKeyRoomIdRoute =
     path: '/api/public/snapshot/$tenantKey/$roomId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSlideTenantKeySlideIdRoute =
+  ApiPublicSlideTenantKeySlideIdRouteImport.update({
+    id: '/api/public/slide/$tenantKey/$slideId',
+    path: '/api/public/slide/$tenantKey/$slideId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEntryBgTenantKeyEntryIdRoute =
   ApiPublicEntryBgTenantKeyEntryIdRouteImport.update({
     id: '/api/public/entry-bg/$tenantKey/$entryId',
     path: '/api/public/entry-bg/$tenantKey/$entryId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicAdTenantKeyAdIdRoute =
-  ApiPublicAdTenantKeyAdIdRouteImport.update({
-    id: '/api/public/ad/$tenantKey/$adId',
-    path: '/api/public/ad/$tenantKey/$adId',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -119,8 +119,8 @@ export interface FileRoutesByFullPath {
   '/tr/$token/': typeof TrTokenIndexRoute
   '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
   '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
-  '/api/public/ad/$tenantKey/$adId': typeof ApiPublicAdTenantKeyAdIdRoute
   '/api/public/entry-bg/$tenantKey/$entryId': typeof ApiPublicEntryBgTenantKeyEntryIdRoute
+  '/api/public/slide/$tenantKey/$slideId': typeof ApiPublicSlideTenantKeySlideIdRoute
   '/api/public/snapshot/$tenantKey/$roomId': typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
@@ -135,8 +135,8 @@ export interface FileRoutesByTo {
   '/tr/$token': typeof TrTokenIndexRoute
   '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
   '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
-  '/api/public/ad/$tenantKey/$adId': typeof ApiPublicAdTenantKeyAdIdRoute
   '/api/public/entry-bg/$tenantKey/$entryId': typeof ApiPublicEntryBgTenantKeyEntryIdRoute
+  '/api/public/slide/$tenantKey/$slideId': typeof ApiPublicSlideTenantKeySlideIdRoute
   '/api/public/snapshot/$tenantKey/$roomId': typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
@@ -153,8 +153,8 @@ export interface FileRoutesById {
   '/tr/$token/': typeof TrTokenIndexRoute
   '/api/public/logo/$tenantKey': typeof ApiPublicLogoTenantKeyRoute
   '/tenant/$tenantKey/room/$roomId': typeof TenantTenantKeyRoomRoomIdRoute
-  '/api/public/ad/$tenantKey/$adId': typeof ApiPublicAdTenantKeyAdIdRoute
   '/api/public/entry-bg/$tenantKey/$entryId': typeof ApiPublicEntryBgTenantKeyEntryIdRoute
+  '/api/public/slide/$tenantKey/$slideId': typeof ApiPublicSlideTenantKeySlideIdRoute
   '/api/public/snapshot/$tenantKey/$roomId': typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   '/api/public/stream/$tenantKey/$roomId': typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
@@ -172,8 +172,8 @@ export interface FileRouteTypes {
     | '/tr/$token/'
     | '/api/public/logo/$tenantKey'
     | '/tenant/$tenantKey/room/$roomId'
-    | '/api/public/ad/$tenantKey/$adId'
     | '/api/public/entry-bg/$tenantKey/$entryId'
+    | '/api/public/slide/$tenantKey/$slideId'
     | '/api/public/snapshot/$tenantKey/$roomId'
     | '/api/public/stream/$tenantKey/$roomId'
   fileRoutesByTo: FileRoutesByTo
@@ -188,8 +188,8 @@ export interface FileRouteTypes {
     | '/tr/$token'
     | '/api/public/logo/$tenantKey'
     | '/tenant/$tenantKey/room/$roomId'
-    | '/api/public/ad/$tenantKey/$adId'
     | '/api/public/entry-bg/$tenantKey/$entryId'
+    | '/api/public/slide/$tenantKey/$slideId'
     | '/api/public/snapshot/$tenantKey/$roomId'
     | '/api/public/stream/$tenantKey/$roomId'
   id:
@@ -205,8 +205,8 @@ export interface FileRouteTypes {
     | '/tr/$token/'
     | '/api/public/logo/$tenantKey'
     | '/tenant/$tenantKey/room/$roomId'
-    | '/api/public/ad/$tenantKey/$adId'
     | '/api/public/entry-bg/$tenantKey/$entryId'
+    | '/api/public/slide/$tenantKey/$slideId'
     | '/api/public/snapshot/$tenantKey/$roomId'
     | '/api/public/stream/$tenantKey/$roomId'
   fileRoutesById: FileRoutesById
@@ -221,8 +221,8 @@ export interface RootRouteChildren {
   TenantTenantKeyIndexRoute: typeof TenantTenantKeyIndexRoute
   ApiPublicLogoTenantKeyRoute: typeof ApiPublicLogoTenantKeyRoute
   TenantTenantKeyRoomRoomIdRoute: typeof TenantTenantKeyRoomRoomIdRoute
-  ApiPublicAdTenantKeyAdIdRoute: typeof ApiPublicAdTenantKeyAdIdRoute
   ApiPublicEntryBgTenantKeyEntryIdRoute: typeof ApiPublicEntryBgTenantKeyEntryIdRoute
+  ApiPublicSlideTenantKeySlideIdRoute: typeof ApiPublicSlideTenantKeySlideIdRoute
   ApiPublicSnapshotTenantKeyRoomIdRoute: typeof ApiPublicSnapshotTenantKeyRoomIdRoute
   ApiPublicStreamTenantKeyRoomIdRoute: typeof ApiPublicStreamTenantKeyRoomIdRoute
 }
@@ -320,18 +320,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSnapshotTenantKeyRoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/slide/$tenantKey/$slideId': {
+      id: '/api/public/slide/$tenantKey/$slideId'
+      path: '/api/public/slide/$tenantKey/$slideId'
+      fullPath: '/api/public/slide/$tenantKey/$slideId'
+      preLoaderRoute: typeof ApiPublicSlideTenantKeySlideIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/entry-bg/$tenantKey/$entryId': {
       id: '/api/public/entry-bg/$tenantKey/$entryId'
       path: '/api/public/entry-bg/$tenantKey/$entryId'
       fullPath: '/api/public/entry-bg/$tenantKey/$entryId'
       preLoaderRoute: typeof ApiPublicEntryBgTenantKeyEntryIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/ad/$tenantKey/$adId': {
-      id: '/api/public/ad/$tenantKey/$adId'
-      path: '/api/public/ad/$tenantKey/$adId'
-      fullPath: '/api/public/ad/$tenantKey/$adId'
-      preLoaderRoute: typeof ApiPublicAdTenantKeyAdIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -360,8 +360,8 @@ const rootRouteChildren: RootRouteChildren = {
   TenantTenantKeyIndexRoute: TenantTenantKeyIndexRoute,
   ApiPublicLogoTenantKeyRoute: ApiPublicLogoTenantKeyRoute,
   TenantTenantKeyRoomRoomIdRoute: TenantTenantKeyRoomRoomIdRoute,
-  ApiPublicAdTenantKeyAdIdRoute: ApiPublicAdTenantKeyAdIdRoute,
   ApiPublicEntryBgTenantKeyEntryIdRoute: ApiPublicEntryBgTenantKeyEntryIdRoute,
+  ApiPublicSlideTenantKeySlideIdRoute: ApiPublicSlideTenantKeySlideIdRoute,
   ApiPublicSnapshotTenantKeyRoomIdRoute: ApiPublicSnapshotTenantKeyRoomIdRoute,
   ApiPublicStreamTenantKeyRoomIdRoute: ApiPublicStreamTenantKeyRoomIdRoute,
 }

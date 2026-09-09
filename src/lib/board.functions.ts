@@ -51,7 +51,7 @@ type TenantRow = {
   logo_url: string | null;
   logo_height: number;
   accent_color: string;
-  ad_seconds: number;
+  slide_seconds: number;
   focus_mode: string;
   focus_count: number;
   focus_minutes: number;
@@ -62,7 +62,7 @@ type TenantRow = {
 };
 
 const TENANT_COLS_BASE =
-  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
+  "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
 const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked`;
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
@@ -196,7 +196,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       template: string;
       logo_height: number;
       accent_color: string;
-      ad_seconds: number;
+      slide_seconds: number;
       focus_mode: string;
       focus_count: number;
       focus_minutes: number;
@@ -217,7 +217,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           template: z.string().min(1).max(40),
           logo_height: z.number().int().min(16).max(400),
           accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-          ad_seconds: z.number().int().min(1).max(600).default(10),
+          slide_seconds: z.number().int().min(1).max(600).default(10),
           focus_mode: z.enum(["count", "minutes"]).default("count"),
           focus_count: z.number().int().min(0).max(50).default(3),
           focus_minutes: z.number().int().min(0).max(1440).default(30),
@@ -238,7 +238,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         template: data.template,
         logo_height: data.logo_height,
         accent_color: data.accent_color.toUpperCase(),
-        ad_seconds: data.ad_seconds,
+        slide_seconds: data.slide_seconds,
         focus_mode: data.focus_mode,
         focus_count: data.focus_count,
         focus_minutes: data.focus_minutes,
@@ -295,8 +295,8 @@ export const deleteTenant = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const tenant = await requireTenantAdmin(data.key);
-    const { data: ads } = await supabase.from("ads").select("path").eq("tenant_id", tenant.id);
-    if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
+    const { data: slides } = await supabase.from("slides").select("path").eq("tenant_id", tenant.id);
+    if (slides?.length) await supabase.storage.from("tenant-ads").remove(slides.map((a) => a.path));
     const { data: bgs } = await supabase
       .from("entries")
       .select("background_path")
@@ -307,7 +307,7 @@ export const deleteTenant = createServerFn({ method: "POST" })
     if (tenant.logo_url) await supabase.storage.from("tenant-logos").remove([tenant.logo_url]);
     await supabase.from("entries").delete().eq("tenant_id", tenant.id);
     await supabase.from("webhooks").delete().eq("tenant_id", tenant.id);
-    await supabase.from("ads").delete().eq("tenant_id", tenant.id);
+    await supabase.from("slides").delete().eq("tenant_id", tenant.id);
     await supabase.from("rooms").delete().eq("tenant_id", tenant.id);
     await supabase.from("color_schemes").delete().eq("tenant_id", tenant.id);
     const { error } = await supabase.from("tenants").delete().eq("id", tenant.id);
@@ -1216,7 +1216,7 @@ export type RoomSnapshot = {
     logo_url: string | null;
     logo_height: number;
     accent_color: string;
-    ad_seconds: number;
+    slide_seconds: number;
     focus_mode: string;
     focus_count: number;
     focus_minutes: number;
@@ -1251,7 +1251,8 @@ export type RoomSnapshot = {
     register_token?: string | null;
   }[];
 
-  ads: { id: string; name: string; url: string; content_type: string }[];
+  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null }[];
+  slide_overlay?: { show_room_name?: boolean; show_clock?: boolean; show_logo?: boolean } | null;
 };
 
 export const getRoomSnapshot = createServerFn({ method: "GET" })
@@ -1289,12 +1290,12 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .eq("tenant_id", tenant.id);
     const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
     const template = room.template || tenant.template;
-    const { loadAdsForTemplate } = await import("@/lib/ads.server");
-    const { ads, adSeconds } = await loadAdsForTemplate({
+    const { loadSlidesForTemplate } = await import("@/lib/slides.server");
+    const { slides, slideSeconds, showRoomName, showClock, showLogo } = await loadSlidesForTemplate({
       tenantId: tenant.id,
       tenantKey: data.key,
       template,
-      fallbackSeconds: tenant.ad_seconds,
+      fallbackSeconds: tenant.slide_seconds,
     });
     const { data: teamRows } = await supabase
       .from("teams")
@@ -1356,7 +1357,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         logo_url: tenant.logo_url,
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
-        ad_seconds: adSeconds,
+        slide_seconds: slideSeconds,
         focus_mode: tenant.focus_mode ?? "count",
         focus_count: tenant.focus_count ?? 3,
         focus_minutes: tenant.focus_minutes ?? 30,
@@ -1372,7 +1373,8 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         template,
       },
       entries: filterVisible(expandedEntries, room.name, tenant.past_grace_minutes),
-      ads,
+      slides,
+      slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
     };
 
   });
@@ -1489,30 +1491,33 @@ export const removeTenantLogo = createServerFn({ method: "POST" })
 
 // ---------- ad sets ----------
 
-export const listAdSets = createServerFn({ method: "GET" })
+export const listSlideSets = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
-      .from("ad_sets")
-      .select("id, ref_id, name, ad_seconds, sort_order")
+      .from("slide_sets")
+      .select("id, ref_id, name, slide_seconds, sort_order, show_room_name, show_clock, show_logo")
       .eq("tenant_id", id)
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
 
-const adSetInput = z.object({
+const slideSetInput = z.object({
   id: z.string().uuid().optional(),
   ref_id: z.string().max(60).nullable().default(null),
   name: z.string().min(1).max(120),
-  ad_seconds: z.number().int().min(1).max(600).default(10),
+  slide_seconds: z.number().int().min(1).max(600).default(10),
+  show_room_name: z.boolean().default(true),
+  show_clock: z.boolean().default(true),
+  show_logo: z.boolean().default(true),
 });
 
-export const upsertAdSet = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; set: z.infer<typeof adSetInput> }) =>
-    z.object({ key: z.string().min(1), set: adSetInput }).parse(d),
+export const upsertSlideSet = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; set: z.infer<typeof slideSetInput> }) =>
+    z.object({ key: z.string().min(1), set: slideSetInput }).parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
@@ -1521,27 +1526,37 @@ export const upsertAdSet = createServerFn({ method: "POST" })
     const refId = s.ref_id?.trim() ? slugify(s.ref_id) : null;
     if (s.id) {
       const { error } = await supabase
-        .from("ad_sets")
-        .update({ name: s.name, ad_seconds: s.ad_seconds, ref_id: refId })
+        .from("slide_sets")
+        .update({
+          name: s.name,
+          slide_seconds: s.slide_seconds,
+          ref_id: refId,
+          show_room_name: s.show_room_name,
+          show_clock: s.show_clock,
+          show_logo: s.show_logo,
+        })
         .eq("id", s.id)
         .eq("tenant_id", tenantId);
       if (error) throw new Error(error.message);
       return { id: s.id };
     }
     const { data: last } = await supabase
-      .from("ad_sets")
+      .from("slide_sets")
       .select("sort_order")
       .eq("tenant_id", tenantId)
       .order("sort_order", { ascending: false })
       .limit(1);
     const { data: row, error } = await supabase
-      .from("ad_sets")
+      .from("slide_sets")
       .insert({
         tenant_id: tenantId,
         name: s.name,
-        ad_seconds: s.ad_seconds,
+        slide_seconds: s.slide_seconds,
         ref_id: refId,
         sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+        show_room_name: s.show_room_name,
+        show_clock: s.show_clock,
+        show_logo: s.show_logo,
       })
       .select("id")
       .single();
@@ -1549,40 +1564,40 @@ export const upsertAdSet = createServerFn({ method: "POST" })
     return { id: row.id };
   });
 
-export const deleteAdSet = createServerFn({ method: "POST" })
+export const deleteSlideSet = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string }) =>
     z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const tenant = await requireTenantAdmin(data.key);
-    const { data: ads } = await supabase
-      .from("ads")
+    const { data: slides } = await supabase
+      .from("slides")
       .select("path")
       .eq("tenant_id", tenant.id)
-      .eq("ad_set_id", data.id);
-    if (ads?.length) await supabase.storage.from("tenant-ads").remove(ads.map((a) => a.path));
+      .eq("slide_set_id", data.id);
+    if (slides?.length) await supabase.storage.from("tenant-ads").remove(slides.map((a) => a.path));
     const { error } = await supabase
-      .from("ad_sets")
+      .from("slide_sets")
       .delete()
       .eq("id", data.id)
       .eq("tenant_id", tenant.id);
     if (error) throw new Error(error.message);
     // Displays pointing at the removed set fall back to the schedule template.
-    if (tenant.template === `ads:${data.id}`) {
+    if (tenant.template === `slides:${data.id}`) {
       await supabase.from("tenants").update({ template: "zeitplan" }).eq("id", tenant.id);
     }
     await supabase
       .from("rooms")
       .update({ template: null })
       .eq("tenant_id", tenant.id)
-      .eq("template", `ads:${data.id}`);
+      .eq("template", `slides:${data.id}`);
     return { ok: true };
   });
 
-// ---------- ads ----------
+// ---------- slides ----------
 
-export const listAds = createServerFn({ method: "GET" })
+export const listSlides = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string; setId: string }) =>
     z.object({ key: z.string().min(1), setId: z.string().uuid() }).parse(d),
   )
@@ -1590,10 +1605,10 @@ export const listAds = createServerFn({ method: "GET" })
     const supabase = await getAdmin();
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
-      .from("ads")
-      .select("id, name, content_type, sort_order, path")
+      .from("slides")
+      .select("id, name, content_type, sort_order, path, duration_seconds")
       .eq("tenant_id", id)
-      .eq("ad_set_id", data.setId)
+      .eq("slide_set_id", data.setId)
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
     const list = rows ?? [];
@@ -1602,23 +1617,24 @@ export const listAds = createServerFn({ method: "GET" })
     const signed = new Map<string, string>();
     if (list.length) {
       const { data: urls } = await supabase.storage.from("tenant-ads").createSignedUrls(
-        list.map((a) => a.path),
+        list.map((s) => s.path),
         60 * 60 * 12,
       );
       (urls ?? []).forEach((u, i) => {
         if (u.signedUrl && list[i]) signed.set(list[i].id, u.signedUrl);
       });
     }
-    return list.map((a) => ({
-      id: a.id,
-      name: a.name,
-      content_type: a.content_type,
-      sort_order: a.sort_order,
-      url: signed.get(a.id) ?? null,
+    return list.map((s) => ({
+      id: s.id,
+      name: s.name,
+      content_type: s.content_type,
+      sort_order: s.sort_order,
+      duration_seconds: s.duration_seconds ?? null,
+      url: signed.get(s.id) ?? null,
     }));
   });
 
-export const reorderAds = createServerFn({ method: "POST" })
+export const reorderSlides = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; ids: string[] }) =>
     z.object({ key: z.string().min(1), ids: z.array(z.string().uuid()).min(1) }).parse(d),
   )
@@ -1627,7 +1643,7 @@ export const reorderAds = createServerFn({ method: "POST" })
     const { id: tenantId } = await requireTenantAdmin(data.key);
     for (let i = 0; i < data.ids.length; i++) {
       await supabase
-        .from("ads")
+        .from("slides")
         .update({ sort_order: i })
         .eq("id", data.ids[i])
         .eq("tenant_id", tenantId);
@@ -1635,7 +1651,7 @@ export const reorderAds = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const uploadAd = createServerFn({ method: "POST" })
+export const uploadSlide = createServerFn({ method: "POST" })
   .inputValidator(
     (d: {
       key: string;
@@ -1659,24 +1675,24 @@ export const uploadAd = createServerFn({ method: "POST" })
     const tenant = await requireTenantAdmin(data.key);
     const binary = Uint8Array.from(atob(data.dataBase64), (c) => c.charCodeAt(0));
     const ext = (data.filename.split(".").pop() || "png").toLowerCase().slice(0, 5);
-    const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${tenant.id}/slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from("tenant-ads")
       .upload(path, binary, { contentType: data.contentType, upsert: true });
     if (upErr) throw new Error(upErr.message);
     const { data: last } = await supabase
-      .from("ads")
+      .from("slides")
       .select("sort_order")
       .eq("tenant_id", tenant.id)
-      .eq("ad_set_id", data.setId)
+      .eq("slide_set_id", data.setId)
       .order("sort_order", { ascending: false })
       .limit(1);
     const nextOrder = (last?.[0]?.sort_order ?? -1) + 1;
     const { data: row, error } = await supabase
-      .from("ads")
+      .from("slides")
       .insert({
         tenant_id: tenant.id,
-        ad_set_id: data.setId,
+        slide_set_id: data.setId,
         name: data.filename.slice(0, 120),
         path,
         content_type: data.contentType,
@@ -1689,25 +1705,26 @@ export const uploadAd = createServerFn({ method: "POST" })
   });
 
 
-export const renameAd = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; id: string; name: string }) =>
-    z
-      .object({ key: z.string().min(1), id: z.string().uuid(), name: z.string().min(1).max(120) })
-      .parse(d),
-  )
+const slideUpdateInput = z.object({
+  key: z.string().min(1),
+  id: z.string().uuid(),
+  name: z.string().min(1).max(120),
+  duration_seconds: z.number().int().min(1).max(600).nullable().optional(),
+});
+
+export const updateSlide = createServerFn({ method: "POST" })
+  .inputValidator((d: z.infer<typeof slideUpdateInput>) => slideUpdateInput.parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
-    const { error } = await supabase
-      .from("ads")
-      .update({ name: data.name })
-      .eq("id", data.id)
-      .eq("tenant_id", tenantId);
+    const update: TablesUpdate<"slides"> = { name: data.name };
+    if (data.duration_seconds !== undefined) update.duration_seconds = data.duration_seconds;
+    const { error } = await supabase.from("slides").update(update).eq("id", data.id).eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
-export const moveAd = createServerFn({ method: "POST" })
+export const moveSlide = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string; direction: "up" | "down" }) =>
     z
       .object({
@@ -1721,7 +1738,7 @@ export const moveAd = createServerFn({ method: "POST" })
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
     const { data: rows } = await supabase
-      .from("ads")
+      .from("slides")
       .select("id, sort_order")
       .eq("tenant_id", tenantId)
       .order("sort_order", { ascending: true });
@@ -1729,27 +1746,27 @@ export const moveAd = createServerFn({ method: "POST" })
     const idx = list.findIndex((a) => a.id === data.id);
     const swapIdx = data.direction === "up" ? idx - 1 : idx + 1;
     if (idx < 0 || swapIdx < 0 || swapIdx >= list.length) return { ok: true };
-    await supabase.from("ads").update({ sort_order: swapIdx }).eq("id", list[idx].id);
-    await supabase.from("ads").update({ sort_order: idx }).eq("id", list[swapIdx].id);
+    await supabase.from("slides").update({ sort_order: swapIdx }).eq("id", list[idx].id);
+    await supabase.from("slides").update({ sort_order: idx }).eq("id", list[swapIdx].id);
     return { ok: true };
   });
 
-export const deleteAd = createServerFn({ method: "POST" })
+export const deleteSlide = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; id: string }) =>
     z.object({ key: z.string().min(1), id: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
-    const { data: ad } = await supabase
-      .from("ads")
+    const { data: slide } = await supabase
+      .from("slides")
       .select("path")
       .eq("id", data.id)
       .eq("tenant_id", tenantId)
       .maybeSingle();
-    if (ad?.path) await supabase.storage.from("tenant-ads").remove([ad.path]);
+    if (slide?.path) await supabase.storage.from("tenant-ads").remove([slide.path]);
     const { error } = await supabase
-      .from("ads")
+      .from("slides")
       .delete()
       .eq("id", data.id)
       .eq("tenant_id", tenantId);
@@ -1781,7 +1798,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await requireTenantAdmin(data.key);
-    const [schemes, rooms, teams, entries, adSets, ads, webhooks] = await Promise.all([
+    const [schemes, rooms, teams, entries, adSets, slides, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -1806,13 +1823,13 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("time", { ascending: true }),
 
       supabase
-        .from("ad_sets")
-        .select("id, ref_id, name, ad_seconds, sort_order")
+        .from("slide_sets")
+        .select("id, ref_id, name, slide_seconds, sort_order, show_room_name, show_clock, show_logo")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
       supabase
-        .from("ads")
-        .select("name, path, content_type, sort_order, ad_set_id")
+        .from("slides")
+        .select("name, path, content_type, sort_order, slide_set_id, duration_seconds")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
       supabase
@@ -1837,12 +1854,12 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const setRows = adSets.data ?? [];
     const setIds = refIdsFor(setRows);
     const setIdByUuid = new Map(setRows.map((s, i) => [s.id, setIds[i]]));
-    /** Turns "ads:<uuid>" into "ads:<ref id>" so exports stay portable. */
+    /** Turns "slides:<uuid>" into "slides:<ref id>" so exports stay portable. */
     const templateRefOf = (template: string | null): string | null => {
       if (!template) return null;
-      if (!template.startsWith("ads:")) return template;
+      if (!template.startsWith("slides:")) return template;
       const ref = setIdByUuid.get(template.slice(4));
-      return ref ? `ads:${ref}` : "ads";
+      return ref ? `slides:${ref}` : "slides";
     };
 
     const files: ExportedFile[] = [];
@@ -1862,23 +1879,24 @@ export const exportTenantData = createServerFn({ method: "GET" })
       }
     }
 
-    const adItems: { name: string; file: string; content_type: string; set: string | null }[] = [];
+    const slideItems: { name: string; file: string; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
     let i = 0;
-    for (const a of ads.data ?? []) {
+    for (const a of slides.data ?? []) {
       i++;
       const { data: file } = await supabase.storage.from("tenant-ads").download(a.path);
       if (!file) continue;
-      const path = `images/ads/${String(i).padStart(2, "0")}-${slugify(a.name) || "ad"}.${extOf(a.path)}`;
+      const path = `images/slides/${String(i).padStart(2, "0")}-${slugify(a.name) || "slide"}.${extOf(a.path)}`;
       files.push({
         path,
         content_type: a.content_type,
         dataBase64: toBase64(new Uint8Array(await file.arrayBuffer())),
       });
-      adItems.push({
+      slideItems.push({
         name: a.name,
         file: path,
         content_type: a.content_type,
-        set: setIdByUuid.get(a.ad_set_id) ?? null,
+        set: setIdByUuid.get(a.slide_set_id) ?? null,
+        duration_seconds: a.duration_seconds ?? null,
       });
     }
 
@@ -1929,7 +1947,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         template: templateRefOf(tenant.template) ?? "zeitplan",
         logo_height: tenant.logo_height,
         accent_color: tenant.accent_color,
-        ad_seconds: tenant.ad_seconds,
+        slide_seconds: tenant.slide_seconds,
         focus_mode: (tenant.focus_mode ?? "count") as "count" | "minutes",
         focus_count: tenant.focus_count ?? 3,
         focus_minutes: tenant.focus_minutes ?? 30,
@@ -1957,12 +1975,15 @@ export const exportTenantData = createServerFn({ method: "GET" })
       })),
       entries: entryItems,
 
-      ad_sets: setRows.map((s, idx) => ({
+      slide_sets: setRows.map((s, idx) => ({
         id: setIds[idx],
         name: s.name,
-        ad_seconds: s.ad_seconds,
+        slide_seconds: s.slide_seconds,
+        show_room_name: s.show_room_name ?? true,
+        show_clock: s.show_clock ?? true,
+        show_logo: s.show_logo ?? true,
       })),
-      ads: adItems,
+      slides: slideItems,
 
       webhooks: webhookRows.map((w, idx) => ({
         id: webhookIds[idx],
@@ -2078,45 +2099,48 @@ export const importTenantData = createServerFn({ method: "POST" })
     const schemeUuid = (ref: string | null | undefined) =>
       ref ? (schemeUuidByRef.get(ref) ?? schemeUuidByRef.get(slugify(ref)) ?? null) : null;
 
-    // ---- ad sets ----
+    // ---- slide sets ----
     const setUuidByRef = new Map<string, string>();
     let firstSetUuid: string | null = null;
     const loadExistingSets = async () => {
       const { data: existing } = await supabase
-        .from("ad_sets")
+        .from("slide_sets")
         .select("id, ref_id, name, sort_order")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true });
       const taken = new Set<string>();
       for (const row of existing ?? []) {
-        setUuidByRef.set(uniqueRefId(effectiveRefId(row), taken, "ads"), row.id);
+        setUuidByRef.set(uniqueRefId(effectiveRefId(row), taken, "slides"), row.id);
         if (!firstSetUuid) firstSetUuid = row.id;
       }
       return taken;
     };
-    if (wants("ad_sets") && p.ad_sets) {
+    if (wants("slide_sets") && p.slide_sets) {
       if (replace) {
-        const { data: oldAds } = await supabase
-          .from("ads")
+        const { data: oldSlides } = await supabase
+          .from("slides")
           .select("path")
           .eq("tenant_id", tenant.id);
-        if (oldAds?.length) {
-          await supabase.storage.from("tenant-ads").remove(oldAds.map((a) => a.path));
+        if (oldSlides?.length) {
+          await supabase.storage.from("tenant-ads").remove(oldSlides.map((s) => s.path));
         }
-        await supabase.from("ad_sets").delete().eq("tenant_id", tenant.id);
+        await supabase.from("slide_sets").delete().eq("tenant_id", tenant.id);
       }
       const taken = await loadExistingSets();
       let order = 0;
-      for (const s of p.ad_sets) {
-        const ref = uniqueRefId(slugify(s.id) || slugify(s.name), taken, "ads");
+      for (const s of p.slide_sets) {
+        const ref = uniqueRefId(slugify(s.id) || slugify(s.name), taken, "slides");
         const { data: row, error } = await supabase
-          .from("ad_sets")
+          .from("slide_sets")
           .insert({
             tenant_id: tenant.id,
             name: s.name,
-            ad_seconds: s.ad_seconds,
+            slide_seconds: s.slide_seconds,
             ref_id: ref,
             sort_order: order++,
+            show_room_name: s.show_room_name ?? true,
+            show_clock: s.show_clock ?? true,
+            show_logo: s.show_logo ?? true,
           })
           .select("id")
           .single();
@@ -2124,9 +2148,9 @@ export const importTenantData = createServerFn({ method: "POST" })
           setUuidByRef.set(ref, row.id);
           setUuidByRef.set(s.id, row.id);
           if (!firstSetUuid) firstSetUuid = row.id;
-          counts.ad_sets = (counts.ad_sets ?? 0) + 1;
+          counts.slide_sets = (counts.slide_sets ?? 0) + 1;
         } else if (error) {
-          warnings.push(`Ad set "${s.name}" not imported: ${error.message}`);
+          warnings.push(`Slide set "${s.name}" not imported: ${error.message}`);
         }
       }
     } else {
@@ -2134,14 +2158,14 @@ export const importTenantData = createServerFn({ method: "POST" })
     }
     const setUuid = (ref: string | null | undefined) =>
       ref ? (setUuidByRef.get(ref) ?? setUuidByRef.get(slugify(ref)) ?? null) : null;
-    /** Maps "ads:<ref id>" back to "ads:<uuid>". */
+    /** Maps "slides:<ref id>" back to "slides:<uuid>". */
     const templateValue = (template: string | null | undefined, label: string): string | null => {
       if (!template) return null;
-      if (!template.startsWith("ads:")) return template;
+      if (!template.startsWith("slides:")) return template;
       const uuid = setUuid(template.slice(4));
-      if (uuid) return `ads:${uuid}`;
-      warnings.push(`${label}: unknown ad set "${template.slice(4)}", using the first ad set`);
-      return "ads";
+      if (uuid) return `slides:${uuid}`;
+      warnings.push(`${label}: unknown slide set "${template.slice(4)}", using the first slide set`);
+      return "slides";
     };
 
 
@@ -2362,79 +2386,80 @@ export const importTenantData = createServerFn({ method: "POST" })
     }
 
 
-    // ---- ads ----
-    if (wants("ads") && p.ads) {
+    // ---- slides ----
+    if (wants("slides") && p.slides) {
       if (replace) {
-        const { data: oldAds } = await supabase
-          .from("ads")
+        const { data: oldSlides } = await supabase
+          .from("slides")
           .select("path")
           .eq("tenant_id", tenant.id);
-        if (oldAds?.length) {
-          await supabase.storage.from("tenant-ads").remove(oldAds.map((a) => a.path));
+        if (oldSlides?.length) {
+          await supabase.storage.from("tenant-ads").remove(oldSlides.map((s) => s.path));
         }
-        await supabase.from("ads").delete().eq("tenant_id", tenant.id);
+        await supabase.from("slides").delete().eq("tenant_id", tenant.id);
       }
-      // Ads always belong to a set; create a default one when none exists yet.
+      // Slides always belong to a set; create a default one when none exists yet.
       if (!firstSetUuid) {
         const { data: row } = await supabase
-          .from("ad_sets")
-          .insert({ tenant_id: tenant.id, name: "Ads", ref_id: "ads", ad_seconds: 10 })
+          .from("slide_sets")
+          .insert({ tenant_id: tenant.id, name: "Slides", ref_id: "slides", slide_seconds: 10 })
           .select("id")
           .single();
         if (row) {
           firstSetUuid = row.id;
-          setUuidByRef.set("ads", row.id);
+          setUuidByRef.set("slides", row.id);
         }
       }
       const orderBySet = new Map<string, number>();
-      for (const a of p.ads) {
+      for (const a of p.slides) {
         const file = findFile(a.file);
         if (!file) {
-          warnings.push(`Ad "${a.name}": image file "${a.file}" is missing in the archive`);
+          warnings.push(`Slide "${a.name}": image file "${a.file}" is missing in the archive`);
           continue;
         }
         const setId = setUuid(a.set) ?? firstSetUuid;
         if (!setId) {
-          warnings.push(`Ad "${a.name}": no ad set available`);
+          warnings.push(`Slide "${a.name}": no slide set available`);
           continue;
         }
         if (a.set && !setUuid(a.set)) {
-          warnings.push(`Ad "${a.name}": unknown ad set "${a.set}", added to the first set`);
+          warnings.push(`Slide "${a.name}": unknown slide set "${a.set}", added to the first set`);
         }
         let order = orderBySet.get(setId);
         if (order === undefined) {
           const { data: last } = await supabase
-            .from("ads")
+            .from("slides")
             .select("sort_order")
             .eq("tenant_id", tenant.id)
-            .eq("ad_set_id", setId)
+            .eq("slide_set_id", setId)
             .order("sort_order", { ascending: false })
             .limit(1);
           order = (last?.[0]?.sort_order ?? -1) + 1;
         }
         const bytes = fromBase64(file.dataBase64);
-        const path = `${tenant.id}/ad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file)}`;
+        const path = `${tenant.id}/slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file)}`;
         const { error: upErr } = await supabase.storage
           .from("tenant-ads")
           .upload(path, bytes, { contentType: a.content_type || file.content_type, upsert: true });
         if (upErr) {
-          warnings.push(`Ad "${a.name}": upload failed — ${upErr.message}`);
+          warnings.push(`Slide "${a.name}": upload failed — ${upErr.message}`);
           continue;
         }
-        const { error: insErr } = await supabase.from("ads").insert({
+        const { error: insErr } = await supabase.from("slides").insert({
           tenant_id: tenant.id,
-          ad_set_id: setId,
+          slide_set_id: setId,
           name: a.name,
           path,
           content_type: a.content_type || file.content_type,
           sort_order: order,
+          duration_seconds: a.duration_seconds ?? null,
         });
         if (insErr) {
-          warnings.push(`Ad "${a.name}" not imported: ${insErr.message}`);
+          warnings.push(`Slide "${a.name}" not imported: ${insErr.message}`);
           continue;
         }
         orderBySet.set(setId, order + 1);
-        counts.ads = (counts.ads ?? 0) + 1;
+        counts.slides = (counts.slides ?? 0) + 1;
       }
     }
 
@@ -2472,7 +2497,7 @@ export const importTenantData = createServerFn({ method: "POST" })
         update.template = templateValue(p.tenant.template, "Display template") ?? "zeitplan";
         update.logo_height = p.tenant.logo_height;
         update.accent_color = p.tenant.accent_color.toUpperCase();
-        update.ad_seconds = p.tenant.ad_seconds;
+        update.slide_seconds = p.tenant.slide_seconds;
         if (p.tenant.focus_mode !== undefined) update.focus_mode = p.tenant.focus_mode;
         if (p.tenant.focus_count !== undefined) update.focus_count = p.tenant.focus_count;
         if (p.tenant.focus_minutes !== undefined) update.focus_minutes = p.tenant.focus_minutes;

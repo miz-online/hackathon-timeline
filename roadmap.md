@@ -13,3 +13,14 @@
 - [x] 11. Local driver loaded only at runtime (excluded from Cloud bundles)
 - [x] 12. Cloud build/preview verified
 - [x] 13. SQLite driver verified on Node 24 (records, defaults, files, scheduling)
+
+# Slides rename + per-slide duration + overlay toggles
+
+- [ ] 1. Rename `ad_sets`/`ads` DB tables and columns to `slide_sets`/`slides`
+- [ ] 2. Add `slides.duration_seconds` and `slide_sets.show_room_name/show_clock/show_logo`
+- [ ] 3. Update backend adapter, SQLite schema, and local storage
+- [ ] 4. Rename server functions, routes, components, and admin UI to "slides"
+- [ ] 5. Update i18n keys and user-facing text
+- [ ] 6. Update import/export format (v6, `slide_sets`/`slides`)
+- [ ] 7. Implement per-image duration override and overlay rendering
+- [ ] 8. Typecheck and verify preview
