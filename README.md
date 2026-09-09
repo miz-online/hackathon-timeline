@@ -24,8 +24,9 @@ entries within a time window; older entries are dimmed.
 - **Teams & team time** — Manage teams, assign them to rooms, and generate
 practice-time entries that expand into per-team slots with automatic end-time
 calculation.
-- **Ads** — Upload images, set display duration, and let rooms cycle through ads
-with cross-fade transitions.
+- **Slides** — Upload images, set display duration per image, and let rooms cycle
+through full-screen slides with cross-fade transitions. Each slide set can hide
+the room name, clock and logo for image-only displays.
 - **Webhooks & direct messages** — Configure webhook endpoints (e.g. Discord)
 that fire when entries become due. Direct messages can be sent manually.
 - **Import / Export** — Export all tenant data (database, settings, images) as
