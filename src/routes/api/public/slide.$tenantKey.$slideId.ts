@@ -1,7 +1,7 @@
 import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/api/public/ad/$tenantKey/$adId")({
+export const Route = createFileRoute("/api/public/slide/$tenantKey/$slideId")({
   server: {
     handlers: {
       GET: async ({ params }) => {

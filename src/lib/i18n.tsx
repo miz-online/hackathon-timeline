@@ -225,7 +225,7 @@ const en: Dict = {
   "display.untilTime": "until {time}",
   "admin.tabs.slides": "Slides",
   "settings.template.slides": "Slides (image slideshow)",
-  "settings.slideSeconds": "Ad display time (seconds)",
+  "settings.slideSeconds": "Slide display time (seconds)",
   "settings.slideSecondsHint": "Applies to all slides in every room.",
   "rooms.form.template": "Display template",
   "rooms.form.templateGlobal": "Use global setting",
