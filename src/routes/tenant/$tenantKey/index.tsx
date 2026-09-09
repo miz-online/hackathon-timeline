@@ -18,18 +18,19 @@ import {
   listColorSchemes,
   upsertColorScheme,
   deleteColorScheme,
-  listAds,
-  uploadAd,
-  deleteAd,
-  moveAd,
-  reorderAds,
+  listSlides,
+  uploadSlide,
+  deleteSlide,
+  updateSlide,
+  moveSlide,
+  reorderSlides,
   listTeams,
   upsertTeam,
   deleteTeam,
   reorderTeams,
-  listAdSets,
-  upsertAdSet,
-  deleteAdSet,
+  listSlideSets,
+  upsertSlideSet,
+  deleteSlideSet,
   updateTenantTemplate,
   uploadEntryBackground,
   removeEntryBackground,
@@ -83,7 +84,7 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
-const TABS = ["entries", "ads", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
+const TABS = ["entries", "slides", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
@@ -144,18 +145,18 @@ export function RefIdField({
   );
 }
 
-/** Template options: the schedule plus one entry per ad set. */
+/** Template options: the schedule plus one entry per slide set. */
 export function useTemplateOptions(tenantKey: string) {
   const { t } = useI18n();
-  const listSetsFn = useServerFn(listAdSets);
+  const listSetsFn = useServerFn(listSlideSets);
   const setsQ = useQuery({
-    queryKey: ["adSets", tenantKey],
+    queryKey: ["slideSets", tenantKey],
     queryFn: () => listSetsFn({ data: { key: tenantKey } }),
   });
   const sets = setsQ.data ?? [];
   return [
     { value: "zeitplan", label: t("settings.template.zeitplan") },
-    ...sets.map((s) => ({ value: `ads:${s.id}`, label: `${t("settings.template.ads")}: ${s.name}` })),
+    ...sets.map((s) => ({ value: `slides:${s.id}`, label: `${t("settings.template.slides")}: ${s.name}` })),
   ];
 }
 
@@ -204,7 +205,7 @@ function TemplateSwitcher({
         }}
         className="rounded-md border bg-background px-2 py-1.5 text-sm"
       >
-        {!known && <option value={value}>{t("settings.template.ads")}</option>}
+        {!known && <option value={value}>{t("settings.template.slides")}</option>}
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -447,8 +448,8 @@ function AdminPage() {
             />
           </TabsContent>
 
-          <TabsContent value="ads" className="space-y-4 pt-4">
-            <AdsPanel tenantKey={tenantKey} onChange={invalidate} />
+          <TabsContent value="slides" className="space-y-4 pt-4">
+            <SlidesPanel tenantKey={tenantKey} onChange={invalidate} />
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-4 pt-4">
@@ -470,7 +471,7 @@ function AdminPage() {
               accentColor={tenant.accent_color}
               graceMinutes={tenant.past_grace_minutes}
               template={tenant.template}
-              adSeconds={tenant.ad_seconds}
+              slideSeconds={tenant.slide_seconds}
               focusMode={tenant.focus_mode}
               focusCount={tenant.focus_count}
               focusMinutes={tenant.focus_minutes}
@@ -1845,7 +1846,7 @@ function RoomForm({
         >
           <option value="">{t("rooms.form.templateGlobal")}</option>
           {tpl && !templateOptions.some((o) => o.value === tpl) && (
-            <option value={tpl}>{t("settings.template.ads")}</option>
+            <option value={tpl}>{t("settings.template.slides")}</option>
           )}
           {templateOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -1897,7 +1898,7 @@ function SettingsPanel({
   accentColor,
   graceMinutes,
   template,
-  adSeconds,
+  slideSeconds,
   focusMode,
   focusCount,
   focusMinutes,
@@ -1914,7 +1915,7 @@ function SettingsPanel({
   accentColor: string;
   graceMinutes: number;
   template: string;
-  adSeconds: number;
+  slideSeconds: number;
   focusMode: string;
   focusCount: number;
   focusMinutes: number;
@@ -1929,7 +1930,7 @@ function SettingsPanel({
   const [n, setN] = useState(name);
   const [g, setG] = useState(graceMinutes);
   
-  const [adSec, setAdSec] = useState(adSeconds);
+  const [slideSec, setAdSec] = useState(slideSeconds);
   const [lh, setLh] = useState(logoHeight);
   const [accent, setAccent] = useState(accentColor || DEFAULT_ACCENT);
   const [fMode, setFMode] = useState<"count" | "minutes">(
@@ -1975,7 +1976,7 @@ function SettingsPanel({
                 template,
                 logo_height: lh,
                 accent_color: accent,
-                ad_seconds: adSec,
+                slide_seconds: slideSec,
                 focus_mode: fMode,
                 focus_count: fCount,
                 focus_minutes: fMinutes,
@@ -2519,30 +2520,33 @@ function SchemeForm({
   );
 }
 
-// --------------- Ads ---------------
+// --------------- Slides ---------------
 
-type AdSetRow = {
+type SlideSetRow = {
   id: string;
   ref_id?: string | null;
   name: string;
-  ad_seconds: number;
+  slide_seconds: number;
   sort_order?: number;
+  show_room_name?: boolean | null;
+  show_clock?: boolean | null;
+  show_logo?: boolean | null;
 };
 
-/** Ad sets are fully separate; the tabs switch between them. */
-function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => void }) {
+/** Slide sets are fully separate; the tabs switch between them. */
+function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const listSetsFn = useServerFn(listAdSets);
-  const upsertSetFn = useServerFn(upsertAdSet);
-  const deleteSetFn = useServerFn(deleteAdSet);
+  const listSetsFn = useServerFn(listSlideSets);
+  const upsertSetFn = useServerFn(upsertSlideSet);
+  const deleteSetFn = useServerFn(deleteSlideSet);
   const [activeSet, setActiveSet] = useState<string | null>(null);
 
   const setsQ = useQuery({
-    queryKey: ["adSets", tenantKey],
+    queryKey: ["slideSets", tenantKey],
     queryFn: () => listSetsFn({ data: { key: tenantKey } }),
   });
-  const sets: AdSetRow[] = setsQ.data ?? [];
+  const sets: SlideSetRow[] = setsQ.data ?? [];
 
   useEffect(() => {
     if (!sets.length) {
@@ -2554,23 +2558,37 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
 
   const current = sets.find((s) => s.id === activeSet) ?? null;
   const refreshSets = () => {
-    qc.invalidateQueries({ queryKey: ["adSets", tenantKey] });
+    qc.invalidateQueries({ queryKey: ["slideSets", tenantKey] });
     onChange();
   };
 
   const [name, setName] = useState("");
   const [refId, setRefId] = useState("");
   const [seconds, setSeconds] = useState(10);
+  const [showRoomName, setShowRoomName] = useState(true);
+  const [showClock, setShowClock] = useState(true);
+  const [showLogo, setShowLogo] = useState(true);
   useEffect(() => {
     setName(current?.name ?? "");
     setRefId(current?.ref_id ?? "");
-    setSeconds(current?.ad_seconds ?? 10);
-  }, [current?.id, current?.name, current?.ref_id, current?.ad_seconds]);
+    setSeconds(current?.slide_seconds ?? 10);
+    setShowRoomName(current?.show_room_name ?? true);
+    setShowClock(current?.show_clock ?? true);
+    setShowLogo(current?.show_logo ?? true);
+  }, [
+    current?.id,
+    current?.name,
+    current?.ref_id,
+    current?.slide_seconds,
+    current?.show_room_name,
+    current?.show_clock,
+    current?.show_logo,
+  ]);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">{t("adSets.title")}</h2>
+        <h2 className="text-lg font-medium">{t("slideSets.title")}</h2>
         <Button
           size="sm"
           onClick={async () => {
@@ -2579,9 +2597,12 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
                 data: {
                   key: tenantKey,
                   set: {
-                    name: `${t("adSets.newName")} ${sets.length + 1}`,
+                    name: `${t("slideSets.newName")} ${sets.length + 1}`,
                     ref_id: null,
-                    ad_seconds: 10,
+                    slide_seconds: 10,
+                    show_room_name: true,
+                    show_clock: true,
+                    show_logo: true,
                   },
                 },
               });
@@ -2592,12 +2613,12 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
             }
           }}
         >
-          {t("adSets.new")}
+          {t("slideSets.new")}
         </Button>
       </div>
 
       {sets.length === 0 ? (
-        <Card className="p-6 text-sm text-muted-foreground text-center">{t("adSets.empty")}</Card>
+        <Card className="p-6 text-sm text-muted-foreground text-center">{t("slideSets.empty")}</Card>
       ) : (
         <>
           <div className="flex flex-wrap gap-2 border-b pb-2">
@@ -2617,11 +2638,11 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
             <Card className="space-y-3 p-4">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <Label>{t("adSets.name")}</Label>
+                  <Label>{t("slideSets.name")}</Label>
                   <Input value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label>{t("adSets.seconds")}</Label>
+                  <Label>{t("slideSets.seconds")}</Label>
                   <Input
                     type="number"
                     min={1}
@@ -2631,6 +2652,20 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
                   />
                 </div>
                 <RefIdField value={refId} onChange={setRefId} name={name} />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={showRoomName} onCheckedChange={(v) => setShowRoomName(Boolean(v))} />
+                  {t("slideSets.showRoomName")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={showClock} onCheckedChange={(v) => setShowClock(Boolean(v))} />
+                  {t("slideSets.showClock")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={showLogo} onCheckedChange={(v) => setShowLogo(Boolean(v))} />
+                  {t("slideSets.showLogo")}
+                </label>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -2644,27 +2679,30 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
                             id: current.id,
                             name: name.trim() || current.name,
                             ref_id: refId.trim() || null,
-                            ad_seconds: Math.min(600, Math.max(1, seconds || 10)),
+                            slide_seconds: Math.min(600, Math.max(1, seconds || 10)),
+                            show_room_name: showRoomName,
+                            show_clock: showClock,
+                            show_logo: showLogo,
                           },
                         },
                       });
-                      toast.success(t("adSets.saved"));
+                      toast.success(t("slideSets.saved"));
                       refreshSets();
                     } catch (e) {
                       toast.error((e as Error).message);
                     }
                   }}
                 >
-                  {t("adSets.save")}
+                  {t("slideSets.save")}
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={async () => {
-                    if (!confirm(t("adSets.confirmDelete"))) return;
+                    if (!confirm(t("slideSets.confirmDelete"))) return;
                     try {
                       await deleteSetFn({ data: { key: tenantKey, id: current.id } });
-                      toast.success(t("adSets.deleted"));
+                      toast.success(t("slideSets.deleted"));
                       setActiveSet(null);
                       refreshSets();
                     } catch (e) {
@@ -2672,20 +2710,20 @@ function AdsPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () => 
                     }
                   }}
                 >
-                  {t("adSets.delete")}
+                  {t("slideSets.delete")}
                 </Button>
               </div>
             </Card>
           )}
 
-          {current && <AdSetAds tenantKey={tenantKey} setId={current.id} onChange={onChange} />}
+          {current && <SlideSetSlides tenantKey={tenantKey} setId={current.id} onChange={onChange} />}
         </>
       )}
     </div>
   );
 }
 
-function AdSetAds({
+function SlideSetSlides({
   tenantKey,
   setId,
   onChange,
@@ -2696,11 +2734,12 @@ function AdSetAds({
 }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const listFn = useServerFn(listAds);
-  const uploadFn = useServerFn(uploadAd);
-  const deleteFn = useServerFn(deleteAd);
-  const moveFn = useServerFn(moveAd);
-  const reorderFn = useServerFn(reorderAds);
+  const listFn = useServerFn(listSlides);
+  const uploadFn = useServerFn(uploadSlide);
+  const deleteFn = useServerFn(deleteSlide);
+  const moveFn = useServerFn(moveSlide);
+  const updateFn = useServerFn(updateSlide);
+  const reorderFn = useServerFn(reorderSlides);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -2710,16 +2749,16 @@ function AdSetAds({
   useEffect(() => setOrder(null), [setId]);
 
   const adsQ = useQuery({
-    queryKey: ["ads", tenantKey, setId],
+    queryKey: ["slides", tenantKey, setId],
     queryFn: () => listFn({ data: { key: tenantKey, setId } }),
   });
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["ads", tenantKey, setId] });
+    qc.invalidateQueries({ queryKey: ["slides", tenantKey, setId] });
     onChange();
   };
 
   const raw = adsQ.data ?? [];
-  const ads =
+  const slides =
     order && order.length === raw.length
       ? order
           .map((id) => raw.find((a) => a.id === id))
@@ -2727,7 +2766,7 @@ function AdSetAds({
       : raw;
 
   const reorderAt = async (fromId: string, insertIdx: number) => {
-    const ids = ads.map((a) => a.id);
+    const ids = slides.map((a) => a.id);
     const from = ids.indexOf(fromId);
     if (from < 0) return;
     let to = insertIdx;
@@ -2754,12 +2793,12 @@ function AdSetAds({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">{t("ads.title")}</h2>
+        <h2 className="text-lg font-medium">{t("slides.title")}</h2>
         <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {t("ads.upload")}
+          {t("slides.upload")}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">{t("ads.hint")}</p>
+      <p className="text-xs text-muted-foreground">{t("slides.hint")}</p>
 
       <input
         ref={fileRef}
@@ -2775,7 +2814,7 @@ function AdSetAds({
           try {
             for (const file of files) {
               if (file.size > 10 * 1024 * 1024) {
-                toast.error(t("ads.tooLarge"));
+                toast.error(t("slides.tooLarge"));
                 continue;
               }
               const buf = new Uint8Array(await file.arrayBuffer());
@@ -2791,7 +2830,7 @@ function AdSetAds({
                 },
               });
             }
-            toast.success(t("ads.uploaded"));
+            toast.success(t("slides.uploaded"));
             refresh();
           } catch (e) {
             toast.error((e as Error).message);
@@ -2802,10 +2841,10 @@ function AdSetAds({
       />
 
       <div className="space-y-2">
-        {ads.length === 0 ? (
-          <Card className="p-6 text-sm text-muted-foreground text-center">{t("ads.empty")}</Card>
+        {slides.length === 0 ? (
+          <Card className="p-6 text-sm text-muted-foreground text-center">{t("slides.empty")}</Card>
         ) : (
-          ads.map((a, i, arr) => (
+          slides.map((a, i, arr) => (
             <div
               key={a.id}
               className="space-y-2"
@@ -2846,14 +2885,38 @@ function AdSetAds({
 
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
               <img
-                src={a.url ?? `/api/public/ad/${tenantKey}/${a.id}`}
+                src={a.url ?? `/api/public/slide/${tenantKey}/${a.id}`}
                 alt={a.name}
                 draggable={false}
                 className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
               />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={600}
+                      placeholder=""
+                      className="w-20 h-8 text-sm"
+                      value={a.duration_seconds ?? ""}
+                      onChange={async (e) => {
+                        const raw = e.target.value;
+                        const value = raw === "" ? null : Math.min(600, Math.max(1, Number(raw) || 1));
+                        try {
+                          await updateFn({
+                            data: { key: tenantKey, id: a.id, name: a.name, duration_seconds: value },
+                          });
+                          toast.success(t("slides.saved"));
+                          refresh();
+                        } catch (err) {
+                          toast.error((err as Error).message);
+                        }
+                      }}
+                    />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{t("slides.duration")}</span>
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -2877,21 +2940,21 @@ function AdSetAds({
                     ↓
                   </Button>
                   <Button size="sm" variant="outline" asChild>
-                    <a href={`/api/public/ad/${tenantKey}/${a.id}`} download={a.name}>
-                      {t("ads.download")}
+                    <a href={`/api/public/slide/${tenantKey}/${a.id}`} download={a.name}>
+                      {t("slides.download")}
                     </a>
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={async () => {
-                      if (!confirm(t("ads.confirmDelete"))) return;
+                      if (!confirm(t("slides.confirmDelete"))) return;
                       await deleteFn({ data: { key: tenantKey, id: a.id } });
-                      toast.success(t("ads.deleted"));
+                      toast.success(t("slides.deleted"));
                       refresh();
                     }}
                   >
-                    {t("ads.delete")}
+                    {t("slides.delete")}
                   </Button>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createFileRoute } from "@tanstack/react-router";
-import { loadAdsForTemplate } from "@/lib/ads.server";
+import { loadSlidesForTemplate } from "@/lib/slides.server";
 import { withOptionalColumns } from "@/lib/optional-columns";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
         const { data: tenant } = await supabaseAdmin
           .from("tenants")
           .select(
-            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, ad_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
+            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
           )
           .eq("key", tenantKey)
           .maybeSingle();
@@ -78,11 +78,17 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
           }));
 
         const effectiveTemplate = room.template || tenant.template;
-        const { ads, adSeconds } = await loadAdsForTemplate({
+        const {
+          slides,
+          slideSeconds,
+          showRoomName,
+          showClock,
+          showLogo,
+        } = await loadSlidesForTemplate({
           tenantId: tenant.id,
           tenantKey,
           template: effectiveTemplate,
-          fallbackSeconds: tenant.ad_seconds,
+          fallbackSeconds: tenant.slide_seconds,
         });
 
 
@@ -135,7 +141,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               logo_url: tenant.logo_url,
               logo_height: tenant.logo_height,
               accent_color: tenant.accent_color,
-              ad_seconds: adSeconds,
+              slide_seconds: slideSeconds,
               focus_mode: tenant.focus_mode ?? "count",
               focus_count: tenant.focus_count ?? 3,
               focus_minutes: tenant.focus_minutes ?? 30,
@@ -151,8 +157,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               is_overview: isOverview,
             },
             entries: visible,
-            ads,
-
+            slides,
+            slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
 
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ZeitplanTemplate } from "@/components/templates/ZeitplanTemplate";
-import { AdsTemplate } from "@/components/templates/AdsTemplate";
+import { SlidesTemplate } from "@/components/templates/SlidesTemplate";
 import type { RoomSnapshot } from "@/lib/board.functions";
 import { useI18n } from "@/lib/i18n";
 
@@ -171,20 +171,20 @@ function RoomDisplay() {
   const isOverview = snapshot.room.is_overview === true;
   const displayRoomName = isOverview ? t("rooms.overview") : snapshot.room.name;
   const activeTemplate = snapshot.room.template || snapshot.tenant.template;
-  if (activeTemplate === "ads" || activeTemplate?.startsWith("ads:")) {
+  if (activeTemplate === "slides" || activeTemplate?.startsWith("slides:")) {
 
     return (
-      <AdsTemplate
+      <SlidesTemplate
         tenantName={snapshot.tenant.name}
         roomName={displayRoomName}
         overview={isOverview}
-        ads={snapshot.ads ?? []}
-        adSeconds={snapshot.tenant.ad_seconds ?? 10}
+        slides={snapshot.slides ?? []}
+        slideSeconds={snapshot.tenant.slide_seconds ?? 10}
+        slideOverlay={snapshot.slide_overlay ?? null}
         logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
         logoHeight={snapshot.tenant.logo_height}
         accentColor={snapshot.tenant.accent_color}
         roomColor={snapshot.room.color}
-
       />
     );
   }
