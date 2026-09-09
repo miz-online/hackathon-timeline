@@ -2899,31 +2899,16 @@ function SlideSetSlides({
               />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("slides.duration")}:{" "}
+                  {a.duration_seconds ?? (
+                    <span className="opacity-50">{defaultSeconds}</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={600}
-                      placeholder={String(defaultSeconds)}
-                      className="w-20 h-8 text-sm"
-                      value={a.duration_seconds ?? ""}
-                      onChange={async (e) => {
-                        const raw = e.target.value;
-                        const value = raw === "" ? null : Math.min(600, Math.max(1, Number(raw) || 1));
-                        try {
-                          await updateFn({
-                            data: { key: tenantKey, id: a.id, name: a.name, duration_seconds: value },
-                          });
-                          toast.success(t("slides.saved"));
-                          refresh();
-                        } catch (err) {
-                          toast.error((err as Error).message);
-                        }
-                      }}
-                    />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{t("slides.duration")}</span>
-                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(a.id)}>
+                    {t("slides.edit")}
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
