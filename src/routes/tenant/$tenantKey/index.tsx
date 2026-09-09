@@ -2900,12 +2900,12 @@ function SlideSetSlides({
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1">
                     <Input
                       type="number"
                       min={1}
                       max={600}
-                      placeholder=""
+                      placeholder={String(defaultSeconds)}
                       className="w-20 h-8 text-sm"
                       value={a.duration_seconds ?? ""}
                       onChange={async (e) => {
