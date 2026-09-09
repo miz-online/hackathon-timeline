@@ -2909,7 +2909,15 @@ function SlideSetSlides({
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button size="sm" variant="outline" onClick={() => setEditing(a.id)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditName(a.name);
+                      setEditDuration(a.duration_seconds ? String(a.duration_seconds) : "");
+                      setEditing(a.id);
+                    }}
+                  >
                     {t("slides.edit")}
                   </Button>
                   <Button
