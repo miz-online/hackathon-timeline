@@ -16,7 +16,7 @@
 - Datenbank-Migration: `ad_sets` → `slide_sets`, `ads` → `slides`, Spalten `ad_set_id` → `slide_set_id`, `ad_seconds` → `slide_seconds` (auch in `tenants`).
 - Einmaliges Daten-Update: gespeicherte Anzeige-Einstellung `ads` / `ads:<id>` wird zu `slides` / `slides:<id>` (bei Organisationen und Räumen).
 - Bilder: neuer Ablageort `tenant-slides`; vorhandene Bilddateien werden einmalig hinüberkopiert, der alte Ablageort bleibt als Rückfall lesbar, bis nichts mehr darauf zeigt.
-- Import/Export: Abschnitte heißen künftig `slide_sets` / `slides`, Formatversion steigt auf 6. Ältere Export-Dateien mit `ad_sets` / `ads` werden beim Import weiterhin akzeptiert.
+- Import/Export: Abschnitte heißen künftig `slide_sets` / `slides`, Formatversion steigt auf 6.
 
 ## Technische Details
 
