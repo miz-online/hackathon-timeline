@@ -330,7 +330,7 @@ const en: Dict = {
   "io.section.color_schemes": "Color schemes",
   "io.section.rooms": "Rooms",
   "io.section.entries": "Entries",
-  "io.section.slide_sets": "Ad sets",
+  "io.section.slide_sets": "Slide sets",
   "io.section.slides": "Slides",
 
   "io.section.logo": "Logo",
