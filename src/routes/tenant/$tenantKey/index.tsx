@@ -2752,6 +2752,9 @@ function SlideSetSlides({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [order, setOrder] = useState<string[] | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDuration, setEditDuration] = useState("");
 
   useEffect(() => setOrder(null), [setId]);
 
@@ -2899,31 +2902,24 @@ function SlideSetSlides({
               />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("slides.duration")}:{" "}
+                  {a.duration_seconds ?? (
+                    <span className="opacity-50">{defaultSeconds}</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={600}
-                      placeholder={String(defaultSeconds)}
-                      className="w-20 h-8 text-sm"
-                      value={a.duration_seconds ?? ""}
-                      onChange={async (e) => {
-                        const raw = e.target.value;
-                        const value = raw === "" ? null : Math.min(600, Math.max(1, Number(raw) || 1));
-                        try {
-                          await updateFn({
-                            data: { key: tenantKey, id: a.id, name: a.name, duration_seconds: value },
-                          });
-                          toast.success(t("slides.saved"));
-                          refresh();
-                        } catch (err) {
-                          toast.error((err as Error).message);
-                        }
-                      }}
-                    />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{t("slides.duration")}</span>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditName(a.name);
+                      setEditDuration(a.duration_seconds ? String(a.duration_seconds) : "");
+                      setEditing(a.id);
+                    }}
+                  >
+                    {t("slides.edit")}
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
@@ -2973,6 +2969,59 @@ function SlideSetSlides({
           ))
         )}
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("slides.editTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <Label>{t("slides.filename")}</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("slides.duration")}</Label>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                placeholder={String(defaultSeconds)}
+                value={editDuration}
+                onChange={(e) => setEditDuration(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("slides.durationHint")}</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditing(null)}>
+                {t("entries.cancel")}
+              </Button>
+              <Button
+                onClick={async () => {
+                  const name = editName.trim();
+                  if (!name || !editing) return;
+                  const value =
+                    editDuration.trim() === ""
+                      ? null
+                      : Math.min(600, Math.max(1, Number(editDuration) || 1));
+                  try {
+                    await updateFn({
+                      data: { key: tenantKey, id: editing, name, duration_seconds: value },
+                    });
+                    toast.success(t("slides.saved"));
+                    setEditing(null);
+                    refresh();
+                  } catch (err) {
+                    toast.error((err as Error).message);
+                  }
+                }}
+              >
+                {t("entries.save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
