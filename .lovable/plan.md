@@ -36,6 +36,6 @@
 - `src/components/templates/AdsTemplate.tsx` → `SlidesTemplate.tsx`: Timer nutzt die Dauer des aktuellen Bildes (Timeout pro Bild statt fixem Intervall); Kopfzeile/Uhr/Logo werden je Flag gerendert.
 - `src/routes/api/public/ad.$tenantKey.$adId.ts` → `slide.$tenantKey.$slideId.ts`; Snapshot- und Stream-Routen sowie `board.functions.ts` übernehmen die neuen Feldnamen und Flags.
 - Admin (`src/routes/tenant/$tenantKey/index.tsx`): Tab-Key `slides`, Set-Editor mit den drei Schaltern, Bild-Zeile mit optionalem Sekunden-Feld; Query-Keys und Template-Auswahl umbenannt.
-- `src/lib/tenant-io.ts`: `slideSetItem`/`slideItem` inkl. `duration_seconds`, `show_*`; JSON-Schema, Sektionsliste und Import-Alias für alte Namen; `ImportExportPanel` Labels.
+- `src/lib/tenant-io.ts`: `slideSetItem`/`slideItem` inkl. `duration_seconds`, `show_*`; JSON-Schema, Sektionsliste; `ImportExportPanel` Labels.
 - `src/lib/i18n.tsx`: Keys `ads.*`/`adSets.*` → `slides.*`/`slideSets.*`, Texte in DE/EN auf "Slides".
 - `README.md` und `optional-columns.ts` entsprechend anpassen; Typecheck mit `bunx tsgo --noEmit`.
