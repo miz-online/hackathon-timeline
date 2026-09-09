@@ -32,7 +32,7 @@
 - `local-storage.server.ts`: Bucket-Name `tenant-slides`, alter Ordner als Fallback.
 
 **Code**
-- `src/lib/ads.server.ts` → `src/lib/slides.server.ts`: `parseSlidesTemplate`, akzeptiert `slides:`/`slides` und weiterhin `ads:`/`ads`; liefert pro Bild `seconds` (Override oder Set-Wert) und die drei Anzeige-Flags.
+- `src/lib/ads.server.ts` → `src/lib/slides.server.ts`: `parseSlidesTemplate` akzeptiert nur noch `slides:`/`slides`; liefert pro Bild `seconds` (Override oder Set-Wert) und die drei Anzeige-Flags.
 - `src/components/templates/AdsTemplate.tsx` → `SlidesTemplate.tsx`: Timer nutzt die Dauer des aktuellen Bildes (Timeout pro Bild statt fixem Intervall); Kopfzeile/Uhr/Logo werden je Flag gerendert.
 - `src/routes/api/public/ad.$tenantKey.$adId.ts` → `slide.$tenantKey.$slideId.ts`; Snapshot- und Stream-Routen sowie `board.functions.ts` übernehmen die neuen Feldnamen und Flags.
 - Admin (`src/routes/tenant/$tenantKey/index.tsx`): Tab-Key `slides`, Set-Editor mit den drei Schaltern, Bild-Zeile mit optionalem Sekunden-Feld; Query-Keys und Template-Auswahl umbenannt.
