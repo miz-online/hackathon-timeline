@@ -214,7 +214,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
             .int()
             .min(0)
             .max(24 * 60),
-          template: z.string().min(1).max(40),
+          template: z.string().min(1).max(80),
           logo_height: z.number().int().min(16).max(400),
           accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
           slide_seconds: z.number().int().min(1).max(600).default(10),
@@ -262,7 +262,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
 
 export const updateTenantTemplate = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; template: string }) =>
-    z.object({ key: z.string().min(1), template: z.string().min(1).max(40) }).parse(d),
+    z.object({ key: z.string().min(1), template: z.string().min(1).max(80) }).parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
@@ -720,7 +720,7 @@ const roomInput = z.object({
   ref_id: z.string().max(60).nullable().default(null),
   name: z.string().min(1).max(120),
   color_scheme_id: z.string().uuid().nullable().default(null),
-  template: z.string().min(1).max(40).nullable().default(null),
+  template: z.string().min(1).max(80).nullable().default(null),
 });
 
 export const upsertRoom = createServerFn({ method: "POST" })
