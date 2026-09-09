@@ -118,7 +118,7 @@ export function SlidesTemplate({
           )}
         </AnimatePresence>
 
-        {(slideOverlay?.show_room_name ?? true || slideOverlay?.show_clock ?? true) && (
+        {((slideOverlay?.show_room_name ?? true) || (slideOverlay?.show_clock ?? true)) && (
           <header
             style={{
               position: "absolute",
