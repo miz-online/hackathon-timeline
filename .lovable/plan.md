@@ -16,7 +16,7 @@
 - Datenbank-Migration: `ad_sets` → `slide_sets`, `ads` → `slides`, Spalten `ad_set_id` → `slide_set_id`, `ad_seconds` → `slide_seconds` (auch in `tenants`).
 - Einmaliges Daten-Update: gespeicherte Anzeige-Einstellung `ads` / `ads:<id>` wird zu `slides` / `slides:<id>` (bei Organisationen und Räumen).
 - Bilder: neuer Ablageort `tenant-slides`; vorhandene Bilddateien werden einmalig hinüberkopiert, der alte Ablageort bleibt als Rückfall lesbar, bis nichts mehr darauf zeigt.
-- Import/Export: Abschnitte heißen künftig `slide_sets` / `slides`, Formatversion steigt auf 6. Ältere Export-Dateien mit `ad_sets` / `ads` werden beim Import weiterhin akzeptiert.
+- Import/Export: Abschnitte heißen künftig `slide_sets` / `slides`, Formatversion steigt auf 6.
 
 ## Technische Details
 
@@ -32,10 +32,10 @@
 - `local-storage.server.ts`: Bucket-Name `tenant-slides`, alter Ordner als Fallback.
 
 **Code**
-- `src/lib/ads.server.ts` → `src/lib/slides.server.ts`: `parseSlidesTemplate`, akzeptiert `slides:`/`slides` und weiterhin `ads:`/`ads`; liefert pro Bild `seconds` (Override oder Set-Wert) und die drei Anzeige-Flags.
+- `src/lib/ads.server.ts` → `src/lib/slides.server.ts`: `parseSlidesTemplate` akzeptiert nur noch `slides:`/`slides`; liefert pro Bild `seconds` (Override oder Set-Wert) und die drei Anzeige-Flags.
 - `src/components/templates/AdsTemplate.tsx` → `SlidesTemplate.tsx`: Timer nutzt die Dauer des aktuellen Bildes (Timeout pro Bild statt fixem Intervall); Kopfzeile/Uhr/Logo werden je Flag gerendert.
 - `src/routes/api/public/ad.$tenantKey.$adId.ts` → `slide.$tenantKey.$slideId.ts`; Snapshot- und Stream-Routen sowie `board.functions.ts` übernehmen die neuen Feldnamen und Flags.
 - Admin (`src/routes/tenant/$tenantKey/index.tsx`): Tab-Key `slides`, Set-Editor mit den drei Schaltern, Bild-Zeile mit optionalem Sekunden-Feld; Query-Keys und Template-Auswahl umbenannt.
-- `src/lib/tenant-io.ts`: `slideSetItem`/`slideItem` inkl. `duration_seconds`, `show_*`; JSON-Schema, Sektionsliste und Import-Alias für alte Namen; `ImportExportPanel` Labels.
+- `src/lib/tenant-io.ts`: `slideSetItem`/`slideItem` inkl. `duration_seconds`, `show_*`; JSON-Schema, Sektionsliste; `ImportExportPanel` Labels.
 - `src/lib/i18n.tsx`: Keys `ads.*`/`adSets.*` → `slides.*`/`slideSets.*`, Texte in DE/EN auf "Slides".
 - `README.md` und `optional-columns.ts` entsprechend anpassen; Typecheck mit `bunx tsgo --noEmit`.
