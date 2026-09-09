@@ -2752,6 +2752,9 @@ function SlideSetSlides({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [order, setOrder] = useState<string[] | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDuration, setEditDuration] = useState("");
 
   useEffect(() => setOrder(null), [setId]);
 
