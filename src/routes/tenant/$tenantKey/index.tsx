@@ -2653,19 +2653,24 @@ function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () 
                 </div>
                 <RefIdField value={refId} onChange={setRefId} name={name} />
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={showRoomName} onCheckedChange={(v) => setShowRoomName(Boolean(v))} />
-                  {t("slideSets.showRoomName")}
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={showClock} onCheckedChange={(v) => setShowClock(Boolean(v))} />
-                  {t("slideSets.showClock")}
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={showLogo} onCheckedChange={(v) => setShowLogo(Boolean(v))} />
-                  {t("slideSets.showLogo")}
-                </label>
+              <div className="rounded-md border p-3 space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("slideSets.overlayTitle")}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={showRoomName} onCheckedChange={(v) => setShowRoomName(Boolean(v))} />
+                    {t("slideSets.showRoomName")}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={showClock} onCheckedChange={(v) => setShowClock(Boolean(v))} />
+                    {t("slideSets.showClock")}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={showLogo} onCheckedChange={(v) => setShowLogo(Boolean(v))} />
+                    {t("slideSets.showLogo")}
+                  </label>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
