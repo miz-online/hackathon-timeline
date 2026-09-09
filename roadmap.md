@@ -16,11 +16,11 @@
 
 # Slides rename + per-slide duration + overlay toggles
 
-- [ ] 1. Rename `ad_sets`/`ads` DB tables and columns to `slide_sets`/`slides`
-- [ ] 2. Add `slides.duration_seconds` and `slide_sets.show_room_name/show_clock/show_logo`
-- [ ] 3. Update backend adapter, SQLite schema, and local storage
-- [ ] 4. Rename server functions, routes, components, and admin UI to "slides"
-- [ ] 5. Update i18n keys and user-facing text
-- [ ] 6. Update import/export format (v6, `slide_sets`/`slides`)
-- [ ] 7. Implement per-image duration override and overlay rendering
-- [ ] 8. Typecheck and verify preview
+- [x] 1. Rename `ad_sets`/`ads` DB tables and columns to `slide_sets`/`slides`
+- [x] 2. Add `slides.duration_seconds` and `slide_sets.show_room_name/show_clock/show_logo`
+- [x] 3. Update backend adapter, SQLite schema, and local storage
+- [x] 4. Rename server functions, routes, components, and admin UI to "slides"
+- [x] 5. Update i18n keys and user-facing text
+- [x] 6. Update import/export format (v6, `slide_sets`/`slides`)
+- [x] 7. Implement per-image duration override and overlay rendering
+- [x] 8. Typecheck and verify preview
