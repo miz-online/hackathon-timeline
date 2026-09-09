@@ -2721,7 +2721,7 @@ function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () 
             </Card>
           )}
 
-          {current && <SlideSetSlides tenantKey={tenantKey} setId={current.id} onChange={onChange} />}
+          {current && <SlideSetSlides tenantKey={tenantKey} setId={current.id} defaultSeconds={current.slide_seconds} onChange={onChange} />}
         </>
       )}
     </div>
