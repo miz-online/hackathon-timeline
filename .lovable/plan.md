@@ -5,7 +5,7 @@
 1. **Eigene Anzeigedauer pro Bild**
    Jedes Bild kann eine eigene Dauer in Sekunden bekommen. Bleibt das Feld leer, gilt weiter die Dauer des Sets.
 
-2. **Kopfzeile pro Set abschaltbar**
+2. **Overlay pro Set abschaltbar**
    Pro Set drei einzelne Schalter: Raumname, Uhr, Logo. Alle drei aus = nur Bilder, vollflächig.
 
 3. **Umbenennung "Anzeigen/Ads" → "Slides"**
