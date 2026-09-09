@@ -256,9 +256,10 @@ const en: Dict = {
   "slideSets.delete": "Delete set",
   "slideSets.deleted": "Slide set deleted",
   "slideSets.confirmDelete": "Delete this set and all its slides?",
-  "slideSets.showRoomName": "Overlay room name",
-  "slideSets.showClock": "Overlay clock",
-  "slideSets.showLogo": "Overlay logo",
+  "slideSets.showRoomName": "Room name",
+  "slideSets.showClock": "Clock",
+  "slideSets.showLogo": "Logo",
+  "slideSets.overlayTitle": "Overlay",
 
   "admin.tabs.io": "Import / Export",
   "refId.label": "Id",
