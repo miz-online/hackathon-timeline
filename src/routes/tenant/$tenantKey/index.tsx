@@ -2994,7 +2994,7 @@ function SlideSetSlides({
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditing(null)}>
-                {t("common.cancel")}
+                {t("entries.cancel")}
               </Button>
               <Button
                 onClick={async () => {
@@ -3016,7 +3016,7 @@ function SlideSetSlides({
                   }
                 }}
               >
-                {t("common.save")}
+                {t("entries.save")}
               </Button>
             </div>
           </div>
