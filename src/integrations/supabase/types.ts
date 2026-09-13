@@ -89,6 +89,7 @@ export type Database = {
           notified_teams: string[]
           notify: boolean
           register_token: string | null
+          slide_set_id: string | null
           tags: string[]
           tenant_id: string
           time: string
@@ -113,6 +114,7 @@ export type Database = {
           notified_teams?: string[]
           notify?: boolean
           register_token?: string | null
+          slide_set_id?: string | null
           tags?: string[]
           tenant_id: string
           time: string
@@ -137,6 +139,7 @@ export type Database = {
           notified_teams?: string[]
           notify?: boolean
           register_token?: string | null
+          slide_set_id?: string | null
           tags?: string[]
           tenant_id?: string
           time?: string
@@ -149,6 +152,13 @@ export type Database = {
             columns: ["color_scheme_id"]
             isOneToOne: false
             referencedRelation: "color_schemes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entries_slide_set_id_fkey"
+            columns: ["slide_set_id"]
+            isOneToOne: false
+            referencedRelation: "slide_sets"
             referencedColumns: ["id"]
           },
           {
