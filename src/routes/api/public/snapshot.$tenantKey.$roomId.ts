@@ -105,7 +105,10 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         const now = Date.now();
         const cutoff = now - tenant.past_grace_minutes * 60 * 1000;
-        const mapped = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
+        const mapped = ((entries ?? []) as unknown as DisplayEntryRow[])
+          // Slideshow entries only steer the template, they never show up as a row.
+          .filter((e) => !isSlideshowEntry(e))
+          .map((e) => ({
             kind: e.kind,
             id: e.id,
             time: e.time,
@@ -169,6 +172,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             entries: visible,
             slides,
             slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
+            switch_at: switchAt,
 
           }),
           { headers: { "content-type": "application/json", "cache-control": "no-store" } },
