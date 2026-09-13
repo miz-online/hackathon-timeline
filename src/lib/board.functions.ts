@@ -1260,6 +1260,8 @@ export type RoomSnapshot = {
 
   slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null }[];
   slide_overlay?: { show_room_name?: boolean; show_clock?: boolean; show_logo?: boolean } | null;
+  /** Next moment an automatic template switch happens, if any. */
+  switch_at?: string | null;
 };
 
 export const getRoomSnapshot = createServerFn({ method: "GET" })
