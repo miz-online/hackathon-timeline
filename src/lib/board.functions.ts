@@ -398,6 +398,10 @@ export const upsertEntry = createServerFn({ method: "POST" })
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
     const e = data.entry;
+    const isSlideshow = e.kind === "slides";
+    // Slideshow entries need a set and a window; they never get posted anywhere.
+    if (isSlideshow && !e.slide_set_id) throw new Error("Slideshow entries need a slide set");
+    if (isSlideshow && !e.end_time) throw new Error("Slideshow entries need an end time");
     const common = {
       kind: e.kind,
       time: e.time,
@@ -406,7 +410,8 @@ export const upsertEntry = createServerFn({ method: "POST" })
       description: e.description,
       tags: e.tags,
       color_scheme_id: e.color_scheme_id ?? null,
-      notify: e.notify,
+      slide_set_id: isSlideshow ? e.slide_set_id : null,
+      notify: isSlideshow ? false : e.notify,
       background_align: e.background_align,
       background_height: e.background_height,
       background_opacity: e.background_opacity,
