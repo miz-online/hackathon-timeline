@@ -1337,7 +1337,10 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       room_id: t.room_id,
       color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
     }));
-    const withColor = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
+    const withColor = ((entries ?? []) as unknown as DisplayEntryRow[])
+      // Slideshow entries only steer the template, they never show up as a row.
+      .filter((e) => !isSlideshowEntry(e))
+      .map((e) => ({
       id: e.id,
       kind: e.kind,
       time: e.time,
@@ -1388,11 +1391,12 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         id: room.id,
         name: room.name,
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
-        template,
+        template: template ?? "zeitplan",
       },
       entries: filterVisible(expandedEntries, room.name, tenant.past_grace_minutes),
       slides,
       slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
+      switch_at: switchAt,
     };
 
   });
