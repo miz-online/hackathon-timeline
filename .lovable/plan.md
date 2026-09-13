@@ -8,7 +8,8 @@ Ein neuer Eintragstyp **Slideshow** legt fest, dass ein Slide-Set zwischen einer
 - Ohne Raum-Tags gilt der Eintrag für alle Bildschirme, mit Tags nur für die getaggten Räume.
 - Der Eintrag erscheint nur in der Verwaltung, nicht als Zeile auf den Bildschirmen.
 - Überschneiden sich zwei Slideshow-Zeiten, gewinnt die später gestartete.
-- Die manuelle Umstellung der Vorlage (Kopfzeile/Einstellungen) bleibt unverändert möglich und gilt weiter, solange kein Slideshow-Eintrag aktiv ist.
+- Die manuelle Umstellung der Vorlage (Kopfzeile/Einstellungen) bleibt unverändert möglich: fest gewählte Vorlagen (Zeitplan oder ein Slide-Set) gelten immer.
+- Neu in der Vorlagen-Auswahl: **Automatisch**. In diesem Modus richtet sich der Bildschirm nach den Zeiteinträgen – während eines Slideshow-Eintrags läuft das Slide-Set, sonst der Zeitplan. Für Organisation und einzelne Räume wählbar.
 - Keine Benachrichtigungen für diesen Typ (kein Discord-Post).
 
 ## Umschalten in Echtzeit
