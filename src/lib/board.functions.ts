@@ -325,7 +325,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { withOptionalColumns } = await import("@/lib/optional-columns");
     const baseCols =
-      "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint";
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint";
     const read = (cols: string) =>
       supabase
         .from("entries")
@@ -349,6 +349,7 @@ export const listEntries = createServerFn({ method: "GET" })
       description: string;
       tags: string[];
       color_scheme_id: string | null;
+      slide_set_id: string | null;
       notify: boolean;
       notified_at: string | null;
       background_path: string | null;
@@ -381,6 +382,7 @@ const entryInput = z.object({
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
   color_scheme_id: z.string().uuid().nullable().default(null),
   notify: z.boolean().default(true),
+  slide_set_id: z.string().uuid().nullable().default(null),
   background_align: z.enum(ENTRY_BG_ALIGNMENTS).default("right-top"),
   background_height: z.number().int().min(8).max(2000).default(80),
   background_opacity: z.number().int().min(0).max(100).default(100),
