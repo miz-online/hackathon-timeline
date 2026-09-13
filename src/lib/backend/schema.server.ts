@@ -99,6 +99,7 @@ export const TABLES: TableMeta[] = [
       { name: "kind", kind: "text", def: "entry" },
       { name: "notified_teams", kind: "textArray", def: null },
       { name: "register_token", kind: "text", nullable: true },
+      { name: "slide_set_id", kind: "uuid", nullable: true },
     ],
   },
   {

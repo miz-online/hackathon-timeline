@@ -325,7 +325,7 @@ export const listEntries = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { withOptionalColumns } = await import("@/lib/optional-columns");
     const baseCols =
-      "id, kind, time, end_time, title, description, tags, color_scheme_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint";
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint";
     const read = (cols: string) =>
       supabase
         .from("entries")
@@ -349,6 +349,7 @@ export const listEntries = createServerFn({ method: "GET" })
       description: string;
       tags: string[];
       color_scheme_id: string | null;
+      slide_set_id: string | null;
       notify: boolean;
       notified_at: string | null;
       background_path: string | null;
@@ -381,6 +382,7 @@ const entryInput = z.object({
   tags: z.array(z.string().min(1).max(120)).max(50).default([]),
   color_scheme_id: z.string().uuid().nullable().default(null),
   notify: z.boolean().default(true),
+  slide_set_id: z.string().uuid().nullable().default(null),
   background_align: z.enum(ENTRY_BG_ALIGNMENTS).default("right-top"),
   background_height: z.number().int().min(8).max(2000).default(80),
   background_opacity: z.number().int().min(0).max(100).default(100),
@@ -396,6 +398,10 @@ export const upsertEntry = createServerFn({ method: "POST" })
     const supabase = await getAdmin();
     const { id: tenantId } = await requireTenantAdmin(data.key);
     const e = data.entry;
+    const isSlideshow = e.kind === "slides";
+    // Slideshow entries need a set and a window; they never get posted anywhere.
+    if (isSlideshow && !e.slide_set_id) throw new Error("Slideshow entries need a slide set");
+    if (isSlideshow && !e.end_time) throw new Error("Slideshow entries need an end time");
     const common = {
       kind: e.kind,
       time: e.time,
@@ -404,7 +410,8 @@ export const upsertEntry = createServerFn({ method: "POST" })
       description: e.description,
       tags: e.tags,
       color_scheme_id: e.color_scheme_id ?? null,
-      notify: e.notify,
+      slide_set_id: isSlideshow ? e.slide_set_id : null,
+      notify: isSlideshow ? false : e.notify,
       background_align: e.background_align,
       background_height: e.background_height,
       background_opacity: e.background_opacity,
@@ -1253,6 +1260,8 @@ export type RoomSnapshot = {
 
   slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null }[];
   slide_overlay?: { show_room_name?: boolean; show_clock?: boolean; show_logo?: boolean } | null;
+  /** Next moment an automatic template switch happens, if any. */
+  switch_at?: string | null;
 };
 
 export const getRoomSnapshot = createServerFn({ method: "GET" })
@@ -1273,7 +1282,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     // register_token only exists once the pending migration is applied.
     const { withOptionalColumns: withCols } = await import("@/lib/optional-columns");
     const entryCols =
-      "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
     const readEntries = (cols: string) =>
       supabase.from("entries").select(cols).eq("tenant_id", tenant.id) as unknown as Promise<{
         data: unknown;
@@ -1289,8 +1298,17 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .select("id, color")
       .eq("tenant_id", tenant.id);
     const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
-    const template = room.template || tenant.template;
-    const { loadSlidesForTemplate } = await import("@/lib/slides.server");
+    const {
+      loadSlidesForTemplate,
+      resolveAutoTemplate,
+      isSlideshowEntry,
+    } = await import("@/lib/slides.server");
+    const { template, switchAt } = resolveAutoTemplate({
+      template: room.template || tenant.template,
+      entries: (entries ?? []) as unknown as import("@/lib/slides.server").SlideshowEntryRow[],
+      roomName: room.name,
+      isOverview: false,
+    });
     const { slides, slideSeconds, showRoomName, showClock, showLogo } = await loadSlidesForTemplate({
       tenantId: tenant.id,
       tenantKey: data.key,
@@ -1319,7 +1337,10 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       room_id: t.room_id,
       color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
     }));
-    const withColor = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
+    const withColor = ((entries ?? []) as unknown as DisplayEntryRow[])
+      // Slideshow entries only steer the template, they never show up as a row.
+      .filter((e) => !isSlideshowEntry(e))
+      .map((e) => ({
       id: e.id,
       kind: e.kind,
       time: e.time,
@@ -1370,11 +1391,12 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
         id: room.id,
         name: room.name,
         color: room.color_scheme_id ? (colorById.get(room.color_scheme_id) ?? null) : null,
-        template,
+        template: template ?? "zeitplan",
       },
       entries: filterVisible(expandedEntries, room.name, tenant.past_grace_minutes),
       slides,
       slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
+      switch_at: switchAt,
     };
 
   });

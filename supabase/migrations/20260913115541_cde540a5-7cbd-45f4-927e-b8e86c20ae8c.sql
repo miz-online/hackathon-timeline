@@ -1,0 +1,2 @@
+ALTER TABLE public.entries ADD COLUMN IF NOT EXISTS slide_set_id uuid REFERENCES public.slide_sets(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS entries_slide_set_idx ON public.entries(slide_set_id);

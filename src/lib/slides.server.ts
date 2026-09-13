@@ -33,6 +33,62 @@ export function isSlidesTemplate(template: string | null | undefined): boolean {
   return parseSlidesTemplate(template) !== null;
 }
 
+/** Template value that follows the schedule: slideshow entries switch the display. */
+export const AUTO_TEMPLATE = "auto";
+
+export type SlideshowEntryRow = {
+  kind?: string | null;
+  time: string;
+  end_time: string | null;
+  tags: string[];
+  slide_set_id?: string | null;
+};
+
+export function isSlideshowEntry(e: { kind?: string | null }): boolean {
+  return (e.kind ?? "entry") === "slides";
+}
+
+/**
+ * Resolves the "auto" template against the slideshow entries of a room.
+ * Returns the template to render plus the next moment the result changes,
+ * so displays can refetch exactly then.
+ */
+export function resolveAutoTemplate(opts: {
+  template: string | null | undefined;
+  entries: SlideshowEntryRow[];
+  roomName: string;
+  isOverview: boolean;
+  now?: number;
+}): { template: string | null | undefined; switchAt: string | null } {
+  if (opts.template !== AUTO_TEMPLATE) return { template: opts.template, switchAt: null };
+  const now = opts.now ?? Date.now();
+  const relevant = opts.entries.filter(
+    (e) =>
+      isSlideshowEntry(e) &&
+      e.slide_set_id &&
+      e.end_time &&
+      (opts.isOverview || e.tags.length === 0 || e.tags.includes(opts.roomName)),
+  );
+  let active: SlideshowEntryRow | null = null;
+  let nextSwitch = Infinity;
+  for (const e of relevant) {
+    const start = new Date(e.time).getTime();
+    const end = new Date(e.end_time!).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    if (start <= now && now < end) {
+      // Later start wins on overlap.
+      if (!active || start > new Date(active.time).getTime()) active = e;
+    }
+    for (const boundary of [start, end]) {
+      if (boundary > now && boundary < nextSwitch) nextSwitch = boundary;
+    }
+  }
+  return {
+    template: active ? `slides:${active.slide_set_id}` : "zeitplan",
+    switchAt: Number.isFinite(nextSwitch) ? new Date(nextSwitch).toISOString() : null,
+  };
+}
+
 /** Loads the slides (with signed URLs), display duration and overlay flags for a slides template. */
 export async function loadSlidesForTemplate(opts: {
   tenantId: string;

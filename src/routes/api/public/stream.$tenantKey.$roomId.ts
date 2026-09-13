@@ -1,7 +1,12 @@
 import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { withOptionalColumns } from "@/lib/optional-columns";
-import { loadSlidesForTemplate } from "@/lib/slides.server";
+import {
+  loadSlidesForTemplate,
+  resolveAutoTemplate,
+  isSlideshowEntry,
+  type SlideshowEntryRow,
+} from "@/lib/slides.server";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
 
@@ -57,7 +62,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           if (!tNow || !rNow) return null;
           // register_token only exists once the pending migration is applied.
           const entryCols =
-            "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+            "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
           const readEntries = (cols: string) =>
             supabaseAdmin.from("entries").select(cols).eq("tenant_id", tenantId) as unknown as Promise<{
               data: unknown;
@@ -72,7 +77,12 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             .from("color_schemes")
             .select("id, color")
             .eq("tenant_id", tenantId);
-          const effectiveTemplate = rNow.template || tNow.template;
+          const { template: effectiveTemplate, switchAt } = resolveAutoTemplate({
+            template: rNow.template || tNow.template,
+            entries: (entries ?? []) as unknown as SlideshowEntryRow[],
+            roomName: rNow.name,
+            isOverview,
+          });
           const {
             slides,
             slideSeconds,
@@ -111,7 +121,10 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
           }));
           const now = Date.now();
           const cutoff = now - tNow.past_grace_minutes * 60 * 1000;
-          const mapped = ((entries ?? []) as unknown as DisplayEntryRow[]).map((e) => ({
+          const mapped = ((entries ?? []) as unknown as DisplayEntryRow[])
+            // Slideshow entries only steer the template, they never show up as a row.
+            .filter((e) => !isSlideshowEntry(e))
+            .map((e) => ({
             kind: e.kind,
               id: e.id,
               time: e.time,
@@ -173,6 +186,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
             entries: visible,
             slides,
             slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
+            switch_at: switchAt,
 
 
           };
