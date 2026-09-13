@@ -1,6 +1,11 @@
 import { getBackendAdmin } from "@/lib/backend/admin.server";
 import { createFileRoute } from "@tanstack/react-router";
-import { loadSlidesForTemplate } from "@/lib/slides.server";
+import {
+  loadSlidesForTemplate,
+  resolveAutoTemplate,
+  isSlideshowEntry,
+  type SlideshowEntryRow,
+} from "@/lib/slides.server";
 import { withOptionalColumns } from "@/lib/optional-columns";
 import { expandPracticeEntries, type PracticeTeam } from "@/lib/practice";
 import { withRoomRegisterTokens, type DisplayEntryRow } from "@/lib/register-url";
@@ -37,7 +42,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
 
         // register_token only exists once the pending migration is applied.
         const entryCols =
-          "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+          "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
         const readEntries = (cols: string) =>
           supabaseAdmin.from("entries").select(cols).eq("tenant_id", tenant.id) as unknown as Promise<{
             data: unknown;
@@ -77,7 +82,12 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             color: t.room_id ? (roomColorById.get(t.room_id) ?? null) : null,
           }));
 
-        const effectiveTemplate = room.template || tenant.template;
+        const { template: effectiveTemplate, switchAt } = resolveAutoTemplate({
+          template: room.template || tenant.template,
+          entries: (entries ?? []) as unknown as SlideshowEntryRow[],
+          roomName: room.name,
+          isOverview,
+        });
         const {
           slides,
           slideSeconds,
