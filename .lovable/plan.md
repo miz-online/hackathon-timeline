@@ -8,7 +8,8 @@ Ein neuer Eintragstyp **Slideshow** legt fest, dass ein Slide-Set zwischen einer
 - Ohne Raum-Tags gilt der Eintrag für alle Bildschirme, mit Tags nur für die getaggten Räume.
 - Der Eintrag erscheint nur in der Verwaltung, nicht als Zeile auf den Bildschirmen.
 - Überschneiden sich zwei Slideshow-Zeiten, gewinnt die später gestartete.
-- Die manuelle Umstellung der Vorlage (Kopfzeile/Einstellungen) bleibt unverändert möglich und gilt weiter, solange kein Slideshow-Eintrag aktiv ist.
+- Die manuelle Umstellung der Vorlage (Kopfzeile/Einstellungen) bleibt unverändert möglich: fest gewählte Vorlagen (Zeitplan oder ein Slide-Set) gelten immer.
+- Neu in der Vorlagen-Auswahl: **Automatisch**. In diesem Modus richtet sich der Bildschirm nach den Zeiteinträgen – während eines Slideshow-Eintrags läuft das Slide-Set, sonst der Zeitplan. Für Organisation und einzelne Räume wählbar.
 - Keine Benachrichtigungen für diesen Typ (kein Discord-Post).
 
 ## Umschalten in Echtzeit
@@ -23,7 +24,8 @@ Die Bildschirme erfahren den Wechsel über die bestehende Live-Verbindung. Zusä
 
 **Server**
 - `board.functions.ts`: `slide_set_id` in Insert/Update/Select der Entry-Funktionen; für `kind: "slides"` sind `end_time` und `slide_set_id` Pflicht, `notify` wird auf `false` erzwungen.
-- `getRoomSnapshot` / Snapshot-Route: Slideshow-Einträge werden aus `entries` herausgefiltert (nie auf dem Board sichtbar) und separat ausgewertet: aktive Einträge = `time <= now < end_time` und Raum-Tag passt (bzw. keine Tags; Overview-Raum gilt als „alle"). Der aktive Eintrag mit der spätesten Startzeit bestimmt `template = "slides:<slide_set_id>"`, sonst greift wie bisher `room.template || tenant.template`.
+- `getRoomSnapshot` / Snapshot-Route: Slideshow-Einträge werden aus `entries` herausgefiltert (nie auf dem Board sichtbar) und separat ausgewertet: aktive Einträge = `time <= now < end_time` und Raum-Tag passt (bzw. keine Tags; Overview-Raum gilt als „alle"). Ist `room.template || tenant.template` gleich `auto`, bestimmt der aktive Eintrag mit der spätesten Startzeit `template = "slides:<slide_set_id>"`, ohne aktiven Eintrag `zeitplan`. Fest gewählte Vorlagen bleiben unverändert.
+- Neuer Template-Wert `auto` (Vorlagen-Auswahl in Kopfzeile und Raum-Einstellungen, `slides.server.ts` behandelt ihn nicht als Slides-Template).
 - Snapshot bekommt `switch_at`: früheste zukünftige Start-/Endzeit relevanter Slideshow-Einträge.
 - Webhook-Dispatch überspringt `kind = 'slides'`.
 
