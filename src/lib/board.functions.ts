@@ -1282,7 +1282,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
     // register_token only exists once the pending migration is applied.
     const { withOptionalColumns: withCols } = await import("@/lib/optional-columns");
     const entryCols =
-      "id, kind, time, end_time, title, description, tags, color_scheme_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
+      "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, background_path, background_align, background_height, background_opacity, background_margin, background_tint";
     const readEntries = (cols: string) =>
       supabase.from("entries").select(cols).eq("tenant_id", tenant.id) as unknown as Promise<{
         data: unknown;
@@ -1298,8 +1298,17 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       .select("id, color")
       .eq("tenant_id", tenant.id);
     const colorById = new Map((schemes ?? []).map((s) => [s.id, s.color]));
-    const template = room.template || tenant.template;
-    const { loadSlidesForTemplate } = await import("@/lib/slides.server");
+    const {
+      loadSlidesForTemplate,
+      resolveAutoTemplate,
+      isSlideshowEntry,
+    } = await import("@/lib/slides.server");
+    const { template, switchAt } = resolveAutoTemplate({
+      template: room.template || tenant.template,
+      entries: (entries ?? []) as unknown as import("@/lib/slides.server").SlideshowEntryRow[],
+      roomName: room.name,
+      isOverview: false,
+    });
     const { slides, slideSeconds, showRoomName, showClock, showLogo } = await loadSlidesForTemplate({
       tenantId: tenant.id,
       tenantKey: data.key,
