@@ -1254,7 +1254,25 @@ function EntryForm({
             </div>
           </div>
           )}
-          {isPractice || isRegister ? null : (
+          {isSlides ? (
+            <div className="space-y-1">
+              <Label>{t("entries.form.slideSet")}</Label>
+              <select
+                value={slideSetId}
+                onChange={(e) => setSlideSetId(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">{t("entries.form.slideSetNone")}</option>
+                {slideSets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("entries.form.slidesHint")}</p>
+            </div>
+          ) : null}
+          {isPractice || isRegister || isSlides ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.scheme")}</Label>
             <div className="flex items-center gap-2">
@@ -1280,6 +1298,7 @@ function EntryForm({
             <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
           </div>
           )}
+          {isSlides ? null : (
           <div className="flex items-center gap-2">
             <Checkbox
               id="notify"
@@ -1290,6 +1309,7 @@ function EntryForm({
               {t("entries.form.notify")}
             </Label>
           </div>
+          )}
         </div>
 
 
