@@ -133,6 +133,29 @@ function RoomDisplay() {
     return () => clearInterval(id);
   }, []);
 
+  // Slideshow entries switch the display at an exact time: reload right then
+  // instead of waiting for the next poll.
+  const switchAt = snapshot?.switch_at ?? null;
+  useEffect(() => {
+    if (!switchAt) return;
+    const delay = new Date(switchAt).getTime() - Date.now() + 1000;
+    if (!Number.isFinite(delay)) return;
+    const id = setTimeout(
+      () => {
+        void fetch(`/api/public/snapshot/${tenantKey}/${roomId}?ts=${Date.now()}`, {
+          cache: "no-store",
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((json) => {
+            if (json) setSnapshot(json as RoomSnapshot);
+          })
+          .catch(() => {});
+      },
+      Math.max(500, delay),
+    );
+    return () => clearTimeout(id);
+  }, [switchAt, tenantKey, roomId]);
+
 
   if (!snapshot) {
     return (

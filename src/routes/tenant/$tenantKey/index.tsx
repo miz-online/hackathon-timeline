@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -91,6 +91,8 @@ export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
 });
 
+type EntryKindValue = "entry" | "practice" | "register" | "slides";
+
 type EntryRow = {
   id: string;
   kind?: string | null;
@@ -100,6 +102,7 @@ type EntryRow = {
   description: string;
   tags: string[];
   color_scheme_id: string | null;
+  slide_set_id?: string | null;
   notify: boolean;
   sent?: boolean;
   background_url?: string | null;
@@ -156,6 +159,7 @@ export function useTemplateOptions(tenantKey: string) {
   const sets = setsQ.data ?? [];
   return [
     { value: "zeitplan", label: t("settings.template.zeitplan") },
+    { value: "auto", label: t("settings.template.auto") },
     ...sets.map((s) => ({ value: `slides:${s.id}`, label: `${t("settings.template.slides")}: ${s.name}` })),
   ];
 }
@@ -716,13 +720,19 @@ function EntriesPanel({
 }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
-  const [newKind, setNewKind] = useState<"entry" | "practice" | "register">("entry");
+  const [newKind, setNewKind] = useState<EntryKindValue>("entry");
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listTeams({ data: { key: tenantKey } }),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
+  const listSetsFn = useServerFn(listSlideSets);
+  const slideSetsQ = useQuery({
+    queryKey: ["slideSets", tenantKey],
+    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+  });
+  const slideSets = slideSetsQ.data ?? [];
 
   const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
@@ -851,6 +861,16 @@ function EntriesPanel({
                     <QrCode className="mr-2 h-4 w-4" />
                     {t("entries.newRegister")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditing(null);
+                      setNewKind("slides");
+                      setShowForm(true);
+                    }}
+                  >
+                    <Images className="mr-2 h-4 w-4" />
+                    {t("entries.newSlides")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -864,7 +884,9 @@ function EntriesPanel({
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
           <DialogHeader>
             <DialogTitle>
-              {(editing?.kind ?? newKind) === "register"
+              {(editing?.kind ?? newKind) === "slides"
+                ? t("entries.newSlides")
+                : (editing?.kind ?? newKind) === "register"
                 ? t("entries.newRegister")
                 : (editing?.kind ?? newKind) === "practice"
                 ? editing
@@ -881,6 +903,7 @@ function EntriesPanel({
               tenantKey={tenantKey}
               kind={newKind}
               teamCount={teamCount}
+              slideSets={slideSets}
               practiceMinutes={practiceMinutes}
 
               rooms={rooms}
@@ -1016,6 +1039,13 @@ function EntriesPanel({
                       {t("entries.kind.register")}
                     </Badge>
                   ) : null}
+                  {e.kind === "slides" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <Images className="h-3 w-3" />
+                      {slideSets.find((s) => s.id === e.slide_set_id)?.name ??
+                        t("entries.kind.slides")}
+                    </Badge>
+                  ) : null}
                   <span>{e.title}</span>
                 </div>
                 {e.description ? (
@@ -1061,6 +1091,7 @@ function EntryForm({
   kind: kindProp,
   teamCount = 0,
   practiceMinutes = 10,
+  slideSets = [],
   rooms,
   schemes,
   defaultColor,
@@ -1075,20 +1106,23 @@ function EntryForm({
   defaultColor: string;
   tenantKey: string;
   /** "practice" entries expand into one row per team on the displays */
-  kind?: "entry" | "practice" | "register";
+  kind?: EntryKindValue;
   teamCount?: number;
   practiceMinutes?: number;
+  /** slide sets a slideshow entry can play */
+  slideSets?: { id: string; name: string }[];
   onSaved: () => void;
 
   onSubmit: (entry: {
     id?: string;
-    kind: "entry" | "practice" | "register";
+    kind: EntryKindValue;
     time: string;
     end_time?: string | null;
     title: string;
     description: string;
     tags: string[];
     color_scheme_id: string | null;
+    slide_set_id: string | null;
     notify: boolean;
     background_align: EntryBgAlign;
     background_height: number;
@@ -1099,11 +1133,16 @@ function EntryForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
-  const kind: "entry" | "practice" | "register" =
-    (initial?.kind as "entry" | "practice" | "register" | undefined) ?? kindProp ?? "entry";
+  const kind: EntryKindValue =
+    (initial?.kind as EntryKindValue | undefined) ?? kindProp ?? "entry";
   const isPractice = kind === "practice";
   // registration entries render a QR code instead of an image
   const isRegister = kind === "register";
+  // slideshow entries switch "auto" displays to a slide set between start and end
+  const isSlides = kind === "slides";
+  const [slideSetId, setSlideSetId] = useState<string>(
+    initial?.slide_set_id ?? slideSets[0]?.id ?? "",
+  );
   const uploadBgFn = useServerFn(uploadEntryBackground);
   const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
@@ -1215,7 +1254,25 @@ function EntryForm({
             </div>
           </div>
           )}
-          {isPractice || isRegister ? null : (
+          {isSlides ? (
+            <div className="space-y-1">
+              <Label>{t("entries.form.slideSet")}</Label>
+              <select
+                value={slideSetId}
+                onChange={(e) => setSlideSetId(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">{t("entries.form.slideSetNone")}</option>
+                {slideSets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("entries.form.slidesHint")}</p>
+            </div>
+          ) : null}
+          {isPractice || isRegister || isSlides ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.scheme")}</Label>
             <div className="flex items-center gap-2">
@@ -1241,6 +1298,7 @@ function EntryForm({
             <p className="text-xs text-muted-foreground">{t("entries.form.schemeHint")}</p>
           </div>
           )}
+          {isSlides ? null : (
           <div className="flex items-center gap-2">
             <Checkbox
               id="notify"
@@ -1251,6 +1309,7 @@ function EntryForm({
               {t("entries.form.notify")}
             </Label>
           </div>
+          )}
         </div>
 
 
@@ -1264,7 +1323,7 @@ function EntryForm({
               placeholder={t("entries.form.titlePh")}
             />
           </div>
-          {isPractice ? (
+          {isSlides ? null : isPractice ? (
             <p className="text-sm text-muted-foreground">{t("entries.form.practiceHint")}</p>
           ) : (
           <div className="space-y-1">
@@ -1330,7 +1389,7 @@ function EntryForm({
           ) : null}
 
           {/* Background image */}
-          <div className={`space-y-2 border-t pt-3 ${isRegister ? "hidden" : ""}`}>
+          <div className={`space-y-2 border-t pt-3 ${isRegister || isSlides ? "hidden" : ""}`}>
             <Label>{t("entries.form.bg")}</Label>
             <input
               ref={bgInputRef}
@@ -1551,7 +1610,9 @@ function EntryForm({
           {t("entries.cancel")}
         </Button>
         <Button
-          disabled={saving || !title.trim() || !time}
+          disabled={
+            saving || !title.trim() || !time || (isSlides && (!endTime || !slideSetId))
+          }
           onClick={async () => {
             setSaving(true);
             try {
@@ -1576,10 +1637,11 @@ function EntryForm({
                 time: new Date(time).toISOString(),
                 end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
                 title: title.trim(),
-                description: isPractice ? "" : description.trim(),
+                description: isPractice || isSlides ? "" : description.trim(),
                 tags: isPractice || isRegister ? [] : tags,
-                color_scheme_id: isPractice || isRegister ? null : schemeId || null,
-                notify,
+                color_scheme_id: isPractice || isRegister || isSlides ? null : schemeId || null,
+                slide_set_id: isSlides ? slideSetId || null : null,
+                notify: isSlides ? false : notify,
                 background_align: bgAlign,
                 background_height: bgHeight,
                 background_opacity: bgOpacity,
