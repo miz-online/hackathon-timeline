@@ -1610,7 +1610,9 @@ function EntryForm({
           {t("entries.cancel")}
         </Button>
         <Button
-          disabled={saving || !title.trim() || !time}
+          disabled={
+            saving || !title.trim() || !time || (isSlides && (!endTime || !slideSetId))
+          }
           onClick={async () => {
             setSaving(true);
             try {
@@ -1635,10 +1637,11 @@ function EntryForm({
                 time: new Date(time).toISOString(),
                 end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
                 title: title.trim(),
-                description: isPractice ? "" : description.trim(),
+                description: isPractice || isSlides ? "" : description.trim(),
                 tags: isPractice || isRegister ? [] : tags,
-                color_scheme_id: isPractice || isRegister ? null : schemeId || null,
-                notify,
+                color_scheme_id: isPractice || isRegister || isSlides ? null : schemeId || null,
+                slide_set_id: isSlides ? slideSetId || null : null,
+                notify: isSlides ? false : notify,
                 background_align: bgAlign,
                 background_height: bgHeight,
                 background_opacity: bgOpacity,
