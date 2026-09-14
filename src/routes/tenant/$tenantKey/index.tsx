@@ -91,6 +91,8 @@ export const Route = createFileRoute("/tenant/$tenantKey/")({
   component: AdminPage,
 });
 
+type EntryKindValue = "entry" | "practice" | "register" | "slides";
+
 type EntryRow = {
   id: string;
   kind?: string | null;
@@ -1089,6 +1091,7 @@ function EntryForm({
   kind: kindProp,
   teamCount = 0,
   practiceMinutes = 10,
+  slideSets = [],
   rooms,
   schemes,
   defaultColor,
@@ -1103,20 +1106,23 @@ function EntryForm({
   defaultColor: string;
   tenantKey: string;
   /** "practice" entries expand into one row per team on the displays */
-  kind?: "entry" | "practice" | "register";
+  kind?: EntryKindValue;
   teamCount?: number;
   practiceMinutes?: number;
+  /** slide sets a slideshow entry can play */
+  slideSets?: { id: string; name: string }[];
   onSaved: () => void;
 
   onSubmit: (entry: {
     id?: string;
-    kind: "entry" | "practice" | "register";
+    kind: EntryKindValue;
     time: string;
     end_time?: string | null;
     title: string;
     description: string;
     tags: string[];
     color_scheme_id: string | null;
+    slide_set_id: string | null;
     notify: boolean;
     background_align: EntryBgAlign;
     background_height: number;
@@ -1127,11 +1133,16 @@ function EntryForm({
   onCancel: () => void;
 }) {
   const { t } = useI18n();
-  const kind: "entry" | "practice" | "register" =
-    (initial?.kind as "entry" | "practice" | "register" | undefined) ?? kindProp ?? "entry";
+  const kind: EntryKindValue =
+    (initial?.kind as EntryKindValue | undefined) ?? kindProp ?? "entry";
   const isPractice = kind === "practice";
   // registration entries render a QR code instead of an image
   const isRegister = kind === "register";
+  // slideshow entries switch "auto" displays to a slide set between start and end
+  const isSlides = kind === "slides";
+  const [slideSetId, setSlideSetId] = useState<string>(
+    initial?.slide_set_id ?? slideSets[0]?.id ?? "",
+  );
   const uploadBgFn = useServerFn(uploadEntryBackground);
   const removeBgFn = useServerFn(removeEntryBackground);
   const [time, setTime] = useState(
