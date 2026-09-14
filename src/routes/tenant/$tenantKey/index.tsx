@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -100,6 +100,7 @@ type EntryRow = {
   description: string;
   tags: string[];
   color_scheme_id: string | null;
+  slide_set_id?: string | null;
   notify: boolean;
   sent?: boolean;
   background_url?: string | null;
@@ -156,6 +157,7 @@ export function useTemplateOptions(tenantKey: string) {
   const sets = setsQ.data ?? [];
   return [
     { value: "zeitplan", label: t("settings.template.zeitplan") },
+    { value: "auto", label: t("settings.template.auto") },
     ...sets.map((s) => ({ value: `slides:${s.id}`, label: `${t("settings.template.slides")}: ${s.name}` })),
   ];
 }
@@ -716,13 +718,19 @@ function EntriesPanel({
 }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState<EntryRow | null>(null);
-  const [newKind, setNewKind] = useState<"entry" | "practice" | "register">("entry");
+  const [newKind, setNewKind] = useState<EntryKindValue>("entry");
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listTeams({ data: { key: tenantKey } }),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
   });
+  const listSetsFn = useServerFn(listSlideSets);
+  const slideSetsQ = useQuery({
+    queryKey: ["slideSets", tenantKey],
+    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+  });
+  const slideSets = slideSetsQ.data ?? [];
 
   const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
@@ -851,6 +859,16 @@ function EntriesPanel({
                     <QrCode className="mr-2 h-4 w-4" />
                     {t("entries.newRegister")}
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setEditing(null);
+                      setNewKind("slides");
+                      setShowForm(true);
+                    }}
+                  >
+                    <Images className="mr-2 h-4 w-4" />
+                    {t("entries.newSlides")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -864,7 +882,9 @@ function EntriesPanel({
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden p-3 sm:max-w-3xl sm:p-3">
           <DialogHeader>
             <DialogTitle>
-              {(editing?.kind ?? newKind) === "register"
+              {(editing?.kind ?? newKind) === "slides"
+                ? t("entries.newSlides")
+                : (editing?.kind ?? newKind) === "register"
                 ? t("entries.newRegister")
                 : (editing?.kind ?? newKind) === "practice"
                 ? editing
@@ -881,6 +901,7 @@ function EntriesPanel({
               tenantKey={tenantKey}
               kind={newKind}
               teamCount={teamCount}
+              slideSets={slideSets}
               practiceMinutes={practiceMinutes}
 
               rooms={rooms}
@@ -1014,6 +1035,13 @@ function EntriesPanel({
                     <Badge variant="outline" className="gap-1">
                       <QrCode className="h-3 w-3" />
                       {t("entries.kind.register")}
+                    </Badge>
+                  ) : null}
+                  {e.kind === "slides" ? (
+                    <Badge variant="outline" className="gap-1">
+                      <Images className="h-3 w-3" />
+                      {slideSets.find((s) => s.id === e.slide_set_id)?.name ??
+                        t("entries.kind.slides")}
                     </Badge>
                   ) : null}
                   <span>{e.title}</span>
