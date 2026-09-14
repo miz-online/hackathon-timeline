@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const IO_VERSION = 6;
+export const IO_VERSION = 7;
 
 export const SECTIONS = [
   "tenant",
@@ -59,13 +59,15 @@ export const roomItem = z.object({
 
 export const entryItem = z.object({
   /** "practice" entries expand into one row per team on the displays */
-  kind: z.enum(["entry", "practice"]).default("entry"),
+  kind: z.enum(["entry", "practice", "register", "slides"]).default("entry"),
   time: z.string().min(1),
   end_time: z.string().min(1).nullable().default(null),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).default(""),
   rooms: z.array(z.string().min(1).max(60)).max(50).default([]),
   color_scheme: z.string().max(60).nullable().default(null),
+  /** id of an entry in slide_sets; only used by "slides" entries */
+  slide_set: z.string().max(60).nullable().default(null),
   notify: z.boolean().default(true),
   background: z
     .object({ file: z.string().min(1), content_type: z.string().min(1) })
