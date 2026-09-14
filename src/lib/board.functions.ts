@@ -1839,7 +1839,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       supabase
         .from("entries")
         .select(
-          "kind, time, end_time, title, description, tags, color_scheme_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
+          "kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, notify, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint",
         )
         .eq("tenant_id", tenant.id)
         .order("time", { ascending: true }),
@@ -1880,7 +1880,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const templateRefOf = (template: string | null): string | null => {
       if (!template) return null;
       if (!template.startsWith("slides:")) return template;
-      const ref = setIdByUuid.get(template.slice(4));
+      const ref = setIdByUuid.get(template.slice(7));
       return ref ? `slides:${ref}` : "slides";
     };
 
@@ -1943,13 +1943,14 @@ export const exportTenantData = createServerFn({ method: "GET" })
         }
       }
       entryItems.push({
-        kind: (e.kind ?? "entry") as "entry" | "practice",
+        kind: (e.kind ?? "entry") as "entry" | "practice" | "register" | "slides",
         time: e.time,
         end_time: e.end_time,
         title: e.title,
         description: e.description,
         rooms: e.tags.map((name) => roomIdByName.get(name) ?? slugify(name)).filter(Boolean),
         color_scheme: e.color_scheme_id ? (schemeIdByUuid.get(e.color_scheme_id) ?? null) : null,
+        slide_set: e.slide_set_id ? (setIdByUuid.get(e.slide_set_id) ?? null) : null,
         notify: e.notify,
         background,
         background_align: (e.background_align ?? "right-top") as EntryBgAlign,
@@ -2184,9 +2185,9 @@ export const importTenantData = createServerFn({ method: "POST" })
     const templateValue = (template: string | null | undefined, label: string): string | null => {
       if (!template) return null;
       if (!template.startsWith("slides:")) return template;
-      const uuid = setUuid(template.slice(4));
+      const uuid = setUuid(template.slice(7));
       if (uuid) return `slides:${uuid}`;
-      warnings.push(`${label}: unknown slide set "${template.slice(4)}", using the first slide set`);
+      warnings.push(`${label}: unknown slide set "${template.slice(7)}", using the first slide set`);
       return "slides";
     };
 
@@ -2306,6 +2307,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           description: string;
           tags: string[];
           color_scheme_id: string | null;
+          slide_set_id: string | null;
           notify: boolean;
           background_path: string | null;
           background_content_type: string | null;
