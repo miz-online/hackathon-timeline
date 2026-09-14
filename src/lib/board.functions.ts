@@ -2356,6 +2356,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             description: e.description,
             tags: e.rooms.map((ref) => roomNameByRef.get(ref) ?? ref),
             color_scheme_id: schemeUuid(e.color_scheme),
+            slide_set_id: e.kind === "slides" ? setUuid(e.slide_set) : null,
             notify: e.notify,
             background_path: bgPath,
             background_content_type: bgType,

@@ -252,10 +252,10 @@ export const TENANT_JSON_SCHEMA = {
         properties: {
           kind: {
             type: "string",
-            enum: ["entry", "practice"],
+            enum: ["entry", "practice", "register", "slides"],
             default: "entry",
             description:
-              'A "practice" entry is shown as one row per team, each lasting practice_minutes.',
+              'A "practice" entry is shown as one row per team, each lasting practice_minutes. A "slides" entry plays slide_set between time and end_time on displays using the automatic template.',
           },
           time: { type: "string", format: "date-time" },
           end_time: {
