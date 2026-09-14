@@ -1323,7 +1323,7 @@ function EntryForm({
               placeholder={t("entries.form.titlePh")}
             />
           </div>
-          {isPractice ? (
+          {isSlides ? null : isPractice ? (
             <p className="text-sm text-muted-foreground">{t("entries.form.practiceHint")}</p>
           ) : (
           <div className="space-y-1">
@@ -1389,7 +1389,7 @@ function EntryForm({
           ) : null}
 
           {/* Background image */}
-          <div className={`space-y-2 border-t pt-3 ${isRegister ? "hidden" : ""}`}>
+          <div className={`space-y-2 border-t pt-3 ${isRegister || isSlides ? "hidden" : ""}`}>
             <Label>{t("entries.form.bg")}</Label>
             <input
               ref={bgInputRef}
