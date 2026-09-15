@@ -1046,7 +1046,7 @@ function EntriesPanel({
                         t("entries.kind.slides")}
                     </Badge>
                   ) : null}
-                  <span>{e.title}</span>
+                  {e.kind === "slides" ? null : <span>{e.title}</span>}
                 </div>
                 {e.description ? (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
