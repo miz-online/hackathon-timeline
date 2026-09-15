@@ -1315,6 +1315,7 @@ function EntryForm({
 
         {/* Right column (2): title, description, rooms */}
         <div className="col-span-1 sm:col-span-2 space-y-3">
+          {isSlides ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.title")}</Label>
             <Input
@@ -1323,6 +1324,7 @@ function EntryForm({
               placeholder={t("entries.form.titlePh")}
             />
           </div>
+          )}
           {isSlides ? null : isPractice ? (
             <p className="text-sm text-muted-foreground">{t("entries.form.practiceHint")}</p>
           ) : (
