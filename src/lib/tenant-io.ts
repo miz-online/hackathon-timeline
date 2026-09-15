@@ -275,6 +275,10 @@ export const TENANT_JSON_SCHEMA = {
             type: ["string", "null"],
             description: "id of an entry in color_schemes",
           },
+          slide_set: {
+            type: ["string", "null"],
+            description: 'id of an entry in slide_sets; only used by "slides" entries',
+          },
           notify: {
             type: "boolean",
             description: "Whether to post this entry to configured webhooks at its due time",
