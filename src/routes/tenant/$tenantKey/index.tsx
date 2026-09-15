@@ -1046,7 +1046,7 @@ function EntriesPanel({
                         t("entries.kind.slides")}
                     </Badge>
                   ) : null}
-                  <span>{e.title}</span>
+                  {e.kind === "slides" ? null : <span>{e.title}</span>}
                 </div>
                 {e.description ? (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
@@ -1315,6 +1315,7 @@ function EntryForm({
 
         {/* Right column (2): title, description, rooms */}
         <div className="col-span-1 sm:col-span-2 space-y-3">
+          {isSlides ? null : (
           <div className="space-y-1">
             <Label>{t("entries.form.title")}</Label>
             <Input
@@ -1323,6 +1324,7 @@ function EntryForm({
               placeholder={t("entries.form.titlePh")}
             />
           </div>
+          )}
           {isSlides ? null : isPractice ? (
             <p className="text-sm text-muted-foreground">{t("entries.form.practiceHint")}</p>
           ) : (
@@ -1611,7 +1613,10 @@ function EntryForm({
         </Button>
         <Button
           disabled={
-            saving || !title.trim() || !time || (isSlides && (!endTime || !slideSetId))
+            saving ||
+            (!isSlides && !title.trim()) ||
+            !time ||
+            (isSlides && (!endTime || !slideSetId))
           }
           onClick={async () => {
             setSaving(true);
@@ -1636,7 +1641,9 @@ function EntryForm({
                 kind,
                 time: new Date(time).toISOString(),
                 end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
-                title: title.trim(),
+                title: isSlides
+                  ? (slideSets.find((s) => s.id === slideSetId)?.name ?? "")
+                  : title.trim(),
                 description: isPractice || isSlides ? "" : description.trim(),
                 tags: isPractice || isRegister ? [] : tags,
                 color_scheme_id: isPractice || isRegister || isSlides ? null : schemeId || null,
