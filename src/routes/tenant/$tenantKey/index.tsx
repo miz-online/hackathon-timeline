@@ -158,8 +158,8 @@ export function useTemplateOptions(tenantKey: string) {
   });
   const sets = setsQ.data ?? [];
   return [
-    { value: "zeitplan", label: t("settings.template.zeitplan") },
     { value: "auto", label: t("settings.template.auto") },
+    { value: "zeitplan", label: t("settings.template.zeitplan") },
     ...sets.map((s) => ({ value: `slides:${s.id}`, label: `${t("settings.template.slides")}: ${s.name}` })),
   ];
 }
