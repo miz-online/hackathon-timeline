@@ -137,7 +137,7 @@ const en: Dict = {
   "settings.focusCount": "Focused entries",
   "settings.focusMinutes": "Focus entries starting within (minutes)",
   "settings.focusDim": "Opacity of other entries (%)",
-  "settings.template": "Display template",
+  "settings.template": "Display",
   "settings.template.zeitplan": "Zeitplan (time-sorted list)",
   "settings.save": "Save settings",
   "settings.saved": "Settings saved",
@@ -391,7 +391,7 @@ const en: Dict = {
   "entries.form.slideSetNone": "Please choose",
   "entries.form.slidesHint":
     "Displays set to \"Automatic\" play this slide set between start and end time, then return to the schedule. Room tags limit it to those rooms.",
-  "settings.template.auto": "Display",
+  "settings.template.auto": "Automatic",
   "reg.closedTitle": "Registration not open",
   "reg.closedBody": "This registration link is not active right now. Please contact the organizers.",
   "reg.unknown": "Unknown registration link.",
@@ -560,7 +560,7 @@ const de: Dict = {
   "settings.focusCount": "Fokussierte Einträge",
   "settings.focusMinutes": "Einträge fokussieren, die innerhalb von (Minuten) starten",
   "settings.focusDim": "Deckkraft der übrigen Einträge (%)",
-  "settings.template": "Anzeige-Vorlage",
+  "settings.template": "Display",
   "settings.template.zeitplan": "Zeitplan (zeitsortierte Liste)",
   "settings.save": "Einstellungen speichern",
   "settings.saved": "Einstellungen gespeichert",
@@ -818,7 +818,7 @@ const de: Dict = {
   "entries.form.slideSetNone": "Bitte wählen",
   "entries.form.slidesHint":
     "Anzeigen im Modus „Automatisch\" spielen dieses Slide-Set zwischen Start- und Endzeit und wechseln danach zurück zum Zeitplan. Raum-Tags begrenzen es auf diese Räume.",
-  "settings.template.auto": "Display",
+  "settings.template.auto": "Automatisch",
   "reg.closedTitle": "Registrierung nicht geöffnet",
   "reg.closedBody":
     "Dieser Registrierungslink ist derzeit nicht aktiv. Bitte wende dich an die Organisatoren.",
