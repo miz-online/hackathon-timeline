@@ -391,7 +391,7 @@ const en: Dict = {
   "entries.form.slideSetNone": "Please choose",
   "entries.form.slidesHint":
     "Displays set to \"Automatic\" play this slide set between start and end time, then return to the schedule. Room tags limit it to those rooms.",
-  "settings.template.auto": "Automatic (follows the entries)",
+  "settings.template.auto": "Display",
   "reg.closedTitle": "Registration not open",
   "reg.closedBody": "This registration link is not active right now. Please contact the organizers.",
   "reg.unknown": "Unknown registration link.",
@@ -818,7 +818,7 @@ const de: Dict = {
   "entries.form.slideSetNone": "Bitte wählen",
   "entries.form.slidesHint":
     "Anzeigen im Modus „Automatisch\" spielen dieses Slide-Set zwischen Start- und Endzeit und wechseln danach zurück zum Zeitplan. Raum-Tags begrenzen es auf diese Räume.",
-  "settings.template.auto": "Automatisch (folgt den Einträgen)",
+  "settings.template.auto": "Display",
   "reg.closedTitle": "Registrierung nicht geöffnet",
   "reg.closedBody":
     "Dieser Registrierungslink ist derzeit nicht aktiv. Bitte wende dich an die Organisatoren.",
