@@ -1613,7 +1613,10 @@ function EntryForm({
         </Button>
         <Button
           disabled={
-            saving || !title.trim() || !time || (isSlides && (!endTime || !slideSetId))
+            saving ||
+            (!isSlides && !title.trim()) ||
+            !time ||
+            (isSlides && (!endTime || !slideSetId))
           }
           onClick={async () => {
             setSaving(true);
