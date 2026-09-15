@@ -1641,7 +1641,9 @@ function EntryForm({
                 kind,
                 time: new Date(time).toISOString(),
                 end_time: isPractice ? null : endMs != null ? new Date(endMs).toISOString() : null,
-                title: title.trim(),
+                title: isSlides
+                  ? (slideSets.find((s) => s.id === slideSetId)?.name ?? "")
+                  : title.trim(),
                 description: isPractice || isSlides ? "" : description.trim(),
                 tags: isPractice || isRegister ? [] : tags,
                 color_scheme_id: isPractice || isRegister || isSlides ? null : schemeId || null,
