@@ -319,6 +319,63 @@ export type Database = {
           },
         ]
       }
+      team_files: {
+        Row: {
+          content_type: string
+          created_at: string
+          id: string
+          name: string
+          ref_id: string | null
+          size_bytes: number
+          sort_order: number
+          storage_key: string
+          team_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          name: string
+          ref_id?: string | null
+          size_bytes?: number
+          sort_order?: number
+          storage_key: string
+          team_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          name?: string
+          ref_id?: string | null
+          size_bytes?: number
+          sort_order?: number
+          storage_key?: string
+          team_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_files_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_files_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           created_at: string
@@ -379,6 +436,53 @@ export type Database = {
           },
         ]
       }
+      tenant_files: {
+        Row: {
+          content_type: string
+          created_at: string
+          id: string
+          name: string
+          ref_id: string | null
+          size_bytes: number
+          sort_order: number
+          storage_key: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          name: string
+          ref_id?: string | null
+          size_bytes?: number
+          sort_order?: number
+          storage_key: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          id?: string
+          name?: string
+          ref_id?: string | null
+          size_bytes?: number
+          sort_order?: number
+          storage_key?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_files_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           accent_color: string
@@ -391,6 +495,7 @@ export type Database = {
           key: string
           logo_height: number
           logo_url: string | null
+          max_upload_mb: number
           name: string
           past_grace_minutes: number
           pin_hash: string | null
@@ -411,6 +516,7 @@ export type Database = {
           key: string
           logo_height?: number
           logo_url?: string | null
+          max_upload_mb?: number
           name?: string
           past_grace_minutes?: number
           pin_hash?: string | null
@@ -431,6 +537,7 @@ export type Database = {
           key?: string
           logo_height?: number
           logo_url?: string | null
+          max_upload_mb?: number
           name?: string
           past_grace_minutes?: number
           pin_hash?: string | null
