@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ZeitplanTemplate } from "@/components/templates/ZeitplanTemplate";
 import { SlidesTemplate } from "@/components/templates/SlidesTemplate";
 import type { RoomSnapshot } from "@/lib/board.functions";
@@ -194,38 +195,53 @@ function RoomDisplay() {
   const isOverview = snapshot.room.is_overview === true;
   const displayRoomName = isOverview ? t("rooms.overview") : snapshot.room.name;
   const activeTemplate = snapshot.room.template || snapshot.tenant.template;
-  if (activeTemplate === "slides" || activeTemplate?.startsWith("slides:")) {
-
-    return (
-      <SlidesTemplate
-        tenantName={snapshot.tenant.name}
-        roomName={displayRoomName}
-        overview={isOverview}
-        slides={snapshot.slides ?? []}
-        slideSeconds={snapshot.tenant.slide_seconds ?? 10}
-        slideOverlay={snapshot.slide_overlay ?? null}
-        logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
-        logoHeight={snapshot.tenant.logo_height}
-        accentColor={snapshot.tenant.accent_color}
-        roomColor={snapshot.room.color}
-      />
-    );
-  }
+  const isSlides = activeTemplate === "slides" || activeTemplate?.startsWith("slides:");
+  // Key changes whenever the shown template (or slide set) changes, so the
+  // crossfade below runs on manual and automatic switches alike.
+  const templateKey = isSlides ? `slides:${activeTemplate}` : "zeitplan";
 
   return (
-    <ZeitplanTemplate
-      tenantName={snapshot.tenant.name}
-      roomName={displayRoomName}
-      overview={isOverview}
-      logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
-      logoHeight={snapshot.tenant.logo_height}
-      accentColor={snapshot.tenant.accent_color}
-      roomColor={snapshot.room.color}
-      focusMode={snapshot.tenant.focus_mode}
-      focusCount={snapshot.tenant.focus_count}
-      focusMinutes={snapshot.tenant.focus_minutes}
-      focusDimOpacity={snapshot.tenant.focus_dim_opacity}
-      entries={visible}
-    />
+    <div style={{ position: "relative", minHeight: "100vh", width: "100%" }}>
+      <AnimatePresence initial={false} mode="sync">
+        <motion.div
+          key={templateKey}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.2, ease: "easeInOut" }}
+          style={{ position: "absolute", inset: 0, minHeight: "100vh" }}
+        >
+          {isSlides ? (
+            <SlidesTemplate
+              tenantName={snapshot.tenant.name}
+              roomName={displayRoomName}
+              overview={isOverview}
+              slides={snapshot.slides ?? []}
+              slideSeconds={snapshot.tenant.slide_seconds ?? 10}
+              slideOverlay={snapshot.slide_overlay ?? null}
+              logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
+              logoHeight={snapshot.tenant.logo_height}
+              accentColor={snapshot.tenant.accent_color}
+              roomColor={snapshot.room.color}
+            />
+          ) : (
+            <ZeitplanTemplate
+              tenantName={snapshot.tenant.name}
+              roomName={displayRoomName}
+              overview={isOverview}
+              logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
+              logoHeight={snapshot.tenant.logo_height}
+              accentColor={snapshot.tenant.accent_color}
+              roomColor={snapshot.room.color}
+              focusMode={snapshot.tenant.focus_mode}
+              focusCount={snapshot.tenant.focus_count}
+              focusMinutes={snapshot.tenant.focus_minutes}
+              focusDimOpacity={snapshot.tenant.focus_dim_opacity}
+              entries={visible}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }
