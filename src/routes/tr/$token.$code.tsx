@@ -138,6 +138,10 @@ function EditTeamPage() {
             {saving ? t("reg.saving") : t("reg.save")}
           </Button>
         </div>
+
+        {info.filesMode !== "off" ? (
+          <TeamFilesSections token={token} code={code} maxUploadMb={info.maxUploadMb} />
+        ) : null}
       </div>
     </Shell>
   );
