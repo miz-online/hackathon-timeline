@@ -203,6 +203,18 @@ export const TENANT_JSON_SCHEMA = {
           description:
             'Whether practice rows appear only in the room a team is assigned to ("assigned") or in every room ("all")',
         },
+        files_mode: {
+          type: "string",
+          enum: ["off", "download", "full"],
+          description:
+            'File handling: "off" disables files entirely, "download" only offers the organization downloads, "full" also lets teams manage their own files',
+        },
+        max_upload_mb: {
+          type: "integer",
+          minimum: 1,
+          maximum: 2048,
+          description: "Maximum upload size per file in megabytes",
+        },
       },
     },
     color_schemes: {
@@ -384,6 +396,35 @@ export const TENANT_JSON_SCHEMA = {
               "Webhook URL. Always null in exports; when null on import the URL is left unset and the webhook stays inactive.",
             default: null,
           },
+        },
+      },
+    },
+    team_files: {
+      type: "array",
+      description: "Files belonging to a single team",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["team", "name", "file"],
+        properties: {
+          team: { type: "string", description: "id of an entry in teams" },
+          name: { type: "string", description: "Display name of the file" },
+          file: { type: "string", description: "Path of the file inside the export archive" },
+          content_type: { type: "string" },
+        },
+      },
+    },
+    tenant_files: {
+      type: "array",
+      description: "Organization wide downloads, offered to every team read-only",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "file"],
+        properties: {
+          name: { type: "string", description: "Display name of the file" },
+          file: { type: "string", description: "Path of the file inside the export archive" },
+          content_type: { type: "string" },
         },
       },
     },
