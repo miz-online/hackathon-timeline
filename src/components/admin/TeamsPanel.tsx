@@ -33,12 +33,16 @@ export function TeamsPanel({
   rooms,
   schemes,
   defaultColor,
+  filesMode = "full",
+  maxUploadMb = 10,
   onChange,
 }: {
   tenantKey: string;
   rooms: RoomLike[];
   schemes: SchemeLike[];
   defaultColor: string;
+  filesMode?: string;
+  maxUploadMb?: number;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -51,6 +55,7 @@ export function TeamsPanel({
   const [mode, setMode] = useState<"form" | "json">("form");
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [filesTeam, setFilesTeam] = useState<TeamRow | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [overPark, setOverPark] = useState(false);
