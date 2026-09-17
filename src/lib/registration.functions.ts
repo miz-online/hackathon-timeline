@@ -275,8 +275,8 @@ export const listFilesForTeam = createServerFn({ method: "GET" })
     ]);
     return {
       mode: cfg.filesMode,
-      own: (own.data ?? []) as unknown[],
-      shared: (shared.data ?? []) as unknown[],
+      own: (own.data ?? []) as unknown as FileItem[],
+      shared: (shared.data ?? []) as unknown as FileItem[],
     };
   });
 
