@@ -487,6 +487,7 @@ export type Database = {
         Row: {
           accent_color: string
           created_at: string
+          files_mode: string
           focus_count: number
           focus_dim_opacity: number
           focus_minutes: number
@@ -508,6 +509,7 @@ export type Database = {
         Insert: {
           accent_color?: string
           created_at?: string
+          files_mode?: string
           focus_count?: number
           focus_dim_opacity?: number
           focus_minutes?: number
@@ -529,6 +531,7 @@ export type Database = {
         Update: {
           accent_color?: string
           created_at?: string
+          files_mode?: string
           focus_count?: number
           focus_dim_opacity?: number
           focus_minutes?: number

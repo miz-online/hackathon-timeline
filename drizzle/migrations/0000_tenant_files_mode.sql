@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS files_mode TEXT NOT NULL DEFAULT 'full';
