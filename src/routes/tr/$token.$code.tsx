@@ -7,7 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
 import { Shell } from "./$token";
-import { getRegisteredTeam, updateRegisteredTeam } from "@/lib/registration.functions";
+import {
+  deleteFileForTeam,
+  getRegisteredTeam,
+  getTeamFileDownloadUrl,
+  listFilesForTeam,
+  updateRegisteredTeam,
+  uploadFileForTeam,
+} from "@/lib/registration.functions";
+import { useQuery } from "@tanstack/react-query";
+import { FileList } from "@/components/FileList";
 
 export const Route = createFileRoute("/tr/$token/$code")({
   ssr: false,
@@ -144,6 +153,60 @@ function EditTeamPage() {
         ) : null}
       </div>
     </Shell>
+  );
+}
+
+/** "My files" plus the read-only organization downloads. */
+function TeamFilesSections({
+  token,
+  code,
+  maxUploadMb,
+}: {
+  token: string;
+  code: string;
+  maxUploadMb: number;
+}) {
+  const { t } = useI18n();
+  const q = useQuery({
+    queryKey: ["team-files", token, code],
+    queryFn: () => listFilesForTeam({ data: { token, code } }),
+  });
+  const data = q.data;
+  if (!data) return null;
+
+  const download = async (scope: "team" | "tenant", id: string) => {
+    const r = await getTeamFileDownloadUrl({ data: { token, code, scope, id } });
+    return r.url;
+  };
+
+  return (
+    <div className="space-y-4">
+      {data.mode === "full" ? (
+        <FileList
+          title={t("files.myTitle")}
+          hint={t("files.myHint")}
+          items={data.own}
+          maxUploadMb={maxUploadMb}
+          canUpload
+          canDelete
+          onUpload={async (file) => {
+            await uploadFileForTeam({ data: { token, code, ...file } });
+            await q.refetch();
+          }}
+          onDelete={async (id) => {
+            await deleteFileForTeam({ data: { token, code, id } });
+            await q.refetch();
+          }}
+          onDownload={(id) => download("team", id)}
+        />
+      ) : null}
+      <FileList
+        title={t("files.sharedTitle")}
+        hint={t("files.sharedHint")}
+        items={data.shared}
+        onDownload={(id) => download("tenant", id)}
+      />
+    </div>
   );
 }
 
