@@ -79,7 +79,17 @@ function EditTeamPage() {
         logoUrl={info.logoUrl}
         logoHeight={info.logoHeight}
       >
-        {t("reg.lockedBody")}
+        <div className="space-y-4">
+          <p>{t("reg.lockedBody")}</p>
+          {info.filesMode !== "off" ? (
+            <TeamFilesSections
+              token={token}
+              code={code}
+              maxUploadMb={info.maxUploadMb}
+              locked
+            />
+          ) : null}
+        </div>
       </Shell>
     );
 
