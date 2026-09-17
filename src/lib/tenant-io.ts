@@ -148,6 +148,8 @@ export const tenantDataSchema = z.object({
   slide_sets: z.array(slideSetItem).optional(),
   slides: z.array(slideItem).optional(),
   webhooks: z.array(webhookItem).optional(),
+  team_files: z.array(teamFileItem).optional(),
+  tenant_files: z.array(tenantFileItem).optional(),
   logo: logoSection.nullable().optional(),
 });
 
