@@ -451,7 +451,17 @@ function AdminPage() {
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
+              filesMode={normalizeFileMode(tenant.files_mode)}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
               onChange={invalidate}
+            />
+          </TabsContent>
+
+          <TabsContent value="files" className="space-y-4 pt-4">
+            <TenantFilesPanel
+              tenantKey={tenantKey}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
+              disabled={normalizeFileMode(tenant.files_mode) === "off"}
             />
           </TabsContent>
 
@@ -495,6 +505,8 @@ function AdminPage() {
               practiceMinutes={tenant.practice_minutes ?? 10}
               practiceRoomScope={tenant.practice_room_scope ?? "all"}
               teamEditLocked={tenant.team_edit_locked === true}
+              filesMode={normalizeFileMode(tenant.files_mode)}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
               onChange={invalidate}
             />
           </TabsContent>
