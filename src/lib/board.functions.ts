@@ -24,6 +24,7 @@ import {
   roomTokenVariant,
 } from "@/lib/registration";
 import type { DisplayEntryRow } from "@/lib/register-url";
+import { FILE_MODES } from "@/lib/files";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
@@ -212,6 +213,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       practice_minutes?: number;
       practice_room_scope?: string;
       team_edit_locked?: boolean;
+      files_mode?: string;
+      max_upload_mb?: number;
     }) =>
       z
         .object({
@@ -233,6 +236,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           practice_minutes: z.number().int().min(1).max(600).default(10),
           practice_room_scope: z.enum(PRACTICE_SCOPES).default("all"),
           team_edit_locked: z.boolean().default(false),
+          files_mode: z.enum(FILE_MODES).default("full"),
+          max_upload_mb: z.number().int().min(1).max(2048).default(10),
         })
         .parse(d),
   )
@@ -254,6 +259,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         practice_minutes: data.practice_minutes,
         practice_room_scope: data.practice_room_scope,
         team_edit_locked: data.team_edit_locked,
+        files_mode: data.files_mode,
+        max_upload_mb: data.max_upload_mb,
     };
     const write = (payload: Record<string, unknown>) =>
       supabase
@@ -262,7 +269,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         .eq("id", id) as unknown as Promise<{ data: unknown; error: unknown }>;
     const { error } = await withOptionalColumns(
       () => write(patch),
-      () => write(omitKeys(patch, ["team_edit_locked"])),
+      () => write(omitKeys(patch, ["team_edit_locked", "files_mode", "max_upload_mb"])),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return { ok: true };
