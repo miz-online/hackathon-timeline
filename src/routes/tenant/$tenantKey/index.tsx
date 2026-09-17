@@ -2083,6 +2083,8 @@ function SettingsPanel({
                 practice_minutes: pMinutes,
                 practice_room_scope: pScope,
                 team_edit_locked: teamLock,
+                files_mode: fileMode,
+                max_upload_mb: maxMb,
               },
             });
             toast.success(t("settings.saved"));
