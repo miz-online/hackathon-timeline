@@ -2552,6 +2552,120 @@ export const importTenantData = createServerFn({ method: "POST" })
     }
 
 
+    // ---- files (team + organization wide) ----
+    if ((wants("team_files") && p.team_files) || (wants("tenant_files") && p.tenant_files)) {
+      const { fileStorage, teamFileKey, tenantFileKey } = await import("@/lib/storage/index.server");
+      const storage = fileStorage();
+
+      if (wants("tenant_files") && p.tenant_files) {
+        if (replace) {
+          const { data: old } = await supabase
+            .from("tenant_files")
+            .select("storage_key")
+            .eq("tenant_id", tenant.id);
+          await storage.remove((old ?? []).map((o) => o.storage_key));
+          await supabase.from("tenant_files").delete().eq("tenant_id", tenant.id);
+        }
+        const { data: last } = await supabase
+          .from("tenant_files")
+          .select("sort_order")
+          .eq("tenant_id", tenant.id)
+          .order("sort_order", { ascending: false })
+          .limit(1);
+        let order = (last?.[0]?.sort_order ?? -1) + 1;
+        for (const f of p.tenant_files) {
+          const file = findFile(f.file);
+          if (!file) {
+            warnings.push(`File "${f.name}": "${f.file}" is missing in the archive`);
+            continue;
+          }
+          const bytes = fromBase64(file.dataBase64);
+          const key = tenantFileKey(tenant.id, extOf(f.file));
+          const contentType = f.content_type || file.content_type;
+          try {
+            await storage.put(key, bytes, contentType);
+          } catch (e) {
+            warnings.push(`File "${f.name}": upload failed — ${(e as Error).message}`);
+            continue;
+          }
+          const { error } = await supabase.from("tenant_files").insert({
+            tenant_id: tenant.id,
+            name: f.name,
+            storage_key: key,
+            content_type: contentType,
+            size_bytes: bytes.byteLength,
+            sort_order: order++,
+          });
+          if (error) warnings.push(`File "${f.name}" not imported: ${error.message}`);
+          else counts.tenant_files = (counts.tenant_files ?? 0) + 1;
+        }
+      }
+
+      if (wants("team_files") && p.team_files) {
+        const teamUuidByRef = new Map<string, string>();
+        {
+          const { data: rows } = await supabase
+            .from("teams")
+            .select("id, ref_id, name, sort_order")
+            .eq("tenant_id", tenant.id)
+            .order("sort_order", { ascending: true });
+          const taken = new Set<string>();
+          for (const row of rows ?? []) {
+            const ref = uniqueRefId(effectiveRefId(row), taken, "team");
+            teamUuidByRef.set(ref, row.id);
+            teamUuidByRef.set(slugify(row.name), row.id);
+          }
+        }
+        if (replace) {
+          const { data: old } = await supabase
+            .from("team_files")
+            .select("storage_key")
+            .eq("tenant_id", tenant.id);
+          await storage.remove((old ?? []).map((o) => o.storage_key));
+          await supabase.from("team_files").delete().eq("tenant_id", tenant.id);
+        }
+        for (const f of p.team_files) {
+          const teamUuid = teamUuidByRef.get(f.team) ?? teamUuidByRef.get(slugify(f.team));
+          if (!teamUuid) {
+            warnings.push(`File "${f.name}": unknown team "${f.team}"`);
+            continue;
+          }
+          const file = findFile(f.file);
+          if (!file) {
+            warnings.push(`File "${f.name}": "${f.file}" is missing in the archive`);
+            continue;
+          }
+          const { data: last } = await supabase
+            .from("team_files")
+            .select("sort_order")
+            .eq("tenant_id", tenant.id)
+            .eq("team_id", teamUuid)
+            .order("sort_order", { ascending: false })
+            .limit(1);
+          const bytes = fromBase64(file.dataBase64);
+          const key = teamFileKey(tenant.id, teamUuid, extOf(f.file));
+          const contentType = f.content_type || file.content_type;
+          try {
+            await storage.put(key, bytes, contentType);
+          } catch (e) {
+            warnings.push(`File "${f.name}": upload failed — ${(e as Error).message}`);
+            continue;
+          }
+          const { error } = await supabase.from("team_files").insert({
+            tenant_id: tenant.id,
+            team_id: teamUuid,
+            name: f.name,
+            storage_key: key,
+            content_type: contentType,
+            size_bytes: bytes.byteLength,
+            sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+          });
+          if (error) warnings.push(`File "${f.name}" not imported: ${error.message}`);
+          else counts.team_files = (counts.team_files ?? 0) + 1;
+        }
+      }
+    }
+
     // ---- logo ----
     let logoPath: string | null | undefined;
     if (wants("logo") && p.logo) {
