@@ -248,7 +248,7 @@ const teamFileIn = z.object({
 /** Own files plus the organization wide downloads. */
 export const listFilesForTeam = createServerFn({ method: "GET" })
   .inputValidator((d: { token: string; code: string }) => teamFileIn.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{ mode: FileMode; own: FileItem[]; shared: FileItem[] }> => {
     const found = await resolveTeam(data.token, data.code);
     if (!found) throw new Error("Unknown link");
     const { tenantFileConfig } = await import("@/lib/files.server");
