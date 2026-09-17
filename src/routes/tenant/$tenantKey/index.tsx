@@ -72,6 +72,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TeamsPanel } from "@/components/admin/TeamsPanel";
+import { TenantFilesPanel } from "@/components/admin/TenantFilesPanel";
+import { FILE_MODES, normalizeFileMode, type FileMode } from "@/lib/files";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +86,17 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
-const TABS = ["entries", "slides", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
+const TABS = [
+  "entries",
+  "slides",
+  "messages",
+  "rooms",
+  "teams",
+  "files",
+  "colors",
+  "settings",
+  "io",
+] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
@@ -439,7 +451,17 @@ function AdminPage() {
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
+              filesMode={normalizeFileMode(tenant.files_mode)}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
               onChange={invalidate}
+            />
+          </TabsContent>
+
+          <TabsContent value="files" className="space-y-4 pt-4">
+            <TenantFilesPanel
+              tenantKey={tenantKey}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
+              disabled={normalizeFileMode(tenant.files_mode) === "off"}
             />
           </TabsContent>
 
@@ -483,6 +505,8 @@ function AdminPage() {
               practiceMinutes={tenant.practice_minutes ?? 10}
               practiceRoomScope={tenant.practice_room_scope ?? "all"}
               teamEditLocked={tenant.team_edit_locked === true}
+              filesMode={normalizeFileMode(tenant.files_mode)}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
               onChange={invalidate}
             />
           </TabsContent>
@@ -1975,6 +1999,8 @@ function SettingsPanel({
   practiceMinutes,
   practiceRoomScope,
   teamEditLocked,
+  filesMode,
+  maxUploadMb,
   onChange,
 }: {
   tenantKey: string;
@@ -1992,6 +2018,8 @@ function SettingsPanel({
   practiceMinutes: number;
   practiceRoomScope: string;
   teamEditLocked?: boolean;
+  filesMode?: FileMode;
+  maxUploadMb?: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -2013,6 +2041,8 @@ function SettingsPanel({
     practiceRoomScope === "assigned" ? "assigned" : "all",
   );
   const [teamLock, setTeamLock] = useState(teamEditLocked === true);
+  const [fileMode, setFileMode] = useState<FileMode>(normalizeFileMode(filesMode));
+  const [maxMb, setMaxMb] = useState(maxUploadMb ?? 10);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -2053,6 +2083,8 @@ function SettingsPanel({
                 practice_minutes: pMinutes,
                 practice_room_scope: pScope,
                 team_edit_locked: teamLock,
+                files_mode: fileMode,
+                max_upload_mb: maxMb,
               },
             });
             toast.success(t("settings.saved"));
@@ -2204,6 +2236,33 @@ function SettingsPanel({
                 <p className="text-xs text-muted-foreground">{t("teams.lockEditHint")}</p>
               </div>
             </div>
+            <div className="space-y-1 border-t pt-3">
+              <Label>{t("settings.filesMode")}</Label>
+              <select
+                value={fileMode}
+                onChange={(e) => setFileMode(e.target.value as FileMode)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                {FILE_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {t(`settings.filesMode.${m}`)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("settings.filesModeHint")}</p>
+            </div>
+            {fileMode !== "off" ? (
+              <div className="space-y-1">
+                <Label>{t("settings.maxUploadMb")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={2048}
+                  value={maxMb}
+                  onChange={(e) => setMaxMb(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
+            ) : null}
             {saveButton}
           </Card>
         </TabsContent>

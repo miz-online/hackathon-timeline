@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const IO_VERSION = 7;
+export const IO_VERSION = 8;
 
 export const SECTIONS = [
   "tenant",
@@ -11,6 +11,8 @@ export const SECTIONS = [
   "slide_sets",
   "slides",
   "webhooks",
+  "team_files",
+  "tenant_files",
   "logo",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
@@ -33,7 +35,22 @@ export const tenantSection = z.object({
   focus_dim_opacity: z.number().int().min(0).max(100).optional(),
   practice_minutes: z.number().int().min(1).max(600).optional(),
   practice_room_scope: z.enum(["assigned", "all"]).optional(),
+  files_mode: z.enum(["off", "download", "full"]).optional(),
+  max_upload_mb: z.number().int().min(1).max(2048).optional(),
 });
+
+export const tenantFileItem = z.object({
+  name: z.string().min(1).max(300),
+  /** Path of the file inside the export archive */
+  file: z.string().min(1).max(400),
+  content_type: z.string().min(1).max(200).default("application/octet-stream"),
+});
+
+export const teamFileItem = tenantFileItem.extend({
+  /** id of an entry in teams */
+  team: z.string().min(1).max(60),
+});
+
 
 export const teamItem = z.object({
   id: z.string().min(1).max(60),
@@ -131,6 +148,8 @@ export const tenantDataSchema = z.object({
   slide_sets: z.array(slideSetItem).optional(),
   slides: z.array(slideItem).optional(),
   webhooks: z.array(webhookItem).optional(),
+  team_files: z.array(teamFileItem).optional(),
+  tenant_files: z.array(tenantFileItem).optional(),
   logo: logoSection.nullable().optional(),
 });
 
@@ -183,6 +202,18 @@ export const TENANT_JSON_SCHEMA = {
           enum: ["assigned", "all"],
           description:
             'Whether practice rows appear only in the room a team is assigned to ("assigned") or in every room ("all")',
+        },
+        files_mode: {
+          type: "string",
+          enum: ["off", "download", "full"],
+          description:
+            'File handling: "off" disables files entirely, "download" only offers the organization downloads, "full" also lets teams manage their own files',
+        },
+        max_upload_mb: {
+          type: "integer",
+          minimum: 1,
+          maximum: 2048,
+          description: "Maximum upload size per file in megabytes",
         },
       },
     },
@@ -365,6 +396,35 @@ export const TENANT_JSON_SCHEMA = {
               "Webhook URL. Always null in exports; when null on import the URL is left unset and the webhook stays inactive.",
             default: null,
           },
+        },
+      },
+    },
+    team_files: {
+      type: "array",
+      description: "Files belonging to a single team",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["team", "name", "file"],
+        properties: {
+          team: { type: "string", description: "id of an entry in teams" },
+          name: { type: "string", description: "Display name of the file" },
+          file: { type: "string", description: "Path of the file inside the export archive" },
+          content_type: { type: "string" },
+        },
+      },
+    },
+    tenant_files: {
+      type: "array",
+      description: "Organization wide downloads, offered to every team read-only",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "file"],
+        properties: {
+          name: { type: "string", description: "Display name of the file" },
+          file: { type: "string", description: "Path of the file inside the export archive" },
+          content_type: { type: "string" },
         },
       },
     },
