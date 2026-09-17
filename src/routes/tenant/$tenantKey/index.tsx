@@ -2236,6 +2236,33 @@ function SettingsPanel({
                 <p className="text-xs text-muted-foreground">{t("teams.lockEditHint")}</p>
               </div>
             </div>
+            <div className="space-y-1 border-t pt-3">
+              <Label>{t("settings.filesMode")}</Label>
+              <select
+                value={fileMode}
+                onChange={(e) => setFileMode(e.target.value as FileMode)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                {FILE_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {t(`settings.filesMode.${m}`)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("settings.filesModeHint")}</p>
+            </div>
+            {fileMode !== "off" ? (
+              <div className="space-y-1">
+                <Label>{t("settings.maxUploadMb")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={2048}
+                  value={maxMb}
+                  onChange={(e) => setMaxMb(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
+            ) : null}
             {saveButton}
           </Card>
         </TabsContent>
