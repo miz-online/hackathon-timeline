@@ -2709,6 +2709,8 @@ export const importTenantData = createServerFn({ method: "POST" })
           update.practice_minutes = p.tenant.practice_minutes;
         if (p.tenant.practice_room_scope !== undefined)
           update.practice_room_scope = p.tenant.practice_room_scope;
+        if (p.tenant.files_mode !== undefined) update.files_mode = p.tenant.files_mode;
+        if (p.tenant.max_upload_mb !== undefined) update.max_upload_mb = p.tenant.max_upload_mb;
         counts.tenant = 1;
       }
       if (logoPath !== undefined) update.logo_url = logoPath;
