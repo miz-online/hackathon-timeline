@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const IO_VERSION = 7;
+export const IO_VERSION = 8;
 
 export const SECTIONS = [
   "tenant",
@@ -11,6 +11,8 @@ export const SECTIONS = [
   "slide_sets",
   "slides",
   "webhooks",
+  "team_files",
+  "tenant_files",
   "logo",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
@@ -33,7 +35,22 @@ export const tenantSection = z.object({
   focus_dim_opacity: z.number().int().min(0).max(100).optional(),
   practice_minutes: z.number().int().min(1).max(600).optional(),
   practice_room_scope: z.enum(["assigned", "all"]).optional(),
+  files_mode: z.enum(["off", "download", "full"]).optional(),
+  max_upload_mb: z.number().int().min(1).max(2048).optional(),
 });
+
+export const tenantFileItem = z.object({
+  name: z.string().min(1).max(300),
+  /** Path of the file inside the export archive */
+  file: z.string().min(1).max(400),
+  content_type: z.string().min(1).max(200).default("application/octet-stream"),
+});
+
+export const teamFileItem = tenantFileItem.extend({
+  /** id of an entry in teams */
+  team: z.string().min(1).max(60),
+});
+
 
 export const teamItem = z.object({
   id: z.string().min(1).max(60),
