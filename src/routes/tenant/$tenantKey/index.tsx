@@ -1999,6 +1999,8 @@ function SettingsPanel({
   practiceMinutes,
   practiceRoomScope,
   teamEditLocked,
+  filesMode,
+  maxUploadMb,
   onChange,
 }: {
   tenantKey: string;
@@ -2016,6 +2018,8 @@ function SettingsPanel({
   practiceMinutes: number;
   practiceRoomScope: string;
   teamEditLocked?: boolean;
+  filesMode?: FileMode;
+  maxUploadMb?: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -2037,6 +2041,8 @@ function SettingsPanel({
     practiceRoomScope === "assigned" ? "assigned" : "all",
   );
   const [teamLock, setTeamLock] = useState(teamEditLocked === true);
+  const [fileMode, setFileMode] = useState<FileMode>(normalizeFileMode(filesMode));
+  const [maxMb, setMaxMb] = useState(maxUploadMb ?? 10);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
