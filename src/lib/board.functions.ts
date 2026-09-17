@@ -2077,6 +2077,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         // URLs are secrets and never exported; the key is kept so it can be filled in for import
         url: null,
       })),
+      team_files: teamFileItems,
+      tenant_files: tenantFileItems,
       logo,
     };
 
