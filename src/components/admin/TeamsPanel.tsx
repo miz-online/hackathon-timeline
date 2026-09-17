@@ -432,6 +432,11 @@ export function TeamsPanel({
                     >
                       <ArrowDown className="h-4 w-4" />
                     </Button>
+                    {filesMode !== "off" ? (
+                      <Button size="sm" variant="ghost" onClick={() => setFilesTeam(team)}>
+                        {t("files.manage")}
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="outline"
