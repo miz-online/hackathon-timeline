@@ -72,6 +72,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TeamsPanel } from "@/components/admin/TeamsPanel";
+import { TenantFilesPanel } from "@/components/admin/TenantFilesPanel";
+import { FILE_MODES, normalizeFileMode, type FileMode } from "@/lib/files";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +86,17 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
-const TABS = ["entries", "slides", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
+const TABS = [
+  "entries",
+  "slides",
+  "messages",
+  "rooms",
+  "teams",
+  "files",
+  "colors",
+  "settings",
+  "io",
+] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
