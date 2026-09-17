@@ -59,11 +59,13 @@ type TenantRow = {
   practice_minutes: number;
   practice_room_scope: string;
   team_edit_locked: boolean;
+  files_mode: string;
+  max_upload_mb: number;
 };
 
 const TENANT_COLS_BASE =
   "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
-const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked`;
+const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked, files_mode, max_upload_mb`;
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
@@ -81,7 +83,13 @@ async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: st
   if (error) throw new Error((error as { message?: string }).message ?? String(error));
   if (!data) throw new Error("Unknown tenant key");
   const row = data as TenantRow & { pin_hash: string | null };
-  return { ...row, team_edit_locked: row.team_edit_locked === true };
+  const { normalizeFileMode } = await import("@/lib/files");
+  return {
+    ...row,
+    team_edit_locked: row.team_edit_locked === true,
+    files_mode: normalizeFileMode(row.files_mode),
+    max_upload_mb: row.max_upload_mb ?? 10,
+  };
 }
 
 
