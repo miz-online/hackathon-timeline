@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useI18n } from "@/lib/i18n";
 import { slugify } from "@/lib/ref-id";
 import { TeamsJsonPanel } from "@/components/admin/TeamsJsonPanel";
+import { TeamFilesPanel } from "@/components/admin/TeamFilesPanel";
 
 type TeamRow = {
   id: string;
@@ -65,7 +66,13 @@ export function TeamsPanel({
   // Live updates (e.g. teams registering/editing themselves) — paused while the
   // user has unsaved local state: open dialog, JSON mode, drag or manual order.
   const busy =
-    showForm || !!editing || mode === "json" || !!dragId || !!order || parked.length > 0;
+    showForm ||
+    !!editing ||
+    !!filesTeam ||
+    mode === "json" ||
+    !!dragId ||
+    !!order ||
+    parked.length > 0;
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listFn({ data: { key: tenantKey } }),
@@ -211,6 +218,22 @@ export function TeamsPanel({
       {mode === "form" ? (
         <>
           <p className="text-xs text-muted-foreground">{t("teams.hint")}</p>
+
+          <Dialog open={!!filesTeam} onOpenChange={(o) => !o && setFilesTeam(null)}>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{t("files.manage")}</DialogTitle>
+              </DialogHeader>
+              {filesTeam ? (
+                <TeamFilesPanel
+                  tenantKey={tenantKey}
+                  teamId={filesTeam.id}
+                  teamName={filesTeam.name}
+                  maxUploadMb={maxUploadMb}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogContent className="sm:max-w-xl">
