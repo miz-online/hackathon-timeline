@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { EDIT_CODE_LENGTH, randomToken, roomForToken } from "@/lib/registration";
+import type { FileItem, FileMode } from "@/lib/files";
 
 type Resolved = {
   tenantId: string;
