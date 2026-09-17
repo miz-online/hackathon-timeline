@@ -1976,6 +1976,50 @@ export const exportTenantData = createServerFn({ method: "GET" })
       });
     }
 
+    // ---- files (team + organization wide) ----
+    const { fileStorage } = await import("@/lib/storage/index.server");
+    const storage = fileStorage();
+    const teamIdByUuid = new Map(teamRows.map((t, idx) => [t.id, teamIds[idx]]));
+    const [teamFileRows, tenantFileRows] = await Promise.all([
+      supabase
+        .from("team_files")
+        .select("team_id, name, storage_key, content_type, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("tenant_files")
+        .select("name, storage_key, content_type, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+    ]);
+    const teamFileItems: NonNullable<TenantData["team_files"]> = [];
+    let tfIdx = 0;
+    for (const f of teamFileRows.data ?? []) {
+      const teamRef = teamIdByUuid.get(f.team_id);
+      if (!teamRef) continue;
+      const obj = await storage.get(f.storage_key);
+      if (!obj) continue;
+      tfIdx++;
+      const path = `files/teams/${teamRef}/${String(tfIdx).padStart(2, "0")}-${f.name}`;
+      files.push({ path, content_type: f.content_type, dataBase64: toBase64(obj.bytes) });
+      teamFileItems.push({
+        team: teamRef,
+        name: f.name,
+        file: path,
+        content_type: f.content_type,
+      });
+    }
+    const tenantFileItems: NonNullable<TenantData["tenant_files"]> = [];
+    let gfIdx = 0;
+    for (const f of tenantFileRows.data ?? []) {
+      const obj = await storage.get(f.storage_key);
+      if (!obj) continue;
+      gfIdx++;
+      const path = `files/global/${String(gfIdx).padStart(2, "0")}-${f.name}`;
+      files.push({ path, content_type: f.content_type, dataBase64: toBase64(obj.bytes) });
+      tenantFileItems.push({ name: f.name, file: path, content_type: f.content_type });
+    }
+
     const payload: TenantData = {
       version: IO_VERSION,
       exported_at: new Date().toISOString(),
@@ -1992,6 +2036,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
         practice_minutes: tenant.practice_minutes ?? 10,
         practice_room_scope: (tenant.practice_room_scope ?? "all") as "assigned" | "all",
+        files_mode: (tenant.files_mode ?? "full") as "off" | "download" | "full",
+        max_upload_mb: tenant.max_upload_mb ?? 10,
       },
       color_schemes: schemeRows.map((s, idx) => ({
         id: schemeIds[idx],
