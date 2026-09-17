@@ -171,10 +171,12 @@ function TeamFilesSections({
   token,
   code,
   maxUploadMb,
+  locked = false,
 }: {
   token: string;
   code: string;
   maxUploadMb: number;
+  locked?: boolean;
 }) {
   const { t } = useI18n();
   const q = useQuery({
@@ -197,8 +199,9 @@ function TeamFilesSections({
           hint={t("files.myHint")}
           items={data.own}
           maxUploadMb={maxUploadMb}
-          canUpload
-          canDelete
+          canUpload={!locked}
+          canDelete={!locked}
+          lockedNote={locked ? t("files.locked") : undefined}
           onUpload={async (file) => {
             await uploadFileForTeam({ data: { token, code, ...file } });
             await q.refetch();
