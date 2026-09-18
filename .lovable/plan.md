@@ -31,8 +31,10 @@ Erscheint nur, wenn Dateien vorhanden sind.
 Pro Team ein Button "Link" in der Teamverwaltung. Er öffnet einen Dialog mit der
 Selbstverwaltungs-Adresse des Teams, Kopieren-Button und QR-Code — damit Teams ihren verlorenen Link zurückbekommen.
 Fehlt einem Team noch ein Bearbeitungscode (im Admin angelegte Teams), wird er beim ersten
-Öffnen erzeugt. Existiert kein Registrierungs-Eintrag, aus dem sich die Adresse ableiten
-lässt, erklärt der Dialog das in einem Hinweis statt einen ungültigen Link zu zeigen.
+Öffnen erzeugt. Die Adresse setzt sich aus einem Registrierungs-Eintrag und diesem Code
+zusammen. Bei im Admin angelegten Teams oder wenn der Registrierungs-Eintrag später
+gelöscht wurde, fehlt dieser Teil; dann erklärt der Dialog, dass zuerst ein
+Registrierungs-Eintrag nötig ist, statt einen ungültigen Link zu zeigen.
 
 ## Technische Umsetzung
 
