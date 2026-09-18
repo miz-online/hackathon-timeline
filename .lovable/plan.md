@@ -29,8 +29,7 @@ Erscheint nur, wenn Dateien vorhanden sind.
 ## 5. Selbstverwaltungs-Link mit QR-Code im Team-Bereich
 
 Pro Team ein Button "Link" in der Teamverwaltung. Er öffnet einen Dialog mit der
-Selbstverwaltungs-Adresse des Teams, Kopieren-Button und QR-Code (mit Möglichkeit, den
-QR-Code als Bild zu speichern) — damit Teams ihren verlorenen Link zurückbekommen.
+Selbstverwaltungs-Adresse des Teams, Kopieren-Button und QR-Code — damit Teams ihren verlorenen Link zurückbekommen.
 Fehlt einem Team noch ein Bearbeitungscode (im Admin angelegte Teams), wird er beim ersten
 Öffnen erzeugt. Existiert kein Registrierungs-Eintrag, aus dem sich die Adresse ableiten
 lässt, erklärt der Dialog das in einem Hinweis statt einen ungültigen Link zu zeigen.
