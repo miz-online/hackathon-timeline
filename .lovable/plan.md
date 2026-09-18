@@ -22,8 +22,8 @@ Dateiname. Filterfeld zum Suchen nach Team oder Dateiname.
 
 ## 4. Sammel-Download als ZIP
 
-Im Abschnitt "Dateien der Teams" gibt es "Alle als ZIP herunterladen"; zusätzlich wählt eine
-Auswahlliste ein einzelnes Team für dessen ZIP. Das ZIP enthält je Team einen Ordner mit den Originaldateien.
+Im Abschnitt "Dateien der Teams" gibt es "Alle als ZIP herunterladen"; zusätzlich lassen sich
+einzelne Teams und einzelne Dateien per Häkchen auswählen und als ZIP laden. Das ZIP enthält je Team einen Ordner mit den Originaldateien.
 Erscheint nur, wenn Dateien vorhanden sind.
 
 ## 5. Selbstverwaltungs-Link mit QR-Code im Team-Bereich
