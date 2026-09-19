@@ -211,3 +211,118 @@ export const getFileDownloadUrl = createServerFn({ method: "POST" })
     });
     return { url: `/api/public/file-download?t=${encodeURIComponent(token)}` };
   });
+
+// ---------- all team files (admin overview) ----------
+
+export type TeamFileRow = FileItem & { team_id: string; tag: string };
+
+export const listAllTeamFiles = createServerFn({ method: "GET" })
+  .inputValidator((d: { key: string }) => keyIn.parse(d))
+  .handler(async ({ data }): Promise<TeamFileRow[]> => {
+    const { requireFileAdmin } = await import("@/lib/files.server");
+    const tenant = await requireFileAdmin(data.key);
+    const db = await admin();
+    const [{ data: list }, { data: teams }] = await Promise.all([
+      db
+        .from("team_files")
+        .select("id, name, size_bytes, content_type, created_at, team_id")
+        .eq("tenant_id", tenant.id),
+      db.from("teams").select("id, name, sort_order").eq("tenant_id", tenant.id),
+    ]);
+    const teamRows = (teams ?? []) as unknown as {
+      id: string;
+      name: string;
+      sort_order: number | null;
+    }[];
+    const nameById = new Map(teamRows.map((r) => [r.id, r.name]));
+    const orderById = new Map(teamRows.map((r) => [r.id, r.sort_order ?? 0]));
+    const rowsOut = ((list ?? []) as unknown as (FileItem & { team_id: string })[]).map((f) => ({
+      ...f,
+      tag: nameById.get(f.team_id) ?? "—",
+    }));
+    return rowsOut.sort(
+      (a, b) =>
+        (orderById.get(a.team_id) ?? 0) - (orderById.get(b.team_id) ?? 0) ||
+        a.tag.localeCompare(b.tag) ||
+        a.name.localeCompare(b.name),
+    );
+  });
+
+export const renameTeamFile = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; id: string; name: string }) =>
+    keyIn.extend({ id: z.string().uuid(), name: z.string().min(1).max(300) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireFileAdmin } = await import("@/lib/files.server");
+    const tenant = await requireFileAdmin(data.key);
+    const db = await admin();
+    const { error } = await db
+      .from("team_files")
+      .update({ name: data.name.trim() } as never)
+      .eq("tenant_id", tenant.id)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Signed URL for a ZIP of all team files, or of the given selection. */
+export const getTeamFilesZipUrl = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; ids?: string[] }) =>
+    keyIn.extend({ ids: z.array(z.string().uuid()).max(2000).default([]) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { requireFileAdmin, signZipToken } = await import("@/lib/files.server");
+    const tenant = await requireFileAdmin(data.key);
+    const token = await signZipToken({ t: tenant.id, ids: data.ids });
+    return { url: `/api/public/files-zip?t=${encodeURIComponent(token)}` };
+  });
+
+/** Self management path of a team, creating a missing edit code on demand. */
+export const getTeamSelfUrl = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; teamId: string }) =>
+    keyIn.extend({ teamId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data }): Promise<{ path: string } | { reason: "no-token" }> => {
+    const { requireFileAdmin } = await import("@/lib/files.server");
+    const tenant = await requireFileAdmin(data.key);
+    const db = await admin();
+    const { data: teamRow } = await db
+      .from("teams")
+      .select("id, edit_code, room_id")
+      .eq("tenant_id", tenant.id)
+      .eq("id", data.teamId)
+      .maybeSingle();
+    const team = teamRow as unknown as {
+      id: string;
+      edit_code: string | null;
+      room_id: string | null;
+    } | null;
+    if (!team) throw new Error("Unknown team");
+
+    const { data: entryRows } = await db
+      .from("entries")
+      .select("register_token, tags, time")
+      .eq("tenant_id", tenant.id)
+      .eq("kind" as never, "register" as never)
+      .order("time", { ascending: true });
+    const entries = ((entryRows ?? []) as unknown as {
+      register_token: string | null;
+      tags: string[] | null;
+    }[]).filter((e) => !!e.register_token);
+    if (!entries.length) return { reason: "no-token" as const };
+    const preferred =
+      entries.find((e) => !!team.room_id && (e.tags ?? []).includes(team.room_id)) ?? entries[0];
+
+    let code = team.edit_code;
+    if (!code) {
+      const { randomToken, EDIT_CODE_LENGTH } = await import("@/lib/registration");
+      code = randomToken(EDIT_CODE_LENGTH);
+      const { error } = await db
+        .from("teams")
+        .update({ edit_code: code } as never)
+        .eq("tenant_id", tenant.id)
+        .eq("id", team.id);
+      if (error) throw new Error(error.message);
+    }
+    return { path: `/tr/${preferred.register_token}/${code}` };
+  });

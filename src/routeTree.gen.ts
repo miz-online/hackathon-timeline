@@ -17,6 +17,7 @@ import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenan
 import { Route as TrTokenCodeRouteImport } from './routes/tr/$token.$code'
 import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
 import { Route as ApiPublicWebhooksDispatchRouteImport } from './routes/api/public/webhooks-dispatch'
+import { Route as ApiPublicFilesZipRouteImport } from './routes/api/public/files-zip'
 import { Route as ApiPublicFileDownloadRouteImport } from './routes/api/public/file-download'
 import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
 import { Route as TenantTenantKeyRoomRoomIdRouteImport } from './routes/tenant/$tenantKey/room/$roomId'
@@ -67,6 +68,11 @@ const ApiPublicWebhooksDispatchRoute =
     path: '/api/public/webhooks-dispatch',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicFilesZipRoute = ApiPublicFilesZipRouteImport.update({
+  id: '/api/public/files-zip',
+  path: '/api/public/files-zip',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicFileDownloadRoute = ApiPublicFileDownloadRouteImport.update({
   id: '/api/public/file-download',
   path: '/api/public/file-download',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/tenant/': typeof TenantIndexRoute
   '/api/public/file': typeof ApiPublicFileRoute
   '/api/public/file-download': typeof ApiPublicFileDownloadRoute
+  '/api/public/files-zip': typeof ApiPublicFilesZipRoute
   '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tr/$token/$code': typeof TrTokenCodeRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/tenant': typeof TenantIndexRoute
   '/api/public/file': typeof ApiPublicFileRoute
   '/api/public/file-download': typeof ApiPublicFileDownloadRoute
+  '/api/public/files-zip': typeof ApiPublicFilesZipRoute
   '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tr/$token/$code': typeof TrTokenCodeRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/tenant/': typeof TenantIndexRoute
   '/api/public/file': typeof ApiPublicFileRoute
   '/api/public/file-download': typeof ApiPublicFileDownloadRoute
+  '/api/public/files-zip': typeof ApiPublicFilesZipRoute
   '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
   '/tr/$token/$code': typeof TrTokenCodeRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/tenant/'
     | '/api/public/file'
     | '/api/public/file-download'
+    | '/api/public/files-zip'
     | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
     | '/tr/$token/$code'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/tenant'
     | '/api/public/file'
     | '/api/public/file-download'
+    | '/api/public/files-zip'
     | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
     | '/tr/$token/$code'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/tenant/'
     | '/api/public/file'
     | '/api/public/file-download'
+    | '/api/public/files-zip'
     | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
     | '/tr/$token/$code'
@@ -229,6 +241,7 @@ export interface RootRouteChildren {
   TenantIndexRoute: typeof TenantIndexRoute
   ApiPublicFileRoute: typeof ApiPublicFileRoute
   ApiPublicFileDownloadRoute: typeof ApiPublicFileDownloadRoute
+  ApiPublicFilesZipRoute: typeof ApiPublicFilesZipRoute
   ApiPublicWebhooksDispatchRoute: typeof ApiPublicWebhooksDispatchRoute
   TenantTenantKeyRoomsRoute: typeof TenantTenantKeyRoomsRoute
   TenantTenantKeyIndexRoute: typeof TenantTenantKeyIndexRoute
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/webhooks-dispatch'
       fullPath: '/api/public/webhooks-dispatch'
       preLoaderRoute: typeof ApiPublicWebhooksDispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/files-zip': {
+      id: '/api/public/files-zip'
+      path: '/api/public/files-zip'
+      fullPath: '/api/public/files-zip'
+      preLoaderRoute: typeof ApiPublicFilesZipRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/file-download': {
@@ -376,6 +396,7 @@ const rootRouteChildren: RootRouteChildren = {
   TenantIndexRoute: TenantIndexRoute,
   ApiPublicFileRoute: ApiPublicFileRoute,
   ApiPublicFileDownloadRoute: ApiPublicFileDownloadRoute,
+  ApiPublicFilesZipRoute: ApiPublicFilesZipRoute,
   ApiPublicWebhooksDispatchRoute: ApiPublicWebhooksDispatchRoute,
   TenantTenantKeyRoomsRoute: TenantTenantKeyRoomsRoute,
   TenantTenantKeyIndexRoute: TenantTenantKeyIndexRoute,
