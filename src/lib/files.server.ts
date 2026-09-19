@@ -67,6 +67,38 @@ export async function readFileToken(token: string): Promise<FileTokenPayload | n
   }
 }
 
+/** Token for a bulk ZIP download of team files. */
+export type ZipTokenPayload = {
+  /** Tenant the files belong to. */
+  t: string;
+  /** Selected team file ids; empty means "all team files of the tenant". */
+  ids: string[];
+  exp: number;
+};
+
+export async function signZipToken(
+  data: Omit<ZipTokenPayload, "exp">,
+  ttlSeconds = 300,
+): Promise<string> {
+  const payload = b64url(
+    new TextEncoder().encode(JSON.stringify({ ...data, exp: Date.now() + ttlSeconds * 1000 })),
+  );
+  return `${payload}.${await sign(payload)}`;
+}
+
+export async function readZipToken(token: string): Promise<ZipTokenPayload | null> {
+  const [payload, sig] = token.split(".");
+  if (!payload || !sig) return null;
+  if ((await sign(payload)) !== sig) return null;
+  try {
+    const decoded = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as ZipTokenPayload;
+    if (decoded.exp < Date.now() || !decoded.t) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
 export type TenantFileConfig = {
   id: string;
   filesMode: FileMode;
