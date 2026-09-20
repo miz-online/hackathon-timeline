@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDown, ArrowUp, GripVertical, ParkingSquare, QrCode } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Link2, ParkingSquare, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 import { listTeams, upsertTeam, deleteTeam, reorderTeams } from "@/lib/board.functions";
@@ -15,6 +15,8 @@ import { useI18n } from "@/lib/i18n";
 import { slugify } from "@/lib/ref-id";
 import { TeamsJsonPanel } from "@/components/admin/TeamsJsonPanel";
 import { TeamFilesPanel } from "@/components/admin/TeamFilesPanel";
+import { TeamLinkDialog } from "@/components/admin/TeamLinkDialog";
+
 
 type TeamRow = {
   id: string;
@@ -57,6 +59,8 @@ export function TeamsPanel({
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [filesTeam, setFilesTeam] = useState<TeamRow | null>(null);
+  const [linkTeam, setLinkTeam] = useState<TeamRow | null>(null);
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [overPark, setOverPark] = useState(false);
@@ -69,6 +73,8 @@ export function TeamsPanel({
     showForm ||
     !!editing ||
     !!filesTeam ||
+    !!linkTeam ||
+
     mode === "json" ||
     !!dragId ||
     !!order ||
@@ -219,7 +225,14 @@ export function TeamsPanel({
         <>
           <p className="text-xs text-muted-foreground">{t("teams.hint")}</p>
 
+          <TeamLinkDialog
+            tenantKey={tenantKey}
+            team={linkTeam}
+            onClose={() => setLinkTeam(null)}
+          />
+
           <Dialog open={!!filesTeam} onOpenChange={(o) => !o && setFilesTeam(null)}>
+
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{t("files.manage")}</DialogTitle>
@@ -432,11 +445,20 @@ export function TeamsPanel({
                     >
                       <ArrowDown className="h-4 w-4" />
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setLinkTeam(team)}
+                    >
+                      <Link2 className="mr-1 h-4 w-4" />
+                      {t("teams.link")}
+                    </Button>
                     {filesMode !== "off" ? (
                       <Button size="sm" variant="ghost" onClick={() => setFilesTeam(team)}>
                         {t("files.manage")}
                       </Button>
                     ) : null}
+
                     <Button
                       size="sm"
                       variant="outline"

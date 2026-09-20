@@ -452,6 +452,27 @@ const en: Dict = {
   "settings.filesMode.full": "Upload and download for teams",
   "settings.filesModeHint": "Controls what teams can do with files.",
   "settings.maxUploadMb": "Maximum file size (MB)",
+  "settings.sec.files": "Files",
+  "files.edit": "Edit",
+  "files.editTitle": "Edit file",
+  "files.name": "File name",
+  "files.size": "Size",
+  "files.type": "Type",
+  "files.date": "Date",
+  "files.save": "Save",
+  "files.cancel": "Cancel",
+  "files.filter": "Filter by team or file name",
+  "files.allTeams": "Files of the teams",
+  "files.allTeamsHint": "All team files of the organization, for quick downloads.",
+  "files.zipAll": "Download all as ZIP",
+  "files.zipTeam": "Team as ZIP",
+  "files.zipTeamPick": "Select team…",
+  "files.zipSelected": "Download {count} as ZIP",
+  "teams.link": "Link",
+  "teams.linkQr": "Self-management address of the team — share it or let the team scan the QR code.",
+  "teams.linkMissing":
+    "This link is built from a registration entry. Create a registration entry first, then the address is available.",
+
 };
 
 
@@ -911,6 +932,28 @@ const de: Dict = {
   "settings.filesMode.full": "Up- und Download für Teams",
   "settings.filesModeHint": "Legt fest, was Teams mit Dateien tun können.",
   "settings.maxUploadMb": "Maximale Dateigröße (MB)",
+  "settings.sec.files": "Dateien",
+  "files.edit": "Bearbeiten",
+  "files.editTitle": "Datei bearbeiten",
+  "files.name": "Dateiname",
+  "files.size": "Größe",
+  "files.type": "Typ",
+  "files.date": "Datum",
+  "files.save": "Speichern",
+  "files.cancel": "Abbrechen",
+  "files.filter": "Nach Team oder Dateiname filtern",
+  "files.allTeams": "Dateien der Teams",
+  "files.allTeamsHint": "Alle Team-Dateien der Organisation, für schnelle Downloads.",
+  "files.zipAll": "Alle als ZIP herunterladen",
+  "files.zipTeam": "Team als ZIP",
+  "files.zipTeamPick": "Team auswählen…",
+  "files.zipSelected": "{count} als ZIP herunterladen",
+  "teams.link": "Link",
+  "teams.linkQr":
+    "Selbstverwaltungs-Adresse des Teams — weitergeben oder den QR-Code scannen lassen.",
+  "teams.linkMissing":
+    "Dieser Link setzt sich aus einem Registrierungs-Eintrag zusammen. Lege zuerst einen Registrierungs-Eintrag an, dann ist die Adresse verfügbar.",
+
 };
 
 

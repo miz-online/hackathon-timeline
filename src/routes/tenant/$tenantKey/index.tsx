@@ -73,6 +73,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { TeamsPanel } from "@/components/admin/TeamsPanel";
 import { TenantFilesPanel } from "@/components/admin/TenantFilesPanel";
+import { AllTeamFilesPanel } from "@/components/admin/AllTeamFilesPanel";
+
 import { FILE_MODES, normalizeFileMode, type FileMode } from "@/lib/files";
 import {
   DropdownMenu,
@@ -457,13 +459,15 @@ function AdminPage() {
             />
           </TabsContent>
 
-          <TabsContent value="files" className="space-y-4 pt-4">
+          <TabsContent value="files" className="space-y-8 pt-4">
             <TenantFilesPanel
               tenantKey={tenantKey}
               maxUploadMb={tenant.max_upload_mb ?? 10}
               disabled={normalizeFileMode(tenant.files_mode) === "off"}
             />
+            <AllTeamFilesPanel tenantKey={tenantKey} />
           </TabsContent>
+
 
           <TabsContent value="colors" className="space-y-4 pt-4">
             <ColorSchemesPanel
@@ -2056,8 +2060,9 @@ function SettingsPanel({
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
   const [section, setSection] = useState<
-    "general" | "display" | "teams" | "logo" | "webhooks" | "tenant"
+    "general" | "display" | "teams" | "files" | "logo" | "webhooks" | "tenant"
   >("general");
+
 
   const saveButton = (
     <div className="pt-2">
@@ -2108,6 +2113,8 @@ function SettingsPanel({
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
           <TabsTrigger value="teams">{t("settings.sec.teams")}</TabsTrigger>
+          <TabsTrigger value="files">{t("settings.sec.files")}</TabsTrigger>
+
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
           <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
@@ -2236,7 +2243,13 @@ function SettingsPanel({
                 <p className="text-xs text-muted-foreground">{t("teams.lockEditHint")}</p>
               </div>
             </div>
-            <div className="space-y-1 border-t pt-3">
+            {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="files" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
               <Label>{t("settings.filesMode")}</Label>
               <select
                 value={fileMode}
@@ -2266,6 +2279,7 @@ function SettingsPanel({
             {saveButton}
           </Card>
         </TabsContent>
+
 
         <TabsContent value="logo" className="pt-4">
           <Card className="p-4 space-y-2">
