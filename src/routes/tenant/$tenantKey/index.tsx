@@ -73,6 +73,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { TeamsPanel } from "@/components/admin/TeamsPanel";
 import { TenantFilesPanel } from "@/components/admin/TenantFilesPanel";
+import { AllTeamFilesPanel } from "@/components/admin/AllTeamFilesPanel";
+
 import { FILE_MODES, normalizeFileMode, type FileMode } from "@/lib/files";
 import {
   DropdownMenu,
@@ -457,13 +459,15 @@ function AdminPage() {
             />
           </TabsContent>
 
-          <TabsContent value="files" className="space-y-4 pt-4">
+          <TabsContent value="files" className="space-y-8 pt-4">
             <TenantFilesPanel
               tenantKey={tenantKey}
               maxUploadMb={tenant.max_upload_mb ?? 10}
               disabled={normalizeFileMode(tenant.files_mode) === "off"}
             />
+            <AllTeamFilesPanel tenantKey={tenantKey} />
           </TabsContent>
+
 
           <TabsContent value="colors" className="space-y-4 pt-4">
             <ColorSchemesPanel
