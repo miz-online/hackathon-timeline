@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDown, ArrowUp, GripVertical, ParkingSquare, QrCode } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Link2, ParkingSquare, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 import { listTeams, upsertTeam, deleteTeam, reorderTeams } from "@/lib/board.functions";
@@ -15,6 +15,8 @@ import { useI18n } from "@/lib/i18n";
 import { slugify } from "@/lib/ref-id";
 import { TeamsJsonPanel } from "@/components/admin/TeamsJsonPanel";
 import { TeamFilesPanel } from "@/components/admin/TeamFilesPanel";
+import { TeamLinkDialog } from "@/components/admin/TeamLinkDialog";
+
 
 type TeamRow = {
   id: string;
