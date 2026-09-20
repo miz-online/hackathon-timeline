@@ -2060,8 +2060,9 @@ function SettingsPanel({
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
   const [section, setSection] = useState<
-    "general" | "display" | "teams" | "logo" | "webhooks" | "tenant"
+    "general" | "display" | "teams" | "files" | "logo" | "webhooks" | "tenant"
   >("general");
+
 
   const saveButton = (
     <div className="pt-2">
@@ -2112,6 +2113,8 @@ function SettingsPanel({
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
           <TabsTrigger value="teams">{t("settings.sec.teams")}</TabsTrigger>
+          <TabsTrigger value="files">{t("settings.sec.files")}</TabsTrigger>
+
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
           <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
@@ -2240,7 +2243,13 @@ function SettingsPanel({
                 <p className="text-xs text-muted-foreground">{t("teams.lockEditHint")}</p>
               </div>
             </div>
-            <div className="space-y-1 border-t pt-3">
+            {saveButton}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="files" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
               <Label>{t("settings.filesMode")}</Label>
               <select
                 value={fileMode}
@@ -2270,6 +2279,7 @@ function SettingsPanel({
             {saveButton}
           </Card>
         </TabsContent>
+
 
         <TabsContent value="logo" className="pt-4">
           <Card className="p-4 space-y-2">
