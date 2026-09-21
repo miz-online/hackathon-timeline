@@ -319,28 +319,64 @@ export function TeamsPanel({
             ) : (
               <div className="flex flex-wrap gap-2">
                 {parkedTeams.map((team) => (
-                  <div
-                    key={team.id}
-                    draggable
-                    onDragStart={(ev) => {
-                      setDragId(team.id);
-                      ev.dataTransfer.effectAllowed = "move";
-                      ev.dataTransfer.setData("text/plain", team.id);
-                    }}
-                    onDragEnd={() => {
-                      setDragId(null);
-                      setOverIdx(null);
-                    }}
-                    className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
-                      dragId === team.id ? "opacity-50" : ""
-                    }`}
-                  >
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full border"
-                      style={{ backgroundColor: colorOf(team) }}
-                    />
-                    <span className="max-w-[12rem] truncate">{team.name}</span>
-                  </div>
+                  <HoverCard key={team.id} open={hoverId === team.id} openDelay={250}>
+                    <HoverCardTrigger asChild>
+                      <div
+                        draggable
+                        onMouseEnter={() => openHover(team.id)}
+                        onMouseLeave={closeHover}
+                        onMouseDown={closeHover}
+                        onDragStart={(ev) => {
+                          closeHover();
+                          setDragId(team.id);
+                          ev.dataTransfer.effectAllowed = "move";
+                          ev.dataTransfer.setData("text/plain", team.id);
+                        }}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setOverIdx(null);
+                        }}
+                        className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
+                          dragId === team.id ? "opacity-50" : ""
+                        }`}
+                      >
+                        <span
+                          className="h-3 w-3 shrink-0 rounded-full border"
+                          style={{ backgroundColor: colorOf(team) }}
+                        />
+                        <span className="max-w-[12rem] truncate">{team.name}</span>
+                      </div>
+                    </HoverCardTrigger>
+                    {team.members || team.project ? (
+                      <HoverCardContent
+                        side="bottom"
+                        align="start"
+                        sideOffset={8}
+                        onPointerDownCapture={(ev) => ev.preventDefault()}
+                        className="pointer-events-none z-50 min-w-[16rem] max-w-sm space-y-2"
+                      >
+                        <div className="text-sm font-medium">{team.name}</div>
+                        {team.members ? (
+                          <div className="space-y-0.5">
+                            <div className="text-xs uppercase text-muted-foreground">
+                              {t("teams.hover.members")}
+                            </div>
+                            <div className="text-sm break-words">{team.members}</div>
+                          </div>
+                        ) : null}
+                        {team.project ? (
+                          <div className="space-y-0.5">
+                            <div className="text-xs uppercase text-muted-foreground">
+                              {t("teams.hover.project")}
+                            </div>
+                            <div className="whitespace-pre-wrap break-words text-sm">
+                              {team.project}
+                            </div>
+                          </div>
+                        ) : null}
+                      </HoverCardContent>
+                    ) : null}
+                  </HoverCard>
                 ))}
               </div>
             )}
