@@ -772,6 +772,8 @@ const de: Dict = {
   "teams.park.hint":
     "Teams hierher ziehen, zur Zielposition scrollen und wieder einfügen. Verbleibende Teams werden beim Speichern am Ende angehängt.",
   "teams.park.empty": "Teams hier ablegen",
+  "teams.hover.members": "Mitglieder",
+  "teams.hover.project": "Projekt",
   "teams.park.save": "Reihenfolge speichern",
   "teams.park.cancel": "Verwerfen",
   "teams.park.saved": "Reihenfolge gespeichert",
