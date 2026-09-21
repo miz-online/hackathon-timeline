@@ -295,6 +295,8 @@ const en: Dict = {
   "teams.park.hint":
     "Drag teams here, scroll to the target position and drag them back in. Teams left here are appended at the end when saving.",
   "teams.park.empty": "Drop teams here",
+  "teams.hover.members": "Members",
+  "teams.hover.project": "Project",
   "teams.park.save": "Save order",
   "teams.park.cancel": "Discard",
   "teams.park.saved": "Order saved",
