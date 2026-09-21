@@ -295,6 +295,8 @@ const en: Dict = {
   "teams.park.hint":
     "Drag teams here, scroll to the target position and drag them back in. Teams left here are appended at the end when saving.",
   "teams.park.empty": "Drop teams here",
+  "teams.hover.members": "Members",
+  "teams.hover.project": "Project",
   "teams.park.save": "Save order",
   "teams.park.cancel": "Discard",
   "teams.park.saved": "Order saved",
@@ -770,6 +772,8 @@ const de: Dict = {
   "teams.park.hint":
     "Teams hierher ziehen, zur Zielposition scrollen und wieder einfügen. Verbleibende Teams werden beim Speichern am Ende angehängt.",
   "teams.park.empty": "Teams hier ablegen",
+  "teams.hover.members": "Mitglieder",
+  "teams.hover.project": "Projekt",
   "teams.park.save": "Reihenfolge speichern",
   "teams.park.cancel": "Verwerfen",
   "teams.park.saved": "Reihenfolge gespeichert",
