@@ -1021,19 +1021,36 @@ function EntriesPanel({
               </button>
             ) : null}
             {isCollapsed ? null : preview ? (
-              <PreviewEntry
-                entry={e}
-                now={now}
-                graceMs={graceMs}
-                tenantKey={tenantKey}
-                color={schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor}
-                slideSetName={slideSets.find((s) => s.id === e.slide_set_id)?.name ?? null}
-                teamNames={(teamsQ.data ?? []).map((team) => team.name)}
-                onOpen={() => {
-                  setEditing(e);
-                  setShowForm(true);
-                }}
-              />
+              e.kind === "practice" ? (
+                <PracticePreview
+                  entry={e}
+                  teams={teamsQ.data ?? []}
+                  rooms={rooms}
+                  schemes={schemes}
+                  defaultColor={defaultColor}
+                  practiceMinutes={practiceMinutes}
+                  now={now}
+                  graceMs={graceMs}
+                  tenantKey={tenantKey}
+                  onOpen={() => {
+                    setEditing(e);
+                    setShowForm(true);
+                  }}
+                />
+              ) : (
+                <PreviewEntry
+                  entry={e}
+                  now={now}
+                  graceMs={graceMs}
+                  tenantKey={tenantKey}
+                  color={schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor}
+                  slideSetName={slideSets.find((s) => s.id === e.slide_set_id)?.name ?? null}
+                  onOpen={() => {
+                    setEditing(e);
+                    setShowForm(true);
+                  }}
+                />
+              )
             ) : (
             <Card className={`flex items-start justify-between gap-4 ${preview ? "p-3 text-sm" : "p-4"}`}>
               <div className="flex flex-col items-center gap-1.5 shrink-0">
@@ -1172,6 +1189,63 @@ function EntriesPanel({
   );
 }
 
+function PracticePreview({
+  entry,
+  teams,
+  rooms,
+  schemes,
+  defaultColor,
+  practiceMinutes,
+  now,
+  graceMs,
+  tenantKey,
+  onOpen,
+}: {
+  entry: EntryRow;
+  teams: Array<{ id: string; name: string; room_id: string | null }>;
+  rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
+  practiceMinutes: number;
+  now: number;
+  graceMs: number;
+  tenantKey: string;
+  onOpen: () => void;
+}) {
+  const start = new Date(entry.time).getTime();
+  const minutes = Math.max(1, practiceMinutes || 10);
+  return (
+    <div className="flex flex-wrap gap-2">
+      {teams.map((team, index) => {
+        const room = rooms.find((candidate) => candidate.id === team.room_id);
+        const color = schemes.find((scheme) => scheme.id === room?.color_scheme_id)?.color ?? defaultColor;
+        const teamEntry: EntryRow = {
+          ...entry,
+          id: `${entry.id}:${team.id}`,
+          kind: "entry",
+          time: new Date(start + index * minutes * 60_000).toISOString(),
+          end_time: new Date(start + (index + 1) * minutes * 60_000).toISOString(),
+          title: team.name,
+          description: entry.title,
+        };
+        return (
+          <div key={team.id} className="min-w-[18rem] flex-1">
+            <PreviewEntry
+              entry={teamEntry}
+              now={now}
+              graceMs={graceMs}
+              tenantKey={tenantKey}
+              color={color}
+              slideSetName={null}
+              onOpen={onOpen}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Read-only miniature of an entry as it appears on the room screens. */
 function PreviewEntry({
   entry: e,
@@ -1180,7 +1254,6 @@ function PreviewEntry({
   tenantKey,
   color,
   slideSetName,
-  teamNames,
   onOpen,
 }: {
   entry: EntryRow;
@@ -1189,7 +1262,6 @@ function PreviewEntry({
   tenantKey: string;
   color: string;
   slideSetName: string | null;
-  teamNames: string[];
   onOpen: () => void;
 }) {
   const [origin, setOrigin] = useState("");
@@ -1289,12 +1361,6 @@ function PreviewEntry({
         {e.kind === "slides" ? (
           <div className="relative z-[1]">
             <SlideStrip tenantKey={tenantKey} setId={e.slide_set_id ?? null} />
-          </div>
-        ) : e.kind === "practice" ? (
-          <div className="relative z-[1] flex flex-wrap gap-x-3 gap-y-1 text-xs italic text-gray-500">
-            {teamNames.map((teamName) => (
-              <span key={teamName}>{teamName}</span>
-            ))}
           </div>
         ) : e.description ? (
           <div className="relative z-[1] whitespace-pre-wrap text-xs italic text-gray-500">
