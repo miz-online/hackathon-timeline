@@ -1273,7 +1273,7 @@ export type RoomSnapshot = {
     register_token?: string | null;
   }[];
 
-  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null; kind?: string }[];
+  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null; kind?: "image" | "entries" }[];
   slide_overlay?: { show_room_name?: boolean; show_clock?: boolean; show_logo?: boolean } | null;
   /** Next moment an automatic template switch happens, if any. */
   switch_at?: string | null;
@@ -2440,26 +2440,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             if (!file) {
               warnings.push(`Entry "${e.title}": background file "${e.background.file}" missing`);
             } else {
-              if (isEntries || !file) {
-          const { error: insErr } = await supabase.from("slides").insert({
-            tenant_id: tenant.id,
-            slide_set_id: setId,
-            name: a.name,
-            path: "",
-            content_type: "",
-            kind: "entries",
-            sort_order: order,
-            duration_seconds: a.duration_seconds ?? null,
-          });
-          if (insErr) {
-            warnings.push(`Slide "${a.name}" not imported: ${insErr.message}`);
-            continue;
-          }
-          orderBySet.set(setId, order + 1);
-          counts.slides = (counts.slides ?? 0) + 1;
-          continue;
-        }
-        const bytes = fromBase64(file.dataBase64);
+              const bytes = fromBase64(file.dataBase64);
               const contentType = e.background.content_type || file.content_type || "image/png";
               const path = `${tenant.id}/entry-import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(e.background.file)}`;
               const { error: upErr } = await supabase.storage
@@ -2587,6 +2568,25 @@ export const importTenantData = createServerFn({ method: "POST" })
             .order("sort_order", { ascending: false })
             .limit(1);
           order = (last?.[0]?.sort_order ?? -1) + 1;
+        }
+        if (isEntries || !file) {
+          const { error: insErr } = await supabase.from("slides").insert({
+            tenant_id: tenant.id,
+            slide_set_id: setId,
+            name: a.name,
+            path: "",
+            content_type: "",
+            kind: "entries",
+            sort_order: order,
+            duration_seconds: a.duration_seconds ?? null,
+          });
+          if (insErr) {
+            warnings.push(`Slide "${a.name}" not imported: ${insErr.message}`);
+            continue;
+          }
+          orderBySet.set(setId, order + 1);
+          counts.slides = (counts.slides ?? 0) + 1;
+          continue;
         }
         const bytes = fromBase64(file.dataBase64);
         const path = `${tenant.id}/slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file ?? "")}`;
