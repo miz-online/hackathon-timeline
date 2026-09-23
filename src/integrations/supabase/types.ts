@@ -271,6 +271,7 @@ export type Database = {
           created_at: string
           duration_seconds: number | null
           id: string
+          kind: string
           name: string
           path: string
           slide_set_id: string
@@ -283,6 +284,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          kind?: string
           name?: string
           path: string
           slide_set_id: string
@@ -295,6 +297,7 @@ export type Database = {
           created_at?: string
           duration_seconds?: number | null
           id?: string
+          kind?: string
           name?: string
           path?: string
           slide_set_id?: string
