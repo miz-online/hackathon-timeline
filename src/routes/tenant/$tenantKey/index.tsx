@@ -807,7 +807,7 @@ function EntriesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center gap-4">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
           {mode === "form" && showExpired && expiredCount > 0 ? (
@@ -1750,7 +1750,7 @@ function RoomsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("rooms.title")}</h2>
         <Button
           size="sm"
@@ -2512,7 +2512,7 @@ function ColorSchemesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("colors.title")}</h2>
         <Button
           size="sm"
@@ -2730,7 +2730,7 @@ function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-medium">{t("slideSets.title")}</h2>
         <Button
           size="sm"
