@@ -1215,7 +1215,7 @@ function PracticePreview({
   const start = new Date(entry.time).getTime();
   const minutes = Math.max(1, practiceMinutes || 10);
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2">
       {teams.map((team, index) => {
         const room = rooms.find((candidate) => candidate.id === team.room_id);
         const color = schemes.find((scheme) => scheme.id === room?.color_scheme_id)?.color ?? defaultColor;
@@ -1229,7 +1229,7 @@ function PracticePreview({
           description: entry.title,
         };
         return (
-          <div key={team.id} className="min-w-[18rem] flex-1">
+          <div key={team.id}>
             <PreviewEntry
               entry={teamEntry}
               now={now}
