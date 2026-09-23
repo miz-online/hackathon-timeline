@@ -1212,8 +1212,29 @@ function PracticePreview({
   tenantKey: string;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
   const start = new Date(entry.time).getTime();
   const minutes = Math.max(1, practiceMinutes || 10);
+  if (teams.length === 0) {
+    const placeholderEntry: EntryRow = {
+      ...entry,
+      kind: "entry",
+      end_time: null,
+      title: t("entries.preview.noPracticeTeams"),
+      description: entry.title,
+    };
+    return (
+      <PreviewEntry
+        entry={placeholderEntry}
+        now={now}
+        graceMs={graceMs}
+        tenantKey={tenantKey}
+        color={defaultColor}
+        slideSetName={null}
+        onOpen={onOpen}
+      />
+    );
+  }
   return (
     <div className="flex flex-col gap-2">
       {teams.map((team, index) => {
