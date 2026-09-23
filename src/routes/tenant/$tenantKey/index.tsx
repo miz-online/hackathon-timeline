@@ -1220,8 +1220,8 @@ function PracticePreview({
       ...entry,
       kind: "entry",
       end_time: null,
-      title: t("entries.preview.noPracticeTeams"),
-      description: entry.title,
+      title: entry.title,
+      description: t("entries.preview.noPracticeTeams"),
     };
     return (
       <PreviewEntry
