@@ -8,6 +8,7 @@ export type SnapshotSlide = {
   url: string;
   content_type: string;
   duration_seconds: number | null;
+  kind: "image" | "entries";
 };
 
 export type SlideOverlay = {
@@ -136,12 +137,13 @@ export async function loadSlidesForTemplate(opts: {
 
   const { data: slides } = await supabaseAdmin
     .from("slides")
-    .select("id, name, content_type, path, duration_seconds")
+    .select("id, name, content_type, path, duration_seconds, kind")
     .eq("tenant_id", opts.tenantId)
     .eq("slide_set_id", set.id)
     .order("sort_order", { ascending: true });
 
-  const list = slides ?? [];
+  const all = slides ?? [];
+  const list = all.filter((s) => (s.kind ?? "image") === "image");
   // Signed storage URLs so displays don't load images through this worker
   // origin (a long-lived SSE connection can stall those).
   const signed = new Map<string, string>();
@@ -160,7 +162,8 @@ export async function loadSlidesForTemplate(opts: {
     showRoomName: set.show_room_name ?? true,
     showClock: set.show_clock ?? true,
     showLogo: set.show_logo ?? true,
-    slides: list.map((s) => ({
+    slides: all.map((s) => ({
+      kind: (s.kind ?? "image") as "image" | "entries",
       id: s.id,
       name: s.name,
       url: signed.get(s.id) ?? `/api/public/slide/${opts.tenantKey}/${s.id}`,

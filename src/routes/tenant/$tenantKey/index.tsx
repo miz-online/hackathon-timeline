@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images, CalendarClock } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -19,6 +19,7 @@ import {
   upsertColorScheme,
   deleteColorScheme,
   listSlides,
+  addEntriesSlide,
   uploadSlide,
   deleteSlide,
   updateSlide,
@@ -2885,6 +2886,7 @@ function SlideSetSlides({
   const qc = useQueryClient();
   const listFn = useServerFn(listSlides);
   const uploadFn = useServerFn(uploadSlide);
+  const addEntriesFn = useServerFn(addEntriesSlide);
   const deleteFn = useServerFn(deleteSlide);
   const moveFn = useServerFn(moveSlide);
   const updateFn = useServerFn(updateSlide);
@@ -2946,9 +2948,38 @@ function SlideSetSlides({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("slides.title")}</h2>
-        <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {t("slides.upload")}
-        </Button>
+        <div className="flex">
+          <Button size="sm" className="rounded-r-none" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {t("slides.upload")}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                disabled={busy}
+                className="rounded-l-none border-l border-primary-foreground/25 px-2"
+                aria-label={t("slides.addEntries")}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await addEntriesFn({ data: { key: tenantKey, setId, name: t("slides.kind.entries") } });
+                    refresh();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <CalendarClock className="h-4 w-4 mr-2" />
+                {t("slides.addEntries")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">{t("slides.hint")}</p>
 
@@ -3036,12 +3067,18 @@ function SlideSetSlides({
               >
 
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <img
-                src={a.url ?? `/api/public/slide/${tenantKey}/${a.id}`}
-                alt={a.name}
-                draggable={false}
-                className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
-              />
+              {a.kind === "entries" ? (
+                <div className="aspect-video w-28 shrink-0 rounded border bg-muted/40 flex items-center justify-center text-muted-foreground">
+                  <CalendarClock className="h-7 w-7" />
+                </div>
+              ) : (
+                <img
+                  src={a.url ?? `/api/public/slide/${tenantKey}/${a.id}`}
+                  alt={a.name}
+                  draggable={false}
+                  className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
+                />
+              )}
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
                 <div className="text-xs text-muted-foreground">
@@ -3084,11 +3121,13 @@ function SlideSetSlides({
                   >
                     ↓
                   </Button>
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={`/api/public/slide/${tenantKey}/${a.id}`} download={a.name}>
-                      {t("slides.download")}
-                    </a>
-                  </Button>
+                  {a.kind !== "entries" && (
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`/api/public/slide/${tenantKey}/${a.id}`} download={a.name}>
+                        {t("slides.download")}
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

@@ -234,6 +234,8 @@ const en: Dict = {
   "slides.hint":
     "Upload images (PNG, JPG, SVG, animated GIF or WebP). They rotate in the given order.",
   "slides.upload": "Upload slides",
+  "slides.addEntries": "Add entries slide",
+  "slides.kind.entries": "Entries",
   "slides.uploaded": "Slides uploaded",
   "slides.empty": "No slides yet.",
   "slides.delete": "Delete",
@@ -710,6 +712,8 @@ const de: Dict = {
   "slides.hint":
     "Grafiken hochladen (PNG, JPG, SVG, animiertes GIF oder WebP). Sie werden in dieser Reihenfolge gezeigt.",
   "slides.upload": "Slides hochladen",
+  "slides.addEntries": "Einträge-Slide hinzufügen",
+  "slides.kind.entries": "Einträge",
   "slides.uploaded": "Slides hochgeladen",
   "slides.empty": "Noch keine Slides.",
   "slides.delete": "Löschen",

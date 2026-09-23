@@ -8,6 +8,13 @@
       "when": 1789666579423,
       "tag": "0000_tenant_files_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790189509992,
+      "tag": "0001_slides_kind",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import logoAsset from "@/assets/pit-hackathon-logo.png.asset.json";
 import { useI18n } from "@/lib/i18n";
@@ -10,6 +10,7 @@ type Slide = {
   url: string;
   content_type: string;
   duration_seconds?: number | null;
+  kind?: "image" | "entries";
 };
 
 function pad(n: number) {
@@ -30,6 +31,7 @@ export function SlidesTemplate({
   accentColor,
   roomColor,
   overview = false,
+  renderEntries,
 }: {
   tenantName: string;
   roomName: string;
@@ -41,6 +43,7 @@ export function SlidesTemplate({
   accentColor?: string | null;
   roomColor?: string | null;
   overview?: boolean;
+  renderEntries?: () => ReactNode;
 }) {
   const { t } = useI18n();
   const palette = derivePalette(roomColor || accentColor || DEFAULT_ACCENT);
@@ -66,6 +69,7 @@ export function SlidesTemplate({
   }, [slides, slideSeconds, index]);
 
   const current = slides.length ? slides[index % slides.length] : null;
+  const showEntries = current?.kind === "entries";
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
 
   return (
@@ -83,7 +87,18 @@ export function SlidesTemplate({
         }}
       >
         <AnimatePresence initial={false}>
-          {current ? (
+          {current && showEntries ? (
+            <motion.div
+              key={current.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.2, ease: "easeInOut" }}
+              style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#fff" }}
+            >
+              {renderEntries?.()}
+            </motion.div>
+          ) : current ? (
             <motion.img
               key={current.id}
               src={current.url}
@@ -118,7 +133,7 @@ export function SlidesTemplate({
           )}
         </AnimatePresence>
 
-        {((slideOverlay?.show_room_name ?? true) || (slideOverlay?.show_clock ?? true)) && (
+        {!showEntries && ((slideOverlay?.show_room_name ?? true) || (slideOverlay?.show_clock ?? true)) && (
           <header
             style={{
               position: "absolute",
@@ -183,7 +198,7 @@ export function SlidesTemplate({
           </header>
         )}
 
-        {(slideOverlay?.show_logo ?? true) && (
+        {!showEntries && (slideOverlay?.show_logo ?? true) && (
           <footer
             style={{
               position: "absolute",
