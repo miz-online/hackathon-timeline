@@ -765,16 +765,32 @@ function EntriesPanel({
 
   const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
-  const [mode, setMode] = useState<"form" | "json">("form");
+  const [mode, setMode] = useState<"form" | "json" | "preview">("form");
+  const collapseKey = `entries-collapsed:${tenantKey}`;
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(window.localStorage.getItem(collapseKey) ?? "[]");
+      if (Array.isArray(v)) setCollapsed(v.filter((x) => x !== new Date().toDateString()));
+    } catch {
+      /* ignore */
+    }
+  }, [collapseKey]);
+  const toggleDay = (day: string) =>
+    setCollapsed((prev) => {
+      const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day];
+      window.localStorage.setItem(collapseKey, JSON.stringify(next));
+      return next;
+    });
   const upsertFn = useServerFn(upsertEntry);
   const deleteFn = useServerFn(deleteEntry);
 
   // Remember the editing mode across tab switches / reloads.
   useEffect(() => {
     const saved = window.localStorage.getItem("entries-mode");
-    if (saved === "json" || saved === "form") setMode(saved);
+    if (saved === "json" || saved === "form" || saved === "preview") setMode(saved);
   }, []);
-  const changeMode = (m: "form" | "json") => {
+  const changeMode = (m: "form" | "json" | "preview") => {
     setMode(m);
     window.localStorage.setItem("entries-mode", m);
   };
@@ -810,7 +826,7 @@ function EntriesPanel({
       <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {mode === "form" && showExpired && expiredCount > 0 ? (
+          {mode !== "json" && showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -818,7 +834,7 @@ function EntriesPanel({
               {t("entries.hideExpired")}
             </a>
 
-          ) : mode === "form" && expiredCount > 0 ? (
+          ) : mode !== "json" && expiredCount > 0 ? (
             <a
               href="#entries-all"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -845,8 +861,15 @@ function EntriesPanel({
             >
               {t("entries.mode.json")}
             </Button>
+            <Button
+              size="sm"
+              variant={mode === "preview" ? "secondary" : "ghost"}
+              onClick={() => changeMode("preview")}
+            >
+              {t("entries.mode.preview")}
+            </Button>
           </div>
-          {mode === "form" ? (
+          {mode !== "json" ? (
             <div className="flex">
               <Button
                 size="sm"
@@ -955,7 +978,7 @@ function EntriesPanel({
       </Dialog>
 
 
-      {mode === "form" ? (
+      {mode !== "json" ? (
       <div className="space-y-2">
         {visibleEntries.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">
@@ -967,10 +990,24 @@ function EntriesPanel({
             const prevDayKey =
               idx > 0 ? new Date(visibleEntries[idx - 1].time).toDateString() : null;
             const showDay = dayKey !== prevDayKey;
+            const isCollapsed = collapsed.includes(dayKey);
+            const preview = mode === "preview";
+            const dayCount = showDay
+              ? visibleEntries.filter((x) => new Date(x.time).toDateString() === dayKey).length
+              : 0;
+            if (!showDay && isCollapsed) return null;
             return (
             <div key={e.id} className="space-y-2">
             {showDay ? (
-              <div className="flex items-center gap-3 pt-2 first:pt-0">
+              <button
+                type="button"
+                onClick={() => toggleDay(dayKey)}
+                aria-expanded={!isCollapsed}
+                className="flex w-full items-center gap-3 pt-2 text-left first:pt-0"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 text-muted-foreground transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                />
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {new Date(e.time).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", {
                     weekday: "short",
@@ -979,10 +1016,12 @@ function EntriesPanel({
                     year: "numeric",
                   })}
                 </span>
+                <span className="text-xs text-muted-foreground">({dayCount})</span>
                 <span className="h-px flex-1 bg-border" />
-              </div>
+              </button>
             ) : null}
-            <Card className="p-4 flex items-start justify-between gap-4">
+            {isCollapsed ? null : (
+            <Card className={`flex items-start justify-between gap-4 ${preview ? "p-3 text-sm" : "p-4"}`}>
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <span
                   className={`mt-1 h-4 w-4 rounded-full border ${
@@ -1077,8 +1116,11 @@ function EntriesPanel({
                   ) : null}
                   {e.kind === "slides" ? null : <span>{e.title}</span>}
                 </div>
+                {preview && e.kind === "slides" ? (
+                  <SlideStrip tenantKey={tenantKey} setId={e.slide_set_id ?? null} />
+                ) : null}
                 {e.description ? (
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                  <div className={`${preview ? "text-xs" : "text-sm"} text-muted-foreground whitespace-pre-wrap break-words`}>
                     {e.description}
                   </div>
                 ) : null}
@@ -1105,12 +1147,51 @@ function EntriesPanel({
                 </Button>
               </div>
             </Card>
+            )}
             </div>
             );
           })
         )}
       </div>
       ) : null}
+    </div>
+  );
+}
+
+/** One-line horizontal preview of all slides in a set. */
+function SlideStrip({ tenantKey, setId }: { tenantKey: string; setId: string | null }) {
+  const { t } = useI18n();
+  const listFn = useServerFn(listSlides);
+  const q = useQuery({
+    queryKey: ["slides", tenantKey, setId],
+    queryFn: () => listFn({ data: { key: tenantKey, setId: setId! } }),
+    enabled: !!setId,
+  });
+  if (!setId) return <div className="text-xs italic text-muted-foreground">{t("entries.preview.noSet")}</div>;
+  const slides = q.data ?? [];
+  if (q.isSuccess && slides.length === 0)
+    return <div className="text-xs italic text-muted-foreground">{t("slides.empty")}</div>;
+  return (
+    <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 pt-1">
+      {slides.map((s) =>
+        s.kind === "entries" ? (
+          <div
+            key={s.id}
+            title={s.name}
+            className="flex aspect-video w-28 shrink-0 items-center justify-center rounded border bg-muted/40 text-muted-foreground"
+          >
+            <CalendarClock className="h-6 w-6" />
+          </div>
+        ) : (
+          <img
+            key={s.id}
+            src={s.url ?? `/api/public/slide/${tenantKey}/${s.id}`}
+            alt={s.name}
+            title={s.name}
+            className="aspect-video w-28 shrink-0 rounded border bg-muted/40 object-cover"
+          />
+        ),
+      )}
     </div>
   );
 }
