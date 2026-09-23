@@ -1028,6 +1028,10 @@ function EntriesPanel({
                 tenantKey={tenantKey}
                 color={schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor}
                 slideSetName={slideSets.find((s) => s.id === e.slide_set_id)?.name ?? null}
+                onOpen={() => {
+                  setEditing(e);
+                  setShowForm(true);
+                }}
               />
             ) : (
             <Card className={`flex items-start justify-between gap-4 ${preview ? "p-3 text-sm" : "p-4"}`}>
@@ -1175,6 +1179,7 @@ function PreviewEntry({
   tenantKey,
   color,
   slideSetName,
+  onOpen,
 }: {
   entry: EntryRow;
   now: number;
@@ -1182,7 +1187,12 @@ function PreviewEntry({
   tenantKey: string;
   color: string;
   slideSetName: string | null;
+  onOpen: () => void;
 }) {
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const registerUrl =
+    e.kind === "register" && e.register_token && origin ? `${origin}/tr/${e.register_token}` : null;
   const { t } = useI18n();
   const p = derivePalette(color || DEFAULT_ACCENT);
   const start = new Date(e.time).getTime();
@@ -1239,7 +1249,16 @@ function PreviewEntry({
     );
   return (
     <div
-      className="flex overflow-hidden rounded-[26px]"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          onOpen();
+        }
+      }}
+      className="flex cursor-pointer overflow-hidden rounded-[26px] transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       style={{ border: `2px solid ${p.base}`, background: "#fff", color: "#1f2937", minHeight: 52 }}
     >
       <div
@@ -1256,6 +1275,11 @@ function PreviewEntry({
       </div>
       <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-4 py-2">
         {bg && align !== "time" && e.kind !== "register" ? img(bgBox) : null}
+        {registerUrl ? (
+          <div className="absolute bottom-1.5 right-2 top-1.5 z-[1]">
+            <PreviewQr url={registerUrl} color={p.deep} />
+          </div>
+        ) : null}
         <div className="relative z-[1] text-sm font-bold leading-tight">
           {e.kind === "slides" ? slideSetName ?? t("entries.kind.slides") : e.title}
         </div>
@@ -1268,9 +1292,32 @@ function PreviewEntry({
             {e.description}
           </div>
         ) : null}
+        {registerUrl ? (
+          <div
+            className="relative z-[1] break-all pr-16 font-mono text-xs font-bold"
+            style={{ color: p.deep }}
+          >
+            {registerUrl.replace(/^https?:\/\//, "")}
+          </div>
+        ) : null}
       </div>
     </div>
   );
+}
+
+function PreviewQr({ url, color }: { url: string; color: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import("qrcode").then(async (QR) => {
+      const data = await QR.toDataURL(url, { margin: 1, width: 256, color: { dark: color, light: "#ffffff" } });
+      if (alive) setSrc(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url, color]);
+  return src ? <img src={src} alt="" aria-hidden className="block h-full w-auto" /> : null;
 }
 
 /** One-line horizontal preview of all slides in a set. */
