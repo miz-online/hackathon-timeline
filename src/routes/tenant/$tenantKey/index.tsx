@@ -1028,6 +1028,7 @@ function EntriesPanel({
                 tenantKey={tenantKey}
                 color={schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor}
                 slideSetName={slideSets.find((s) => s.id === e.slide_set_id)?.name ?? null}
+                teamNames={(teamsQ.data ?? []).map((team) => team.name)}
                 onOpen={() => {
                   setEditing(e);
                   setShowForm(true);
@@ -1179,6 +1180,7 @@ function PreviewEntry({
   tenantKey,
   color,
   slideSetName,
+  teamNames,
   onOpen,
 }: {
   entry: EntryRow;
@@ -1187,6 +1189,7 @@ function PreviewEntry({
   tenantKey: string;
   color: string;
   slideSetName: string | null;
+  teamNames: string[];
   onOpen: () => void;
 }) {
   const [origin, setOrigin] = useState("");
@@ -1286,6 +1289,12 @@ function PreviewEntry({
         {e.kind === "slides" ? (
           <div className="relative z-[1]">
             <SlideStrip tenantKey={tenantKey} setId={e.slide_set_id ?? null} />
+          </div>
+        ) : e.kind === "practice" ? (
+          <div className="relative z-[1] flex flex-wrap gap-x-3 gap-y-1 text-xs italic text-gray-500">
+            {teamNames.map((teamName) => (
+              <span key={teamName}>{teamName}</span>
+            ))}
           </div>
         ) : e.description ? (
           <div className="relative z-[1] whitespace-pre-wrap text-xs italic text-gray-500">
