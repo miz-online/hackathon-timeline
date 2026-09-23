@@ -200,6 +200,23 @@ function RoomDisplay() {
   // crossfade below runs on manual and automatic switches alike.
   const templateKey = isSlides ? `slides:${activeTemplate}` : "zeitplan";
 
+  const renderEntries = () => (
+    <ZeitplanTemplate
+      tenantName={snapshot.tenant.name}
+      roomName={displayRoomName}
+      overview={isOverview}
+      logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
+      logoHeight={snapshot.tenant.logo_height}
+      accentColor={snapshot.tenant.accent_color}
+      roomColor={snapshot.room.color}
+      focusMode={snapshot.tenant.focus_mode}
+      focusCount={snapshot.tenant.focus_count}
+      focusMinutes={snapshot.tenant.focus_minutes}
+      focusDimOpacity={snapshot.tenant.focus_dim_opacity}
+      entries={visible}
+    />
+  );
+
   return (
     <div style={{ position: "relative", minHeight: "100vh", width: "100%" }}>
       <AnimatePresence initial={false} mode="sync">
@@ -223,22 +240,10 @@ function RoomDisplay() {
               logoHeight={snapshot.tenant.logo_height}
               accentColor={snapshot.tenant.accent_color}
               roomColor={snapshot.room.color}
+              renderEntries={renderEntries}
             />
           ) : (
-            <ZeitplanTemplate
-              tenantName={snapshot.tenant.name}
-              roomName={displayRoomName}
-              overview={isOverview}
-              logoUrl={snapshot.tenant.logo_url ? `/api/public/logo/${tenantKey}` : null}
-              logoHeight={snapshot.tenant.logo_height}
-              accentColor={snapshot.tenant.accent_color}
-              roomColor={snapshot.room.color}
-              focusMode={snapshot.tenant.focus_mode}
-              focusCount={snapshot.tenant.focus_count}
-              focusMinutes={snapshot.tenant.focus_minutes}
-              focusDimOpacity={snapshot.tenant.focus_dim_opacity}
-              entries={visible}
-            />
+            renderEntries()
           )}
         </motion.div>
       </AnimatePresence>

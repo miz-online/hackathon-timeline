@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images, CalendarClock } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -19,6 +19,7 @@ import {
   upsertColorScheme,
   deleteColorScheme,
   listSlides,
+  addEntriesSlide,
   uploadSlide,
   deleteSlide,
   updateSlide,
@@ -72,6 +73,10 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TeamsPanel } from "@/components/admin/TeamsPanel";
+import { TenantFilesPanel } from "@/components/admin/TenantFilesPanel";
+import { AllTeamFilesPanel } from "@/components/admin/AllTeamFilesPanel";
+
+import { FILE_MODES, normalizeFileMode, type FileMode } from "@/lib/files";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +89,17 @@ import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { derivePalette, DEFAULT_ACCENT } from "@/lib/colors";
 import { EntriesJsonPanel } from "@/components/admin/EntriesJsonPanel";
 
-const TABS = ["entries", "slides", "messages", "rooms", "teams", "colors", "settings", "io"] as const;
+const TABS = [
+  "entries",
+  "slides",
+  "messages",
+  "rooms",
+  "teams",
+  "files",
+  "colors",
+  "settings",
+  "io",
+] as const;
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
@@ -439,9 +454,21 @@ function AdminPage() {
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
+              filesMode={normalizeFileMode(tenant.files_mode)}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
               onChange={invalidate}
             />
           </TabsContent>
+
+          <TabsContent value="files" className="space-y-8 pt-4">
+            <TenantFilesPanel
+              tenantKey={tenantKey}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
+              disabled={normalizeFileMode(tenant.files_mode) === "off"}
+            />
+            <AllTeamFilesPanel tenantKey={tenantKey} />
+          </TabsContent>
+
 
           <TabsContent value="colors" className="space-y-4 pt-4">
             <ColorSchemesPanel
@@ -483,6 +510,8 @@ function AdminPage() {
               practiceMinutes={tenant.practice_minutes ?? 10}
               practiceRoomScope={tenant.practice_room_scope ?? "all"}
               teamEditLocked={tenant.team_edit_locked === true}
+              filesMode={normalizeFileMode(tenant.files_mode)}
+              maxUploadMb={tenant.max_upload_mb ?? 10}
               onChange={invalidate}
             />
           </TabsContent>
@@ -736,16 +765,32 @@ function EntriesPanel({
 
   const teamCount = teamsQ.data?.length ?? 0;
   const [showForm, setShowForm] = useState(false);
-  const [mode, setMode] = useState<"form" | "json">("form");
+  const [mode, setMode] = useState<"form" | "json" | "preview">("form");
+  const collapseKey = `entries-collapsed:${tenantKey}`;
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(window.localStorage.getItem(collapseKey) ?? "[]");
+      if (Array.isArray(v)) setCollapsed(v.filter((x) => x !== new Date().toDateString()));
+    } catch {
+      /* ignore */
+    }
+  }, [collapseKey]);
+  const toggleDay = (day: string) =>
+    setCollapsed((prev) => {
+      const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day];
+      window.localStorage.setItem(collapseKey, JSON.stringify(next));
+      return next;
+    });
   const upsertFn = useServerFn(upsertEntry);
   const deleteFn = useServerFn(deleteEntry);
 
   // Remember the editing mode across tab switches / reloads.
   useEffect(() => {
     const saved = window.localStorage.getItem("entries-mode");
-    if (saved === "json" || saved === "form") setMode(saved);
+    if (saved === "json" || saved === "form" || saved === "preview") setMode(saved);
   }, []);
-  const changeMode = (m: "form" | "json") => {
+  const changeMode = (m: "form" | "json" | "preview") => {
     setMode(m);
     window.localStorage.setItem("entries-mode", m);
   };
@@ -778,10 +823,10 @@ function EntriesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center gap-4">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-lg font-medium">{t("entries.title")}</h2>
-          {mode === "form" && showExpired && expiredCount > 0 ? (
+          {mode !== "json" && showExpired && expiredCount > 0 ? (
             <a
               href="#entries"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -789,7 +834,7 @@ function EntriesPanel({
               {t("entries.hideExpired")}
             </a>
 
-          ) : mode === "form" && expiredCount > 0 ? (
+          ) : mode !== "json" && expiredCount > 0 ? (
             <a
               href="#entries-all"
               className="text-sm text-primary underline hover:text-primary/80"
@@ -816,8 +861,15 @@ function EntriesPanel({
             >
               {t("entries.mode.json")}
             </Button>
+            <Button
+              size="sm"
+              variant={mode === "preview" ? "secondary" : "ghost"}
+              onClick={() => changeMode("preview")}
+            >
+              {t("entries.mode.preview")}
+            </Button>
           </div>
-          {mode === "form" ? (
+          {mode !== "json" ? (
             <div className="flex">
               <Button
                 size="sm"
@@ -926,7 +978,7 @@ function EntriesPanel({
       </Dialog>
 
 
-      {mode === "form" ? (
+      {mode !== "json" ? (
       <div className="space-y-2">
         {visibleEntries.length === 0 ? (
           <Card className="p-6 text-sm text-muted-foreground text-center">
@@ -938,10 +990,24 @@ function EntriesPanel({
             const prevDayKey =
               idx > 0 ? new Date(visibleEntries[idx - 1].time).toDateString() : null;
             const showDay = dayKey !== prevDayKey;
+            const isCollapsed = collapsed.includes(dayKey);
+            const preview = mode === "preview";
+            const dayCount = showDay
+              ? visibleEntries.filter((x) => new Date(x.time).toDateString() === dayKey).length
+              : 0;
+            if (!showDay && isCollapsed) return null;
             return (
             <div key={e.id} className="space-y-2">
             {showDay ? (
-              <div className="flex items-center gap-3 pt-2 first:pt-0">
+              <button
+                type="button"
+                onClick={() => toggleDay(dayKey)}
+                aria-expanded={!isCollapsed}
+                className="flex w-full items-center gap-3 pt-2 text-left first:pt-0"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 text-muted-foreground transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                />
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {new Date(e.time).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", {
                     weekday: "short",
@@ -950,10 +1016,43 @@ function EntriesPanel({
                     year: "numeric",
                   })}
                 </span>
+                <span className="text-xs text-muted-foreground">({dayCount})</span>
                 <span className="h-px flex-1 bg-border" />
-              </div>
+              </button>
             ) : null}
-            <Card className="p-4 flex items-start justify-between gap-4">
+            {isCollapsed ? null : preview ? (
+              e.kind === "practice" ? (
+                <PracticePreview
+                  entry={e}
+                  teams={teamsQ.data ?? []}
+                  rooms={rooms}
+                  schemes={schemes}
+                  defaultColor={defaultColor}
+                  practiceMinutes={practiceMinutes}
+                  now={now}
+                  graceMs={graceMs}
+                  tenantKey={tenantKey}
+                  onOpen={() => {
+                    setEditing(e);
+                    setShowForm(true);
+                  }}
+                />
+              ) : (
+                <PreviewEntry
+                  entry={e}
+                  now={now}
+                  graceMs={graceMs}
+                  tenantKey={tenantKey}
+                  color={schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor}
+                  slideSetName={slideSets.find((s) => s.id === e.slide_set_id)?.name ?? null}
+                  onOpen={() => {
+                    setEditing(e);
+                    setShowForm(true);
+                  }}
+                />
+              )
+            ) : (
+            <Card className={`flex items-start justify-between gap-4 ${preview ? "p-3 text-sm" : "p-4"}`}>
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <span
                   className={`mt-1 h-4 w-4 rounded-full border ${
@@ -1048,8 +1147,11 @@ function EntriesPanel({
                   ) : null}
                   {e.kind === "slides" ? null : <span>{e.title}</span>}
                 </div>
+                {preview && e.kind === "slides" ? (
+                  <SlideStrip tenantKey={tenantKey} setId={e.slide_set_id ?? null} />
+                ) : null}
                 {e.description ? (
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                  <div className={`${preview ? "text-xs" : "text-sm"} text-muted-foreground whitespace-pre-wrap break-words`}>
                     {e.description}
                   </div>
                 ) : null}
@@ -1076,12 +1178,278 @@ function EntriesPanel({
                 </Button>
               </div>
             </Card>
+            )}
             </div>
             );
           })
         )}
       </div>
       ) : null}
+    </div>
+  );
+}
+
+function PracticePreview({
+  entry,
+  teams,
+  rooms,
+  schemes,
+  defaultColor,
+  practiceMinutes,
+  now,
+  graceMs,
+  tenantKey,
+  onOpen,
+}: {
+  entry: EntryRow;
+  teams: Array<{ id: string; name: string; room_id: string | null }>;
+  rooms: RoomRow[];
+  schemes: SchemeRow[];
+  defaultColor: string;
+  practiceMinutes: number;
+  now: number;
+  graceMs: number;
+  tenantKey: string;
+  onOpen: () => void;
+}) {
+  const { t } = useI18n();
+  const start = new Date(entry.time).getTime();
+  const minutes = Math.max(1, practiceMinutes || 10);
+  if (teams.length === 0) {
+    const placeholderEntry: EntryRow = {
+      ...entry,
+      kind: "entry",
+      end_time: null,
+      title: entry.title,
+      description: t("entries.preview.noPracticeTeams"),
+    };
+    return (
+      <PreviewEntry
+        entry={placeholderEntry}
+        now={now}
+        graceMs={graceMs}
+        tenantKey={tenantKey}
+        color={defaultColor}
+        slideSetName={null}
+        onOpen={onOpen}
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {teams.map((team, index) => {
+        const room = rooms.find((candidate) => candidate.id === team.room_id);
+        const color = schemes.find((scheme) => scheme.id === room?.color_scheme_id)?.color ?? defaultColor;
+        const teamEntry: EntryRow = {
+          ...entry,
+          id: `${entry.id}:${team.id}`,
+          kind: "entry",
+          time: new Date(start + index * minutes * 60_000).toISOString(),
+          end_time: new Date(start + (index + 1) * minutes * 60_000).toISOString(),
+          title: team.name,
+          description: entry.title,
+        };
+        return (
+          <div key={team.id}>
+            <PreviewEntry
+              entry={teamEntry}
+              now={now}
+              graceMs={graceMs}
+              tenantKey={tenantKey}
+              color={color}
+              slideSetName={null}
+              onOpen={onOpen}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Read-only miniature of an entry as it appears on the room screens. */
+function PreviewEntry({
+  entry: e,
+  now,
+  graceMs,
+  tenantKey,
+  color,
+  slideSetName,
+  onOpen,
+}: {
+  entry: EntryRow;
+  now: number;
+  graceMs: number;
+  tenantKey: string;
+  color: string;
+  slideSetName: string | null;
+  onOpen: () => void;
+}) {
+  const [origin, setOrigin] = useState("");
+  useEffect(() => setOrigin(window.location.origin), []);
+  const registerUrl =
+    e.kind === "register" && e.register_token && origin ? `${origin}/tr/${e.register_token}` : null;
+  const { t } = useI18n();
+  const p = derivePalette(color || DEFAULT_ACCENT);
+  const start = new Date(e.time).getTime();
+  const end = e.end_time ? new Date(e.end_time).getTime() : null;
+  const running = start <= now && (end != null ? end > now : start + graceMs >= now);
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const bg = e.background_url ?? null;
+  const align = e.background_align ?? "right-top";
+  const m = e.background_margin ?? 0;
+  const scale = 0.5;
+  const tint = e.background_tint ? p[e.background_tint] : null;
+  const bgBox: CSSProperties =
+    align === "fill"
+      ? { position: "absolute", inset: 0, width: "100%", height: "100%" }
+      : align === "right-stretch"
+        ? { position: "absolute", top: m * scale, bottom: m * scale, right: m * scale, height: `calc(100% - ${m}px)`, aspectRatio: "1" }
+        : align === "right-bottom"
+          ? { position: "absolute", bottom: m * scale, right: m * scale, height: (e.background_height ?? 80) * scale, aspectRatio: "1" }
+          : { position: "absolute", top: m * scale, right: m * scale, height: (e.background_height ?? 80) * scale, aspectRatio: "1" };
+  const img = (style: CSSProperties) =>
+    tint ? (
+      <span
+        aria-hidden
+        style={{
+          ...style,
+          opacity: (e.background_opacity ?? 100) / 100,
+          backgroundColor: tint,
+          WebkitMaskImage: `url("${bg}")`,
+          maskImage: `url("${bg}")`,
+          WebkitMaskSize: align === "fill" ? "cover" : "contain",
+          maskSize: align === "fill" ? "cover" : "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "right center",
+          maskPosition: "right center",
+          pointerEvents: "none",
+        }}
+      />
+    ) : (
+      <img
+        src={bg!}
+        alt=""
+        aria-hidden
+        style={{
+          ...style,
+          aspectRatio: undefined,
+          width: align === "fill" ? "100%" : "auto",
+          objectFit: align === "fill" ? "cover" : "contain",
+          opacity: (e.background_opacity ?? 100) / 100,
+          pointerEvents: "none",
+        }}
+      />
+    );
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          onOpen();
+        }
+      }}
+      className="flex cursor-pointer overflow-hidden rounded-[26px] transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      style={{ border: `2px solid ${p.base}`, background: "#fff", color: "#1f2937", minHeight: 52 }}
+    >
+      <div
+        className="flex w-28 shrink-0 flex-col items-center justify-center px-3 py-2 font-bold tabular-nums leading-tight"
+        style={{ backgroundColor: p.base, color: p.onBase }}
+      >
+        <div className="text-base">{running ? t("display.now") : fmt(e.time)}</div>
+        {e.end_time ? (
+          <div className="text-[11px] font-medium opacity-70">
+            {t("display.untilTime", { time: fmt(e.end_time) })}
+          </div>
+        ) : null}
+        {bg && align === "time" ? img({ position: "relative", width: "100%", height: "auto", marginTop: 4 }) : null}
+      </div>
+      <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-4 py-2">
+        {bg && align !== "time" && e.kind !== "register" ? img(bgBox) : null}
+        {registerUrl ? (
+          <div className="absolute bottom-1.5 right-2 top-1.5 z-[1]">
+            <PreviewQr url={registerUrl} color={p.deep} />
+          </div>
+        ) : null}
+        <div className="relative z-[1] text-sm font-bold leading-tight">
+          {e.kind === "slides" ? slideSetName ?? t("entries.kind.slides") : e.title}
+        </div>
+        {e.kind === "slides" ? (
+          <div className="relative z-[1]">
+            <SlideStrip tenantKey={tenantKey} setId={e.slide_set_id ?? null} />
+          </div>
+        ) : e.description ? (
+          <div className="relative z-[1] whitespace-pre-wrap text-xs italic text-gray-500">
+            {e.description}
+          </div>
+        ) : null}
+        {registerUrl ? (
+          <div
+            className="relative z-[1] break-all pr-16 font-mono text-xs font-bold"
+            style={{ color: p.deep }}
+          >
+            {registerUrl.replace(/^https?:\/\//, "")}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PreviewQr({ url, color }: { url: string; color: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import("qrcode").then(async (QR) => {
+      const data = await QR.toDataURL(url, { margin: 1, width: 256, color: { dark: color, light: "#ffffff" } });
+      if (alive) setSrc(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url, color]);
+  return src ? <img src={src} alt="" aria-hidden className="block h-full w-auto" /> : null;
+}
+
+/** One-line horizontal preview of all slides in a set. */
+function SlideStrip({ tenantKey, setId }: { tenantKey: string; setId: string | null }) {
+  const { t } = useI18n();
+  const listFn = useServerFn(listSlides);
+  const q = useQuery({
+    queryKey: ["slides", tenantKey, setId],
+    queryFn: () => listFn({ data: { key: tenantKey, setId: setId! } }),
+    enabled: !!setId,
+  });
+  if (!setId) return <div className="text-xs italic text-muted-foreground">{t("entries.preview.noSet")}</div>;
+  const slides = q.data ?? [];
+  if (q.isSuccess && slides.length === 0)
+    return <div className="text-xs italic text-muted-foreground">{t("slides.empty")}</div>;
+  return (
+    <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 pt-1">
+      {slides.map((s) =>
+        s.kind === "entries" ? (
+          <div
+            key={s.id}
+            title={s.name}
+            className="flex aspect-video w-28 shrink-0 items-center justify-center rounded border bg-muted/40 text-muted-foreground"
+          >
+            <CalendarClock className="h-6 w-6" />
+          </div>
+        ) : (
+          <img
+            key={s.id}
+            src={s.url ?? `/api/public/slide/${tenantKey}/${s.id}`}
+            alt={s.name}
+            title={s.name}
+            className="aspect-video w-28 shrink-0 rounded border bg-muted/40 object-cover"
+          />
+        ),
+      )}
     </div>
   );
 }
@@ -1721,7 +2089,7 @@ function RoomsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("rooms.title")}</h2>
         <Button
           size="sm"
@@ -1975,6 +2343,8 @@ function SettingsPanel({
   practiceMinutes,
   practiceRoomScope,
   teamEditLocked,
+  filesMode,
+  maxUploadMb,
   onChange,
 }: {
   tenantKey: string;
@@ -1992,6 +2362,8 @@ function SettingsPanel({
   practiceMinutes: number;
   practiceRoomScope: string;
   teamEditLocked?: boolean;
+  filesMode?: FileMode;
+  maxUploadMb?: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -2013,6 +2385,8 @@ function SettingsPanel({
     practiceRoomScope === "assigned" ? "assigned" : "all",
   );
   const [teamLock, setTeamLock] = useState(teamEditLocked === true);
+  const [fileMode, setFileMode] = useState<FileMode>(normalizeFileMode(filesMode));
+  const [maxMb, setMaxMb] = useState(maxUploadMb ?? 10);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -2026,8 +2400,9 @@ function SettingsPanel({
   const logoSrc = logoUrl ? `/api/public/logo/${tenantKey}?v=${logoBust}` : null;
 
   const [section, setSection] = useState<
-    "general" | "display" | "teams" | "logo" | "webhooks" | "tenant"
+    "general" | "display" | "teams" | "files" | "logo" | "webhooks" | "tenant"
   >("general");
+
 
   const saveButton = (
     <div className="pt-2">
@@ -2053,6 +2428,8 @@ function SettingsPanel({
                 practice_minutes: pMinutes,
                 practice_room_scope: pScope,
                 team_edit_locked: teamLock,
+                files_mode: fileMode,
+                max_upload_mb: maxMb,
               },
             });
             toast.success(t("settings.saved"));
@@ -2076,6 +2453,8 @@ function SettingsPanel({
           <TabsTrigger value="general">{t("settings.sec.general")}</TabsTrigger>
           <TabsTrigger value="display">{t("settings.sec.display")}</TabsTrigger>
           <TabsTrigger value="teams">{t("settings.sec.teams")}</TabsTrigger>
+          <TabsTrigger value="files">{t("settings.sec.files")}</TabsTrigger>
+
           <TabsTrigger value="logo">{t("settings.sec.logo")}</TabsTrigger>
           <TabsTrigger value="webhooks">{t("settings.sec.webhooks")}</TabsTrigger>
           <TabsTrigger value="tenant">{t("settings.sec.tenant")}</TabsTrigger>
@@ -2207,6 +2586,40 @@ function SettingsPanel({
             {saveButton}
           </Card>
         </TabsContent>
+
+        <TabsContent value="files" className="pt-4">
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1">
+              <Label>{t("settings.filesMode")}</Label>
+              <select
+                value={fileMode}
+                onChange={(e) => setFileMode(e.target.value as FileMode)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                {FILE_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {t(`settings.filesMode.${m}`)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t("settings.filesModeHint")}</p>
+            </div>
+            {fileMode !== "off" ? (
+              <div className="space-y-1">
+                <Label>{t("settings.maxUploadMb")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={2048}
+                  value={maxMb}
+                  onChange={(e) => setMaxMb(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
+            ) : null}
+            {saveButton}
+          </Card>
+        </TabsContent>
+
 
         <TabsContent value="logo" className="pt-4">
           <Card className="p-4 space-y-2">
@@ -2438,7 +2851,7 @@ function ColorSchemesPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("colors.title")}</h2>
         <Button
           size="sm"
@@ -2656,7 +3069,7 @@ function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () 
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-medium">{t("slideSets.title")}</h2>
         <Button
           size="sm"
@@ -2812,6 +3225,7 @@ function SlideSetSlides({
   const qc = useQueryClient();
   const listFn = useServerFn(listSlides);
   const uploadFn = useServerFn(uploadSlide);
+  const addEntriesFn = useServerFn(addEntriesSlide);
   const deleteFn = useServerFn(deleteSlide);
   const moveFn = useServerFn(moveSlide);
   const updateFn = useServerFn(updateSlide);
@@ -2873,9 +3287,38 @@ function SlideSetSlides({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-medium">{t("slides.title")}</h2>
-        <Button size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {t("slides.upload")}
-        </Button>
+        <div className="flex">
+          <Button size="sm" className="rounded-r-none" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {t("slides.upload")}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                disabled={busy}
+                className="rounded-l-none border-l border-primary-foreground/25 px-2"
+                aria-label={t("slides.addEntries")}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await addEntriesFn({ data: { key: tenantKey, setId, name: t("slides.kind.entries") } });
+                    refresh();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <CalendarClock className="h-4 w-4 mr-2" />
+                {t("slides.addEntries")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">{t("slides.hint")}</p>
 
@@ -2963,12 +3406,18 @@ function SlideSetSlides({
               >
 
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <img
-                src={a.url ?? `/api/public/slide/${tenantKey}/${a.id}`}
-                alt={a.name}
-                draggable={false}
-                className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
-              />
+              {a.kind === "entries" ? (
+                <div className="aspect-video w-28 shrink-0 rounded border bg-muted/40 flex items-center justify-center text-muted-foreground">
+                  <CalendarClock className="h-7 w-7" />
+                </div>
+              ) : (
+                <img
+                  src={a.url ?? `/api/public/slide/${tenantKey}/${a.id}`}
+                  alt={a.name}
+                  draggable={false}
+                  className="aspect-video h-auto w-28 shrink-0 rounded border bg-muted/40 object-contain"
+                />
+              )}
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="truncate text-sm font-medium">{a.name}</div>
                 <div className="text-xs text-muted-foreground">
@@ -3011,11 +3460,13 @@ function SlideSetSlides({
                   >
                     ↓
                   </Button>
-                  <Button size="sm" variant="outline" asChild>
-                    <a href={`/api/public/slide/${tenantKey}/${a.id}`} download={a.name}>
-                      {t("slides.download")}
-                    </a>
-                  </Button>
+                  {a.kind !== "entries" && (
+                    <Button size="sm" variant="outline" asChild>
+                      <a href={`/api/public/slide/${tenantKey}/${a.id}`} download={a.name}>
+                        {t("slides.download")}
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"

@@ -1,0 +1,1 @@
+ALTER TABLE public.slides ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'image';

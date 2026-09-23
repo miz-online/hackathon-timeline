@@ -24,6 +24,7 @@ import {
   roomTokenVariant,
 } from "@/lib/registration";
 import type { DisplayEntryRow } from "@/lib/register-url";
+import { FILE_MODES } from "@/lib/files";
 import type { TablesUpdate } from "@/integrations/supabase/types";
 
 // ---------- helpers ----------
@@ -59,11 +60,13 @@ type TenantRow = {
   practice_minutes: number;
   practice_room_scope: string;
   team_edit_locked: boolean;
+  files_mode: string;
+  max_upload_mb: number;
 };
 
 const TENANT_COLS_BASE =
   "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
-const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked`;
+const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked, files_mode, max_upload_mb`;
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
@@ -81,7 +84,13 @@ async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: st
   if (error) throw new Error((error as { message?: string }).message ?? String(error));
   if (!data) throw new Error("Unknown tenant key");
   const row = data as TenantRow & { pin_hash: string | null };
-  return { ...row, team_edit_locked: row.team_edit_locked === true };
+  const { normalizeFileMode } = await import("@/lib/files");
+  return {
+    ...row,
+    team_edit_locked: row.team_edit_locked === true,
+    files_mode: normalizeFileMode(row.files_mode),
+    max_upload_mb: row.max_upload_mb ?? 10,
+  };
 }
 
 
@@ -204,6 +213,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       practice_minutes?: number;
       practice_room_scope?: string;
       team_edit_locked?: boolean;
+      files_mode?: string;
+      max_upload_mb?: number;
     }) =>
       z
         .object({
@@ -225,6 +236,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           practice_minutes: z.number().int().min(1).max(600).default(10),
           practice_room_scope: z.enum(PRACTICE_SCOPES).default("all"),
           team_edit_locked: z.boolean().default(false),
+          files_mode: z.enum(FILE_MODES).default("full"),
+          max_upload_mb: z.number().int().min(1).max(2048).default(10),
         })
         .parse(d),
   )
@@ -246,6 +259,8 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         practice_minutes: data.practice_minutes,
         practice_room_scope: data.practice_room_scope,
         team_edit_locked: data.team_edit_locked,
+        files_mode: data.files_mode,
+        max_upload_mb: data.max_upload_mb,
     };
     const write = (payload: Record<string, unknown>) =>
       supabase
@@ -254,7 +269,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         .eq("id", id) as unknown as Promise<{ data: unknown; error: unknown }>;
     const { error } = await withOptionalColumns(
       () => write(patch),
-      () => write(omitKeys(patch, ["team_edit_locked"])),
+      () => write(omitKeys(patch, ["team_edit_locked", "files_mode", "max_upload_mb"])),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return { ok: true };
@@ -1258,7 +1273,7 @@ export type RoomSnapshot = {
     register_token?: string | null;
   }[];
 
-  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null }[];
+  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null; kind?: "image" | "entries" }[];
   slide_overlay?: { show_room_name?: boolean; show_clock?: boolean; show_logo?: boolean } | null;
   /** Next moment an automatic template switch happens, if any. */
   switch_at?: string | null;
@@ -1628,12 +1643,13 @@ export const listSlides = createServerFn({ method: "GET" })
     const { id } = await requireTenantAdmin(data.key);
     const { data: rows, error } = await supabase
       .from("slides")
-      .select("id, name, content_type, sort_order, path, duration_seconds")
+      .select("id, name, content_type, sort_order, path, duration_seconds, kind")
       .eq("tenant_id", id)
       .eq("slide_set_id", data.setId)
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
-    const list = rows ?? [];
+    const all = rows ?? [];
+    const list = all.filter((s) => (s.kind ?? "image") === "image");
     // Signed storage URLs so previews load directly from storage instead of
     // streaming megabytes back through this worker.
     const signed = new Map<string, string>();
@@ -1646,9 +1662,10 @@ export const listSlides = createServerFn({ method: "GET" })
         if (u.signedUrl && list[i]) signed.set(list[i].id, u.signedUrl);
       });
     }
-    return list.map((s) => ({
+    return all.map((s) => ({
       id: s.id,
       name: s.name,
+      kind: (s.kind ?? "image") as "image" | "entries",
       content_type: s.content_type,
       sort_order: s.sort_order,
       duration_seconds: s.duration_seconds ?? null,
@@ -1726,6 +1743,36 @@ export const uploadSlide = createServerFn({ method: "POST" })
     return { id: row.id };
   });
 
+export const addEntriesSlide = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string; setId: string; name: string }) =>
+    z.object({ key: z.string().min(1), setId: z.string().uuid(), name: z.string().min(1).max(120) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const tenant = await requireTenantAdmin(data.key);
+    const { data: last } = await supabase
+      .from("slides")
+      .select("sort_order")
+      .eq("tenant_id", tenant.id)
+      .eq("slide_set_id", data.setId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    const { data: row, error } = await supabase
+      .from("slides")
+      .insert({
+        tenant_id: tenant.id,
+        slide_set_id: data.setId,
+        name: data.name,
+        path: "",
+        content_type: "",
+        kind: "entries",
+        sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id };
+  });
 
 const slideUpdateInput = z.object({
   key: z.string().min(1),
@@ -1851,7 +1898,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         .order("sort_order", { ascending: true }),
       supabase
         .from("slides")
-        .select("name, path, content_type, sort_order, slide_set_id, duration_seconds")
+        .select("name, path, content_type, sort_order, slide_set_id, duration_seconds, kind")
         .eq("tenant_id", tenant.id)
         .order("sort_order", { ascending: true }),
       supabase
@@ -1901,10 +1948,21 @@ export const exportTenantData = createServerFn({ method: "GET" })
       }
     }
 
-    const slideItems: { name: string; file: string; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
+    const slideItems: { name: string; file: string | null; kind: "image" | "entries"; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
     let i = 0;
     for (const a of slides.data ?? []) {
       i++;
+      if ((a.kind ?? "image") === "entries") {
+        slideItems.push({
+          name: a.name,
+          file: null,
+          kind: "entries",
+          content_type: "",
+          set: setIdByUuid.get(a.slide_set_id) ?? null,
+          duration_seconds: a.duration_seconds ?? null,
+        });
+        continue;
+      }
       const { data: file } = await supabase.storage.from("tenant-ads").download(a.path);
       if (!file) continue;
       const path = `images/slides/${String(i).padStart(2, "0")}-${slugify(a.name) || "slide"}.${extOf(a.path)}`;
@@ -1916,6 +1974,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
       slideItems.push({
         name: a.name,
         file: path,
+        kind: "image",
         content_type: a.content_type,
         set: setIdByUuid.get(a.slide_set_id) ?? null,
         duration_seconds: a.duration_seconds ?? null,
@@ -1961,6 +2020,50 @@ export const exportTenantData = createServerFn({ method: "GET" })
       });
     }
 
+    // ---- files (team + organization wide) ----
+    const { fileStorage } = await import("@/lib/storage/index.server");
+    const storage = fileStorage();
+    const teamIdByUuid = new Map(teamRows.map((t, idx) => [t.id, teamIds[idx]]));
+    const [teamFileRows, tenantFileRows] = await Promise.all([
+      supabase
+        .from("team_files")
+        .select("team_id, name, storage_key, content_type, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("tenant_files")
+        .select("name, storage_key, content_type, sort_order")
+        .eq("tenant_id", tenant.id)
+        .order("sort_order", { ascending: true }),
+    ]);
+    const teamFileItems: NonNullable<TenantData["team_files"]> = [];
+    let tfIdx = 0;
+    for (const f of teamFileRows.data ?? []) {
+      const teamRef = teamIdByUuid.get(f.team_id);
+      if (!teamRef) continue;
+      const obj = await storage.get(f.storage_key);
+      if (!obj) continue;
+      tfIdx++;
+      const path = `files/teams/${teamRef}/${String(tfIdx).padStart(2, "0")}-${f.name}`;
+      files.push({ path, content_type: f.content_type, dataBase64: toBase64(obj.bytes) });
+      teamFileItems.push({
+        team: teamRef,
+        name: f.name,
+        file: path,
+        content_type: f.content_type,
+      });
+    }
+    const tenantFileItems: NonNullable<TenantData["tenant_files"]> = [];
+    let gfIdx = 0;
+    for (const f of tenantFileRows.data ?? []) {
+      const obj = await storage.get(f.storage_key);
+      if (!obj) continue;
+      gfIdx++;
+      const path = `files/global/${String(gfIdx).padStart(2, "0")}-${f.name}`;
+      files.push({ path, content_type: f.content_type, dataBase64: toBase64(obj.bytes) });
+      tenantFileItems.push({ name: f.name, file: path, content_type: f.content_type });
+    }
+
     const payload: TenantData = {
       version: IO_VERSION,
       exported_at: new Date().toISOString(),
@@ -1977,6 +2080,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
         practice_minutes: tenant.practice_minutes ?? 10,
         practice_room_scope: (tenant.practice_room_scope ?? "all") as "assigned" | "all",
+        files_mode: (tenant.files_mode ?? "full") as "off" | "download" | "full",
+        max_upload_mb: tenant.max_upload_mb ?? 10,
       },
       color_schemes: schemeRows.map((s, idx) => ({
         id: schemeIds[idx],
@@ -2016,6 +2121,8 @@ export const exportTenantData = createServerFn({ method: "GET" })
         // URLs are secrets and never exported; the key is kept so it can be filled in for import
         url: null,
       })),
+      team_files: teamFileItems,
+      tenant_files: tenantFileItems,
       logo,
     };
 
@@ -2145,7 +2252,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           .select("path")
           .eq("tenant_id", tenant.id);
         if (oldSlides?.length) {
-          await supabase.storage.from("tenant-ads").remove(oldSlides.map((s) => s.path));
+          await supabase.storage.from("tenant-ads").remove(oldSlides.map((s) => s.path).filter(Boolean));
         }
         await supabase.from("slide_sets").delete().eq("tenant_id", tenant.id);
       }
@@ -2419,7 +2526,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           .select("path")
           .eq("tenant_id", tenant.id);
         if (oldSlides?.length) {
-          await supabase.storage.from("tenant-ads").remove(oldSlides.map((s) => s.path));
+          await supabase.storage.from("tenant-ads").remove(oldSlides.map((s) => s.path).filter(Boolean));
         }
         await supabase.from("slides").delete().eq("tenant_id", tenant.id);
       }
@@ -2437,8 +2544,9 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
       const orderBySet = new Map<string, number>();
       for (const a of p.slides) {
-        const file = findFile(a.file);
-        if (!file) {
+        const isEntries = a.kind === "entries";
+        const file = isEntries || !a.file ? null : findFile(a.file);
+        if (!isEntries && !file) {
           warnings.push(`Slide "${a.name}": image file "${a.file}" is missing in the archive`);
           continue;
         }
@@ -2461,8 +2569,27 @@ export const importTenantData = createServerFn({ method: "POST" })
             .limit(1);
           order = (last?.[0]?.sort_order ?? -1) + 1;
         }
+        if (isEntries || !file) {
+          const { error: insErr } = await supabase.from("slides").insert({
+            tenant_id: tenant.id,
+            slide_set_id: setId,
+            name: a.name,
+            path: "",
+            content_type: "",
+            kind: "entries",
+            sort_order: order,
+            duration_seconds: a.duration_seconds ?? null,
+          });
+          if (insErr) {
+            warnings.push(`Slide "${a.name}" not imported: ${insErr.message}`);
+            continue;
+          }
+          orderBySet.set(setId, order + 1);
+          counts.slides = (counts.slides ?? 0) + 1;
+          continue;
+        }
         const bytes = fromBase64(file.dataBase64);
-        const path = `${tenant.id}/slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file)}`;
+        const path = `${tenant.id}/slide-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extOf(a.file ?? "")}`;
         const { error: upErr } = await supabase.storage
           .from("tenant-ads")
           .upload(path, bytes, { contentType: a.content_type || file.content_type, upsert: true });
@@ -2488,6 +2615,120 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
     }
 
+
+    // ---- files (team + organization wide) ----
+    if ((wants("team_files") && p.team_files) || (wants("tenant_files") && p.tenant_files)) {
+      const { fileStorage, teamFileKey, tenantFileKey } = await import("@/lib/storage/index.server");
+      const storage = fileStorage();
+
+      if (wants("tenant_files") && p.tenant_files) {
+        if (replace) {
+          const { data: old } = await supabase
+            .from("tenant_files")
+            .select("storage_key")
+            .eq("tenant_id", tenant.id);
+          await storage.remove((old ?? []).map((o) => o.storage_key));
+          await supabase.from("tenant_files").delete().eq("tenant_id", tenant.id);
+        }
+        const { data: last } = await supabase
+          .from("tenant_files")
+          .select("sort_order")
+          .eq("tenant_id", tenant.id)
+          .order("sort_order", { ascending: false })
+          .limit(1);
+        let order = (last?.[0]?.sort_order ?? -1) + 1;
+        for (const f of p.tenant_files) {
+          const file = findFile(f.file);
+          if (!file) {
+            warnings.push(`File "${f.name}": "${f.file}" is missing in the archive`);
+            continue;
+          }
+          const bytes = fromBase64(file.dataBase64);
+          const key = tenantFileKey(tenant.id, extOf(f.file));
+          const contentType = f.content_type || file.content_type;
+          try {
+            await storage.put(key, bytes, contentType);
+          } catch (e) {
+            warnings.push(`File "${f.name}": upload failed — ${(e as Error).message}`);
+            continue;
+          }
+          const { error } = await supabase.from("tenant_files").insert({
+            tenant_id: tenant.id,
+            name: f.name,
+            storage_key: key,
+            content_type: contentType,
+            size_bytes: bytes.byteLength,
+            sort_order: order++,
+          });
+          if (error) warnings.push(`File "${f.name}" not imported: ${error.message}`);
+          else counts.tenant_files = (counts.tenant_files ?? 0) + 1;
+        }
+      }
+
+      if (wants("team_files") && p.team_files) {
+        const teamUuidByRef = new Map<string, string>();
+        {
+          const { data: rows } = await supabase
+            .from("teams")
+            .select("id, ref_id, name, sort_order")
+            .eq("tenant_id", tenant.id)
+            .order("sort_order", { ascending: true });
+          const taken = new Set<string>();
+          for (const row of rows ?? []) {
+            const ref = uniqueRefId(effectiveRefId(row), taken, "team");
+            teamUuidByRef.set(ref, row.id);
+            teamUuidByRef.set(slugify(row.name), row.id);
+          }
+        }
+        if (replace) {
+          const { data: old } = await supabase
+            .from("team_files")
+            .select("storage_key")
+            .eq("tenant_id", tenant.id);
+          await storage.remove((old ?? []).map((o) => o.storage_key));
+          await supabase.from("team_files").delete().eq("tenant_id", tenant.id);
+        }
+        for (const f of p.team_files) {
+          const teamUuid = teamUuidByRef.get(f.team) ?? teamUuidByRef.get(slugify(f.team));
+          if (!teamUuid) {
+            warnings.push(`File "${f.name}": unknown team "${f.team}"`);
+            continue;
+          }
+          const file = findFile(f.file);
+          if (!file) {
+            warnings.push(`File "${f.name}": "${f.file}" is missing in the archive`);
+            continue;
+          }
+          const { data: last } = await supabase
+            .from("team_files")
+            .select("sort_order")
+            .eq("tenant_id", tenant.id)
+            .eq("team_id", teamUuid)
+            .order("sort_order", { ascending: false })
+            .limit(1);
+          const bytes = fromBase64(file.dataBase64);
+          const key = teamFileKey(tenant.id, teamUuid, extOf(f.file));
+          const contentType = f.content_type || file.content_type;
+          try {
+            await storage.put(key, bytes, contentType);
+          } catch (e) {
+            warnings.push(`File "${f.name}": upload failed — ${(e as Error).message}`);
+            continue;
+          }
+          const { error } = await supabase.from("team_files").insert({
+            tenant_id: tenant.id,
+            team_id: teamUuid,
+            name: f.name,
+            storage_key: key,
+            content_type: contentType,
+            size_bytes: bytes.byteLength,
+            sort_order: (last?.[0]?.sort_order ?? -1) + 1,
+          });
+          if (error) warnings.push(`File "${f.name}" not imported: ${error.message}`);
+          else counts.team_files = (counts.team_files ?? 0) + 1;
+        }
+      }
+    }
 
     // ---- logo ----
     let logoPath: string | null | undefined;
@@ -2532,6 +2773,8 @@ export const importTenantData = createServerFn({ method: "POST" })
           update.practice_minutes = p.tenant.practice_minutes;
         if (p.tenant.practice_room_scope !== undefined)
           update.practice_room_scope = p.tenant.practice_room_scope;
+        if (p.tenant.files_mode !== undefined) update.files_mode = p.tenant.files_mode;
+        if (p.tenant.max_upload_mb !== undefined) update.max_upload_mb = p.tenant.max_upload_mb;
         counts.tenant = 1;
       }
       if (logoPath !== undefined) update.logo_url = logoPath;

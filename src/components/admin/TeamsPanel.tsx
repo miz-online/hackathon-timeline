@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDown, ArrowUp, GripVertical, ParkingSquare, QrCode } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Link2, ParkingSquare, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 import { listTeams, upsertTeam, deleteTeam, reorderTeams } from "@/lib/board.functions";
@@ -11,9 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { useI18n } from "@/lib/i18n";
 import { slugify } from "@/lib/ref-id";
 import { TeamsJsonPanel } from "@/components/admin/TeamsJsonPanel";
+import { TeamFilesPanel } from "@/components/admin/TeamFilesPanel";
+import { TeamLinkDialog } from "@/components/admin/TeamLinkDialog";
+
 
 type TeamRow = {
   id: string;
@@ -33,12 +41,16 @@ export function TeamsPanel({
   rooms,
   schemes,
   defaultColor,
+  filesMode = "full",
+  maxUploadMb = 10,
   onChange,
 }: {
   tenantKey: string;
   rooms: RoomLike[];
   schemes: SchemeLike[];
   defaultColor: string;
+  filesMode?: string;
+  maxUploadMb?: number;
   onChange: () => void;
 }) {
   const { t } = useI18n();
@@ -51,16 +63,37 @@ export function TeamsPanel({
   const [mode, setMode] = useState<"form" | "json">("form");
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [filesTeam, setFilesTeam] = useState<TeamRow | null>(null);
+  const [linkTeam, setLinkTeam] = useState<TeamRow | null>(null);
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [overPark, setOverPark] = useState(false);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openHover = (id: string) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHoverId(id), 250);
+  };
+  const closeHover = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setHoverId(null);
+  };
   const [order, setOrder] = useState<string[] | null>(null);
   const [parked, setParked] = useState<string[]>([]);
 
   // Live updates (e.g. teams registering/editing themselves) — paused while the
   // user has unsaved local state: open dialog, JSON mode, drag or manual order.
   const busy =
-    showForm || !!editing || mode === "json" || !!dragId || !!order || parked.length > 0;
+    showForm ||
+    !!editing ||
+    !!filesTeam ||
+    !!linkTeam ||
+
+    mode === "json" ||
+    !!dragId ||
+    !!order ||
+    parked.length > 0;
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
     queryFn: () => listFn({ data: { key: tenantKey } }),
@@ -207,6 +240,29 @@ export function TeamsPanel({
         <>
           <p className="text-xs text-muted-foreground">{t("teams.hint")}</p>
 
+          <TeamLinkDialog
+            tenantKey={tenantKey}
+            team={linkTeam}
+            onClose={() => setLinkTeam(null)}
+          />
+
+          <Dialog open={!!filesTeam} onOpenChange={(o) => !o && setFilesTeam(null)}>
+
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{t("files.manage")}</DialogTitle>
+              </DialogHeader>
+              {filesTeam ? (
+                <TeamFilesPanel
+                  tenantKey={tenantKey}
+                  teamId={filesTeam.id}
+                  teamName={filesTeam.name}
+                  maxUploadMb={maxUploadMb}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
@@ -278,28 +334,64 @@ export function TeamsPanel({
             ) : (
               <div className="flex flex-wrap gap-2">
                 {parkedTeams.map((team) => (
-                  <div
-                    key={team.id}
-                    draggable
-                    onDragStart={(ev) => {
-                      setDragId(team.id);
-                      ev.dataTransfer.effectAllowed = "move";
-                      ev.dataTransfer.setData("text/plain", team.id);
-                    }}
-                    onDragEnd={() => {
-                      setDragId(null);
-                      setOverIdx(null);
-                    }}
-                    className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
-                      dragId === team.id ? "opacity-50" : ""
-                    }`}
-                  >
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full border"
-                      style={{ backgroundColor: colorOf(team) }}
-                    />
-                    <span className="max-w-[12rem] truncate">{team.name}</span>
-                  </div>
+                  <HoverCard key={team.id} open={hoverId === team.id} openDelay={250}>
+                    <HoverCardTrigger asChild>
+                      <div
+                        draggable
+                        onMouseEnter={() => openHover(team.id)}
+                        onMouseLeave={closeHover}
+                        onMouseDown={closeHover}
+                        onDragStart={(ev) => {
+                          closeHover();
+                          setDragId(team.id);
+                          ev.dataTransfer.effectAllowed = "move";
+                          ev.dataTransfer.setData("text/plain", team.id);
+                        }}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setOverIdx(null);
+                        }}
+                        className={`flex cursor-grab items-center gap-2 rounded-md border px-2 py-1 text-sm ${
+                          dragId === team.id ? "opacity-50" : ""
+                        }`}
+                      >
+                        <span
+                          className="h-3 w-3 shrink-0 rounded-full border"
+                          style={{ backgroundColor: colorOf(team) }}
+                        />
+                        <span className="max-w-[12rem] truncate">{team.name}</span>
+                      </div>
+                    </HoverCardTrigger>
+                    {team.members || team.project ? (
+                      <HoverCardContent
+                        side="bottom"
+                        align="start"
+                        sideOffset={8}
+                        onPointerDownCapture={(ev) => ev.preventDefault()}
+                        className="pointer-events-none z-50 min-w-[16rem] max-w-sm space-y-2"
+                      >
+                        <div className="text-sm font-medium">{team.name}</div>
+                        {team.members ? (
+                          <div className="space-y-0.5">
+                            <div className="text-xs uppercase text-muted-foreground">
+                              {t("teams.hover.members")}
+                            </div>
+                            <div className="text-sm break-words">{team.members}</div>
+                          </div>
+                        ) : null}
+                        {team.project ? (
+                          <div className="space-y-0.5">
+                            <div className="text-xs uppercase text-muted-foreground">
+                              {t("teams.hover.project")}
+                            </div>
+                            <div className="whitespace-pre-wrap break-words text-sm">
+                              {team.project}
+                            </div>
+                          </div>
+                        ) : null}
+                      </HoverCardContent>
+                    ) : null}
+                  </HoverCard>
                 ))}
               </div>
             )}
@@ -404,6 +496,20 @@ export function TeamsPanel({
                     >
                       <ArrowDown className="h-4 w-4" />
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setLinkTeam(team)}
+                    >
+                      <Link2 className="mr-1 h-4 w-4" />
+                      {t("teams.link")}
+                    </Button>
+                    {filesMode !== "off" ? (
+                      <Button size="sm" variant="ghost" onClick={() => setFilesTeam(team)}>
+                        {t("files.manage")}
+                      </Button>
+                    ) : null}
+
                     <Button
                       size="sm"
                       variant="outline"
