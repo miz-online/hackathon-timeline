@@ -181,6 +181,7 @@ export const TABLES: TableMeta[] = [
       ts("created_at", "now"),
       ts("updated_at", "now"),
       { name: "slide_set_id", kind: "uuid" },
+      { name: "kind", kind: "text", def: "image" },
     ],
   },
   {
