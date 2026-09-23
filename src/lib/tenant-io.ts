@@ -353,11 +353,11 @@ export const TENANT_JSON_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["name", "file"],
+        required: ["name"],
         properties: {
           name: { type: "string", minLength: 1, maxLength: 120 },
           file: {
-            type: "string",
+            type: ["string", "null"],
             description: "Path of the image inside the export archive, e.g. images/slides/01-logo.png",
           },
           content_type: { type: "string" },
