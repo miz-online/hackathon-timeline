@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images, CalendarClock } from "lucide-react";
 import {
   listEntries,
@@ -1020,7 +1020,16 @@ function EntriesPanel({
                 <span className="h-px flex-1 bg-border" />
               </button>
             ) : null}
-            {isCollapsed ? null : (
+            {isCollapsed ? null : preview ? (
+              <PreviewEntry
+                entry={e}
+                now={now}
+                graceMs={graceMs}
+                tenantKey={tenantKey}
+                color={schemes.find((s) => s.id === e.color_scheme_id)?.color ?? defaultColor}
+                slideSetName={slideSets.find((s) => s.id === e.slide_set_id)?.name ?? null}
+              />
+            ) : (
             <Card className={`flex items-start justify-between gap-4 ${preview ? "p-3 text-sm" : "p-4"}`}>
               <div className="flex flex-col items-center gap-1.5 shrink-0">
                 <span
@@ -1154,6 +1163,112 @@ function EntriesPanel({
         )}
       </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Read-only miniature of an entry as it appears on the room screens. */
+function PreviewEntry({
+  entry: e,
+  now,
+  graceMs,
+  tenantKey,
+  color,
+  slideSetName,
+}: {
+  entry: EntryRow;
+  now: number;
+  graceMs: number;
+  tenantKey: string;
+  color: string;
+  slideSetName: string | null;
+}) {
+  const { t } = useI18n();
+  const p = derivePalette(color || DEFAULT_ACCENT);
+  const start = new Date(e.time).getTime();
+  const end = e.end_time ? new Date(e.end_time).getTime() : null;
+  const running = start <= now && (end != null ? end > now : start + graceMs >= now);
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const bg = e.background_url ?? null;
+  const align = e.background_align ?? "right-top";
+  const m = e.background_margin ?? 0;
+  const scale = 0.5;
+  const tint = e.background_tint ? p[e.background_tint] : null;
+  const bgBox: CSSProperties =
+    align === "fill"
+      ? { position: "absolute", inset: 0, width: "100%", height: "100%" }
+      : align === "right-stretch"
+        ? { position: "absolute", top: m * scale, bottom: m * scale, right: m * scale, height: `calc(100% - ${m}px)`, aspectRatio: "1" }
+        : align === "right-bottom"
+          ? { position: "absolute", bottom: m * scale, right: m * scale, height: (e.background_height ?? 80) * scale, aspectRatio: "1" }
+          : { position: "absolute", top: m * scale, right: m * scale, height: (e.background_height ?? 80) * scale, aspectRatio: "1" };
+  const img = (style: CSSProperties) =>
+    tint ? (
+      <span
+        aria-hidden
+        style={{
+          ...style,
+          opacity: (e.background_opacity ?? 100) / 100,
+          backgroundColor: tint,
+          WebkitMaskImage: `url("${bg}")`,
+          maskImage: `url("${bg}")`,
+          WebkitMaskSize: align === "fill" ? "cover" : "contain",
+          maskSize: align === "fill" ? "cover" : "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "right center",
+          maskPosition: "right center",
+          pointerEvents: "none",
+        }}
+      />
+    ) : (
+      <img
+        src={bg!}
+        alt=""
+        aria-hidden
+        style={{
+          ...style,
+          aspectRatio: undefined,
+          width: align === "fill" ? "100%" : "auto",
+          objectFit: align === "fill" ? "cover" : "contain",
+          opacity: (e.background_opacity ?? 100) / 100,
+          pointerEvents: "none",
+        }}
+      />
+    );
+  return (
+    <div
+      className="flex overflow-hidden rounded-[26px]"
+      style={{ border: `2px solid ${p.base}`, background: "#fff", color: "#1f2937", minHeight: 52 }}
+    >
+      <div
+        className="flex w-28 shrink-0 flex-col items-center justify-center px-3 py-2 font-bold tabular-nums leading-tight"
+        style={{ backgroundColor: p.base, color: p.onBase }}
+      >
+        <div className="text-base">{running ? t("display.now") : fmt(e.time)}</div>
+        {e.end_time ? (
+          <div className="text-[11px] font-medium opacity-70">
+            {t("display.untilTime", { time: fmt(e.end_time) })}
+          </div>
+        ) : null}
+        {bg && align === "time" ? img({ position: "relative", width: "100%", height: "auto", marginTop: 4 }) : null}
+      </div>
+      <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-4 py-2">
+        {bg && align !== "time" && e.kind !== "register" ? img(bgBox) : null}
+        <div className="relative z-[1] text-sm font-bold leading-tight">
+          {e.kind === "slides" ? slideSetName ?? t("entries.kind.slides") : e.title}
+        </div>
+        {e.kind === "slides" ? (
+          <div className="relative z-[1]">
+            <SlideStrip tenantKey={tenantKey} setId={e.slide_set_id ?? null} />
+          </div>
+        ) : e.description ? (
+          <div className="relative z-[1] whitespace-pre-wrap text-xs italic text-gray-500">
+            {e.description}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
