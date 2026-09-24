@@ -37,6 +37,7 @@ export const tenantSection = z.object({
   practice_room_scope: z.enum(["assigned", "all"]).optional(),
   files_mode: z.enum(["off", "download", "full"]).optional(),
   max_upload_mb: z.number().int().min(1).max(2048).optional(),
+  team_quota_mb: z.number().int().min(0).max(1048576).optional(),
 });
 
 export const tenantFileItem = z.object({
@@ -216,6 +217,11 @@ export const TENANT_JSON_SCHEMA = {
           minimum: 1,
           maximum: 2048,
           description: "Maximum upload size per file in megabytes",
+        },
+        team_quota_mb: {
+          type: "integer",
+          minimum: 0,
+          description: "Total storage per team in megabytes (0 = unlimited)",
         },
       },
     },

@@ -51,6 +51,7 @@ export const TABLES: TableMeta[] = [
       { name: "team_edit_locked", kind: "bool", def: false },
       { name: "files_mode", kind: "text", def: "full" },
       { name: "max_upload_mb", kind: "int", def: 10 },
+      { name: "team_quota_mb", kind: "int", def: 0 },
     ],
   },
   {
