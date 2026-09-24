@@ -103,6 +103,8 @@ export type TenantFileConfig = {
   id: string;
   filesMode: FileMode;
   maxUploadMb: number;
+  /** Total storage per team in MB; 0 = unlimited. */
+  teamQuotaMb: number;
   teamEditLocked: boolean;
 };
 
@@ -111,13 +113,14 @@ export async function tenantFileConfig(tenantId: string): Promise<TenantFileConf
   const admin = await getBackendAdmin();
   const { data } = await admin
     .from("tenants")
-    .select("id, files_mode, max_upload_mb, team_edit_locked")
+    .select("id, files_mode, max_upload_mb, team_quota_mb, team_edit_locked")
     .eq("id", tenantId)
     .maybeSingle();
   const row = data as unknown as {
     id: string;
     files_mode: string | null;
     max_upload_mb: number | null;
+    team_quota_mb: number | null;
     team_edit_locked: boolean | null;
   } | null;
   if (!row) throw new Error("Unknown tenant");
@@ -125,6 +128,7 @@ export async function tenantFileConfig(tenantId: string): Promise<TenantFileConf
     id: row.id,
     filesMode: normalizeFileMode(row.files_mode),
     maxUploadMb: row.max_upload_mb ?? 10,
+    teamQuotaMb: row.team_quota_mb ?? 0,
     teamEditLocked: row.team_edit_locked === true,
   };
 }
@@ -158,4 +162,25 @@ export function extensionOf(filename: string): string {
   const parts = filename.split(".");
   if (parts.length < 2) return "";
   return (parts.pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8);
+}
+
+/** Throws when adding `extraBytes` would exceed the team's storage quota. */
+export async function assertTeamQuota(
+  cfg: TenantFileConfig,
+  teamId: string,
+  extraBytes: number,
+): Promise<void> {
+  if (!cfg.teamQuotaMb || cfg.teamQuotaMb <= 0) return;
+  const { getBackendAdmin } = await import("@/lib/backend/admin.server");
+  const admin = await getBackendAdmin();
+  const { data } = await admin
+    .from("team_files")
+    .select("size_bytes")
+    .eq("team_id" as never, teamId as never);
+  const used = ((data ?? []) as { size_bytes: number | null }[]).reduce(
+    (sum, r) => sum + (r.size_bytes ?? 0),
+    0,
+  );
+  if (used + extraBytes > cfg.teamQuotaMb * 1024 * 1024)
+    throw new Error(`Team storage limit of ${cfg.teamQuotaMb} MB reached`);
 }

@@ -512,6 +512,7 @@ function AdminPage() {
               teamEditLocked={tenant.team_edit_locked === true}
               filesMode={normalizeFileMode(tenant.files_mode)}
               maxUploadMb={tenant.max_upload_mb ?? 10}
+              teamQuotaMb={tenant.team_quota_mb ?? 0}
               onChange={invalidate}
             />
           </TabsContent>
@@ -2345,6 +2346,7 @@ function SettingsPanel({
   teamEditLocked,
   filesMode,
   maxUploadMb,
+  teamQuotaMb,
   onChange,
 }: {
   tenantKey: string;
@@ -2364,6 +2366,7 @@ function SettingsPanel({
   teamEditLocked?: boolean;
   filesMode?: FileMode;
   maxUploadMb?: number;
+  teamQuotaMb?: number;
   onChange: () => void;
 }) {
   const navigate = useNavigate();
@@ -2387,6 +2390,7 @@ function SettingsPanel({
   const [teamLock, setTeamLock] = useState(teamEditLocked === true);
   const [fileMode, setFileMode] = useState<FileMode>(normalizeFileMode(filesMode));
   const [maxMb, setMaxMb] = useState(maxUploadMb ?? 10);
+  const [quotaMb, setQuotaMb] = useState(teamQuotaMb ?? 0);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
@@ -2430,6 +2434,7 @@ function SettingsPanel({
                 team_edit_locked: teamLock,
                 files_mode: fileMode,
                 max_upload_mb: maxMb,
+                team_quota_mb: quotaMb,
               },
             });
             toast.success(t("settings.saved"));
@@ -2614,6 +2619,18 @@ function SettingsPanel({
                   value={maxMb}
                   onChange={(e) => setMaxMb(Math.max(1, Number(e.target.value) || 1))}
                 />
+              </div>
+            ) : null}
+            {fileMode === "full" ? (
+              <div className="space-y-1">
+                <Label>{t("settings.teamQuotaMb")}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={quotaMb}
+                  onChange={(e) => setQuotaMb(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                />
+                <p className="text-xs text-muted-foreground">{t("settings.teamQuotaHint")}</p>
               </div>
             ) : null}
             {saveButton}

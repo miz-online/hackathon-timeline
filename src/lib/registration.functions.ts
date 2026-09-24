@@ -307,6 +307,8 @@ export const uploadFileForTeam = createServerFn({ method: "POST" })
     const bytes = decodeBase64(data.dataBase64);
     if (bytes.byteLength > cfg.maxUploadMb * 1024 * 1024)
       throw new Error(`File is larger than ${cfg.maxUploadMb} MB`);
+    const { assertTeamQuota } = await import("@/lib/files.server");
+    await assertTeamQuota(cfg, found.team.id, bytes.byteLength);
     const { fileStorage, teamFileKey } = await import("@/lib/storage/index.server");
     const storageKey = teamFileKey(found.res.tenantId, found.team.id, extensionOf(data.filename));
     await fileStorage().put(storageKey, bytes, data.contentType);

@@ -62,11 +62,12 @@ type TenantRow = {
   team_edit_locked: boolean;
   files_mode: string;
   max_upload_mb: number;
+  team_quota_mb: number;
 };
 
 const TENANT_COLS_BASE =
   "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
-const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked, files_mode, max_upload_mb`;
+const TENANT_COLS = `${TENANT_COLS_BASE}, team_edit_locked, files_mode, max_upload_mb, team_quota_mb`;
 
 async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: string | null }> {
   const supabase = await getAdmin();
@@ -90,6 +91,7 @@ async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: st
     team_edit_locked: row.team_edit_locked === true,
     files_mode: normalizeFileMode(row.files_mode),
     max_upload_mb: row.max_upload_mb ?? 10,
+    team_quota_mb: row.team_quota_mb ?? 0,
   };
 }
 
@@ -215,6 +217,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
       team_edit_locked?: boolean;
       files_mode?: string;
       max_upload_mb?: number;
+      team_quota_mb?: number;
     }) =>
       z
         .object({
@@ -238,6 +241,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
           team_edit_locked: z.boolean().default(false),
           files_mode: z.enum(FILE_MODES).default("full"),
           max_upload_mb: z.number().int().min(1).max(2048).default(10),
+          team_quota_mb: z.number().int().min(0).max(1048576).default(0),
         })
         .parse(d),
   )
@@ -261,6 +265,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         team_edit_locked: data.team_edit_locked,
         files_mode: data.files_mode,
         max_upload_mb: data.max_upload_mb,
+        team_quota_mb: data.team_quota_mb,
     };
     const write = (payload: Record<string, unknown>) =>
       supabase
@@ -269,7 +274,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         .eq("id", id) as unknown as Promise<{ data: unknown; error: unknown }>;
     const { error } = await withOptionalColumns(
       () => write(patch),
-      () => write(omitKeys(patch, ["team_edit_locked", "files_mode", "max_upload_mb"])),
+      () => write(omitKeys(patch, ["team_edit_locked", "files_mode", "max_upload_mb", "team_quota_mb"])),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return { ok: true };
@@ -2082,6 +2087,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
         practice_room_scope: (tenant.practice_room_scope ?? "all") as "assigned" | "all",
         files_mode: (tenant.files_mode ?? "full") as "off" | "download" | "full",
         max_upload_mb: tenant.max_upload_mb ?? 10,
+        team_quota_mb: tenant.team_quota_mb ?? 0,
       },
       color_schemes: schemeRows.map((s, idx) => ({
         id: schemeIds[idx],
@@ -2775,6 +2781,7 @@ export const importTenantData = createServerFn({ method: "POST" })
           update.practice_room_scope = p.tenant.practice_room_scope;
         if (p.tenant.files_mode !== undefined) update.files_mode = p.tenant.files_mode;
         if (p.tenant.max_upload_mb !== undefined) update.max_upload_mb = p.tenant.max_upload_mb;
+        if (p.tenant.team_quota_mb !== undefined) update.team_quota_mb = p.tenant.team_quota_mb;
         counts.tenant = 1;
       }
       if (logoPath !== undefined) update.logo_url = logoPath;

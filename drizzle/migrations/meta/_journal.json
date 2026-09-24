@@ -15,6 +15,13 @@
       "when": 1790189509992,
       "tag": "0001_slides_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790272072121,
+      "tag": "0002_team_quota_mb",
+      "breakpoints": true
     }
   ]
 }

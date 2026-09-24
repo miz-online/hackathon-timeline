@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS team_quota_mb integer NOT NULL DEFAULT 0;
