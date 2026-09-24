@@ -456,7 +456,6 @@ function AdminPage() {
               defaultColor={tenant.accent_color}
               filesMode={normalizeFileMode(tenant.files_mode)}
               maxUploadMb={tenant.max_upload_mb ?? 10}
-              teamQuotaMb={tenant.team_quota_mb ?? 0}
               onChange={invalidate}
             />
           </TabsContent>
@@ -513,6 +512,7 @@ function AdminPage() {
               teamEditLocked={tenant.team_edit_locked === true}
               filesMode={normalizeFileMode(tenant.files_mode)}
               maxUploadMb={tenant.max_upload_mb ?? 10}
+              teamQuotaMb={tenant.team_quota_mb ?? 0}
               onChange={invalidate}
             />
           </TabsContent>
