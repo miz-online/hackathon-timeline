@@ -507,6 +507,7 @@ export type Database = {
           practice_room_scope: string
           slide_seconds: number
           team_edit_locked: boolean
+          team_quota_mb: number
           template: string
         }
         Insert: {
@@ -529,6 +530,7 @@ export type Database = {
           practice_room_scope?: string
           slide_seconds?: number
           team_edit_locked?: boolean
+          team_quota_mb?: number
           template?: string
         }
         Update: {
@@ -551,6 +553,7 @@ export type Database = {
           practice_room_scope?: string
           slide_seconds?: number
           team_edit_locked?: boolean
+          team_quota_mb?: number
           template?: string
         }
         Relationships: []
