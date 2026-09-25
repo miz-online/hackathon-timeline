@@ -55,18 +55,24 @@ export function SlidesTemplate({
     return () => clearInterval(id);
   }, []);
 
+  // Stable signature: live updates deliver a new array every poll, which must
+  // not restart the current slide's timer (otherwise long slides never advance).
+  const signature = slides.map((s) => `${s.id}:${s.duration_seconds ?? ""}`).join("|");
+  const count = slides.length;
+  const currentSeconds = count
+    ? (slides[index % count]?.duration_seconds ?? slideSeconds ?? 10)
+    : 0;
+
   useEffect(() => {
-    if (!slides.length) {
+    if (!count) {
       setIndex(0);
       return;
     }
-    const advance = () => setIndex((i) => (i + 1) % slides.length);
-    const current = slides[index % slides.length];
-    const seconds = current?.duration_seconds ?? slideSeconds ?? 10;
-    const ms = Math.max(1, seconds) * 1000;
-    const id = setTimeout(advance, ms);
+    const ms = Math.max(1, currentSeconds) * 1000;
+    const id = setTimeout(() => setIndex((i) => (i + 1) % count), ms);
     return () => clearTimeout(id);
-  }, [slides, slideSeconds, index]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature, currentSeconds, index, count]);
 
   const current = slides.length ? slides[index % slides.length] : null;
   const showEntries = current?.kind === "entries";
