@@ -392,9 +392,9 @@ const en: Dict = {
   "entries.form.registerHint":
     "Displays register.title and a QR code with the self-registration link. No image possible.",
   "entries.form.registerToken": "Registration link",
-  "entries.newFolien": "New slides entry",
-  "entries.kind.slides": "Folien",
-  "entries.form.slideSet": "Folie set",
+  "entries.newSlides": "New slides entry",
+  "entries.kind.slides": "Slides",
+  "entries.form.slideSet": "Slide set",
   "entries.form.slideSetNone": "Please choose",
   "entries.form.slidesHint":
     "Displays set to \"Automatic\" play this slide set between start and end time, then return to the schedule. Room tags limit it to those rooms.",
@@ -878,7 +878,7 @@ const de: Dict = {
   "entries.form.registerHint":
     "Zeigt Titel und einen QR-Code mit dem Selbstregistrierungs-Link. Kein Bild möglich.",
   "entries.form.registerToken": "Registrierungs-Link",
-  "entries.newFolien": "Neuer Folien-Eintrag",
+  "entries.newSlides": "Neuer Folien-Eintrag",
   "entries.kind.slides": "Folien",
   "entries.form.slideSet": "Folien-Set",
   "entries.form.slideSetNone": "Bitte wählen",
