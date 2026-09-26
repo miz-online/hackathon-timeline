@@ -118,6 +118,17 @@ async function requireTenantAdmin(key: string): Promise<TenantRow> {
   return rest;
 }
 
+/** Read-only polling must never throw when the PIN session expires. */
+async function tenantAdminForRead(key: string): Promise<TenantRow | null> {
+  try {
+    return await requireTenantAdmin(key);
+  } catch (error) {
+    const { isTenantLockedError } = await import("@/lib/tenant-lock");
+    if (isTenantLockedError(error)) return null;
+    throw error;
+  }
+}
+
 function filterVisible<T extends { time: string; tags: string[]; end_time?: string | null }>(
   entries: T[],
   roomName: string,
@@ -345,7 +356,9 @@ export const listEntries = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { withOptionalColumns } = await import("@/lib/optional-columns");
     const baseCols =
       "id, kind, time, end_time, title, description, tags, color_scheme_id, slide_set_id, notify, notified_at, background_path, background_content_type, background_align, background_height, background_opacity, background_margin, background_tint";
@@ -735,7 +748,9 @@ export const listRooms = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { data: rows, error } = await supabase
       .from("rooms")
       .select("id, ref_id, name, color_scheme_id, template")
@@ -814,7 +829,9 @@ export const listTeams = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { withOptionalColumns } = await import("@/lib/optional-columns");
     const baseCols = "id, ref_id, name, members, project, room_id, sort_order";
     const read = (cols: string) =>
@@ -1052,7 +1069,9 @@ export const listWebhooks = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { data: rows, error } = await supabase
       .from("webhooks")
       .select("id, ref_id, name, type, enabled, url")
@@ -1227,7 +1246,7 @@ export const getNextWebhookDispatch = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    await requireTenantAdmin(data.key);
+    if (!(await tenantAdminForRead(data.key))) return { at: null };
     const { data: at, error } = await supabase.rpc("next_webhook_dispatch_at");
     if (error) throw new Error(error.message);
     return { at: at ? String(at) : null };
@@ -1430,7 +1449,9 @@ export const listColorSchemes = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { data: rows, error } = await supabase
       .from("color_schemes")
       .select("id, ref_id, name, color")
@@ -1540,7 +1561,9 @@ export const listSlideSets = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { data: rows, error } = await supabase
       .from("slide_sets")
       .select("id, ref_id, name, slide_seconds, sort_order, show_room_name, show_clock, show_logo")
@@ -1648,7 +1671,9 @@ export const listSlides = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
-    const { id } = await requireTenantAdmin(data.key);
+    const tenant = await tenantAdminForRead(data.key);
+    if (!tenant) return [];
+    const { id } = tenant;
     const { data: rows, error } = await supabase
       .from("slides")
       .select("id, name, content_type, sort_order, path, duration_seconds, kind")

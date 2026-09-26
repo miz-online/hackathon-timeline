@@ -154,6 +154,17 @@ export async function requireFileAdmin(key: string): Promise<TenantFileConfig> {
   return tenantFileConfig(row.id);
 }
 
+/** Read-only file polling returns no data after expiry instead of throwing. */
+export async function fileAdminForRead(key: string): Promise<TenantFileConfig | null> {
+  try {
+    return await requireFileAdmin(key);
+  } catch (error) {
+    const { isTenantLockedError } = await import("@/lib/tenant-lock");
+    if (isTenantLockedError(error)) return null;
+    throw error;
+  }
+}
+
 export function decodeBase64(data: string): Uint8Array {
   const raw = atob(data.includes(",") ? data.split(",").pop()! : data);
   const out = new Uint8Array(raw.length);
