@@ -505,6 +505,7 @@ export type Database = {
           pin_hash: string | null
           practice_minutes: number
           practice_room_scope: string
+          reload_counter: number
           slide_seconds: number
           team_edit_locked: boolean
           team_quota_mb: number
@@ -528,6 +529,7 @@ export type Database = {
           pin_hash?: string | null
           practice_minutes?: number
           practice_room_scope?: string
+          reload_counter?: number
           slide_seconds?: number
           team_edit_locked?: boolean
           team_quota_mb?: number
@@ -551,6 +553,7 @@ export type Database = {
           pin_hash?: string | null
           practice_minutes?: number
           practice_room_scope?: string
+          reload_counter?: number
           slide_seconds?: number
           team_edit_locked?: boolean
           team_quota_mb?: number
