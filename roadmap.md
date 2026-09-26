@@ -30,3 +30,4 @@
 - [x] 1. Neuer Tab „Druckansicht“ im Teams-Bereich
 - [x] 2. Teams nach gespeicherter Reihenfolge nummerieren
 - [x] 3. Zweispaltige A4-Druckausgabe mit Druckaktion
+- [x] 4. Druckansicht in einem eigenen Browser-Tab öffnen

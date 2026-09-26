@@ -461,7 +461,6 @@ function AdminPage() {
           <TabsContent value="teams" className="space-y-4 pt-4">
             <TeamsPanel
               tenantKey={tenantKey}
-              tenantName={tenant.name}
               rooms={roomsQ.data ?? []}
               schemes={schemesQ.data ?? []}
               defaultColor={tenant.accent_color}
