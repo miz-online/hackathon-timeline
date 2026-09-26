@@ -2,6 +2,7 @@ import { Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { derivePalette } from "@/lib/colors";
 import type { PrintableTeam } from "@/components/admin/TeamPrintSheet";
 
 type PrintableRoom = { id: string; color_scheme_id?: string | null };
@@ -65,14 +66,16 @@ export function TeamGridPrintSheet({
               >
                 {column.map((team, rowIndex) => {
                   const teamIndex = columnIndex * rowsPerColumn + rowIndex;
+                  const p = derivePalette(colorOf(team));
                   return (
                     <article
                       key={team.id}
-                      className="team-grid-item grid min-h-0 grid-cols-[clamp(2.5rem,5vw,5.5rem)_minmax(0,1fr)] overflow-hidden rounded-lg border bg-background"
+                      className="team-grid-item grid min-h-0 grid-cols-[clamp(2.5rem,5vw,5.5rem)_minmax(0,1fr)] overflow-hidden rounded-[26px] bg-background"
+                      style={{ border: `2px solid ${p.base}` }}
                     >
                       <div
-                        className="flex items-center justify-center text-[clamp(1rem,2.2vw,2.5rem)] font-semibold text-primary-foreground"
-                        style={{ backgroundColor: colorOf(team) }}
+                        className="flex items-center justify-center text-[clamp(1rem,2.2vw,2.5rem)] font-semibold"
+                        style={{ backgroundColor: p.base, color: p.onBase }}
                       >
                         {teamIndex + 1}
                       </div>
