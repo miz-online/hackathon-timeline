@@ -22,7 +22,8 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
           "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
         const readTenant = (cols: string) =>
           supabaseAdmin.from("tenants").select(cols).eq("key", tenantKey).maybeSingle() as unknown as Promise<{
-            data: Record<string, unknown> | null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: any;
             error: unknown;
           }>;
         const { data: tenant } = await withOptionalColumns(

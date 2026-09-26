@@ -43,13 +43,18 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
         const encoder = new TextEncoder();
 
         const buildSnapshot = async () => {
-          const { data: tNow } = await supabaseAdmin
-            .from("tenants")
-            .select(
-              "name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
-            )
-            .eq("id", tenantId)
-            .maybeSingle();
+          const tCols =
+            "name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
+          const readTenant = (cols: string) =>
+            supabaseAdmin.from("tenants").select(cols).eq("id", tenantId).maybeSingle() as unknown as Promise<{
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              data: any;
+              error: unknown;
+            }>;
+          const { data: tNow } = await withOptionalColumns(
+            () => readTenant(`${tCols}, reload_counter`),
+            () => readTenant(tCols),
+          );
           const rNow = isOverview
             ? { id: "overview", name: "", color_scheme_id: null as string | null, template: null as string | null }
             : (
@@ -175,6 +180,7 @@ export const Route = createFileRoute("/api/public/stream/$tenantKey/$roomId")({
               focus_dim_opacity: tNow.focus_dim_opacity ?? 35,
               practice_minutes: tNow.practice_minutes ?? 10,
               practice_room_scope: tNow.practice_room_scope ?? "all",
+              reload_counter: (tNow as { reload_counter?: number }).reload_counter ?? 0,
             },
             room: {
               id: rNow.id,

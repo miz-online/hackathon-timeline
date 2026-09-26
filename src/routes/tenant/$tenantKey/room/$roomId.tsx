@@ -146,6 +146,19 @@ function RoomDisplay() {
     return () => clearInterval(id);
   }, []);
 
+  // Admins can force every display to reload its page (e.g. after an app
+  // update): the snapshot carries a counter, a change means "reload once".
+  const reloadCounter = useRef<number | null>(null);
+  useEffect(() => {
+    const rc = snapshot?.tenant.reload_counter;
+    if (rc == null) return;
+    if (reloadCounter.current === null) {
+      reloadCounter.current = rc;
+      return;
+    }
+    if (rc !== reloadCounter.current) window.location.reload();
+  }, [snapshot]);
+
   // Slideshow entries switch the display at an exact time: reload right then
   // instead of waiting for the next poll.
   const switchAt = snapshot?.switch_at ?? null;
