@@ -13,6 +13,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Room Board" },
       { name: "description", content: "Time-based entries shown live on room display screens." },
+      { property: "og:title", content: "Room Board" },
+      { property: "og:description", content: "Time-based entries shown live on room display screens." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,

@@ -103,6 +103,16 @@ const TABS = [
 const ENTRY_HASHES = ["entries", "entries-all"] as const;
 
 export const Route = createFileRoute("/tenant/$tenantKey/")({
+  head: () => ({
+    meta: [
+      { title: "Organization administration — Room Board" },
+      { name: "description", content: "Manage schedules, teams, rooms and displays for an organization." },
+      { property: "og:title", content: "Organization administration — Room Board" },
+      { property: "og:description", content: "Manage schedules, teams, rooms and displays for an organization." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminPage,
 });
 

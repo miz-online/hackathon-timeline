@@ -7,6 +7,16 @@ import { Card } from "@/components/ui/card";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/tenant/")({
+  head: () => ({
+    meta: [
+      { title: "Open organization — Room Board" },
+      { name: "description", content: "Open an organization workspace in Room Board." },
+      { property: "og:title", content: "Open organization — Room Board" },
+      { property: "og:description", content: "Open an organization workspace in Room Board." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: TenantGate,
 });
 
