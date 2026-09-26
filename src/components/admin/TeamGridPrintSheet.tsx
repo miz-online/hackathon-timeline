@@ -93,7 +93,7 @@ export function TeamGridPrintSheet({
 
       <style>{`
         @page { size: A4 landscape; margin: 8mm; }
-        .team-grid-column + .team-grid-column { border-left: 1px solid var(--color-border); }
+        .team-grid-column + .team-grid-column { border-left: 2px solid color-mix(in oklab, currentColor 60%, transparent); }
         @media print {
           html, body { margin: 0 !important; background: transparent !important; }
           .team-grid-sheet {
@@ -103,7 +103,7 @@ export function TeamGridPrintSheet({
             background: transparent !important;
           }
           .team-grid-item { break-inside: avoid; page-break-inside: avoid; }
-          .team-grid-column + .team-grid-column { border-left-color: color-mix(in oklab, currentColor 35%, transparent) !important; }
+          .team-grid-column + .team-grid-column { border-left: 1.5px solid color-mix(in oklab, currentColor 70%, transparent) !important; }
         }
       `}</style>
     </main>
