@@ -9,4 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Keep the team print view derived from the existing ordered team query so printed numbering always matches the saved schedule.
+- Keep the team print view on its dedicated route and derive it from the existing ordered team query so printed numbering always matches the saved schedule.
