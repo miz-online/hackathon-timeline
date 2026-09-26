@@ -2580,7 +2580,7 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
       const orderBySet = new Map<string, number>();
       for (const a of p.slides) {
-        const isEntries = a.kind === "entries";
+        const isEntries = a.kind === "entries" || a.kind === "teams";
         const file = isEntries || !a.file ? null : findFile(a.file);
         if (!isEntries && !file) {
           warnings.push(`Slide "${a.name}": image file "${a.file}" is missing in the archive`);
