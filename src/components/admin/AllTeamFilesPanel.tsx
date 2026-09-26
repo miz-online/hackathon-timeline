@@ -14,6 +14,7 @@ import {
   listAllTeamFiles,
   renameTeamFile,
 } from "@/lib/files.functions";
+import { runTenantAdminQuery } from "@/lib/tenant-lock";
 
 /** Flat list of every team file, for quick downloads and clean up. */
 export function AllTeamFilesPanel({ tenantKey }: { tenantKey: string }) {
@@ -27,7 +28,7 @@ export function AllTeamFilesPanel({ tenantKey }: { tenantKey: string }) {
 
   const q = useQuery({
     queryKey: ["all-team-files", tenantKey],
-    queryFn: () => listFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey } })),
   });
   const items = q.data ?? [];
 
