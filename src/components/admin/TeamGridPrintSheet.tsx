@@ -60,14 +60,15 @@ export function TeamGridPrintSheet({
             {columns.map((column, columnIndex) => (
               <div
                 key={columnIndex}
-                className="team-grid-column flex min-w-0 flex-1 flex-col justify-center gap-[clamp(0.25rem,0.65vw,0.75rem)] px-[clamp(0.4rem,0.9vw,1rem)] first:pl-0 last:pr-0"
+                className="team-grid-column grid min-w-0 flex-1 gap-[clamp(0.25rem,0.65vw,0.75rem)] px-[clamp(0.4rem,0.9vw,1rem)] first:pl-0 last:pr-0"
+                style={{ gridTemplateRows: `repeat(${rowsPerColumn}, minmax(0, 1fr))` }}
               >
                 {column.map((team, rowIndex) => {
                   const teamIndex = columnIndex * rowsPerColumn + rowIndex;
                   return (
                     <article
                       key={team.id}
-                      className="team-grid-item grid min-h-0 flex-1 grid-cols-[clamp(2.5rem,5vw,5.5rem)_minmax(0,1fr)] overflow-hidden rounded-lg border bg-background"
+                      className="team-grid-item grid min-h-0 grid-cols-[clamp(2.5rem,5vw,5.5rem)_minmax(0,1fr)] overflow-hidden rounded-lg border bg-background"
                     >
                       <div
                         className="flex items-center justify-center text-[clamp(1rem,2.2vw,2.5rem)] font-semibold text-primary-foreground"
