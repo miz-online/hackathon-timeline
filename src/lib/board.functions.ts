@@ -1300,7 +1300,8 @@ export type RoomSnapshot = {
     register_token?: string | null;
   }[];
 
-  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null; kind?: "image" | "entries" }[];
+  slides: { id: string; name: string; url: string; content_type: string; duration_seconds?: number | null; kind?: "image" | "entries" | "teams" }[];
+  teams?: { id: string; name: string; room_id: string | null; color: string | null }[];
   slide_overlay?: { show_room_name?: boolean; show_clock?: boolean; show_logo?: boolean } | null;
   /** Next moment an automatic template switch happens, if any. */
   switch_at?: string | null;
@@ -1437,6 +1438,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       },
       entries: filterVisible(expandedEntries, room.name, tenant.past_grace_minutes),
       slides,
+      teams,
       slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
       switch_at: switchAt,
     };
@@ -1698,7 +1700,7 @@ export const listSlides = createServerFn({ method: "GET" })
     return all.map((s) => ({
       id: s.id,
       name: s.name,
-      kind: (s.kind ?? "image") as "image" | "entries",
+      kind: (s.kind ?? "image") as "image" | "entries" | "teams",
       content_type: s.content_type,
       sort_order: s.sort_order,
       duration_seconds: s.duration_seconds ?? null,
@@ -1777,8 +1779,8 @@ export const uploadSlide = createServerFn({ method: "POST" })
   });
 
 export const addEntriesSlide = createServerFn({ method: "POST" })
-  .inputValidator((d: { key: string; setId: string; name: string }) =>
-    z.object({ key: z.string().min(1), setId: z.string().uuid(), name: z.string().min(1).max(120) }).parse(d),
+  .inputValidator((d: { key: string; setId: string; name: string; kind?: "entries" | "teams" }) =>
+    z.object({ key: z.string().min(1), setId: z.string().uuid(), name: z.string().min(1).max(120), kind: z.enum(["entries", "teams"]).default("entries") }).parse(d),
   )
   .handler(async ({ data }) => {
     const supabase = await getAdmin();
@@ -1798,7 +1800,7 @@ export const addEntriesSlide = createServerFn({ method: "POST" })
         name: data.name,
         path: "",
         content_type: "",
-        kind: "entries",
+        kind: data.kind,
         sort_order: (last?.[0]?.sort_order ?? -1) + 1,
       })
       .select("id")
@@ -1981,15 +1983,15 @@ export const exportTenantData = createServerFn({ method: "GET" })
       }
     }
 
-    const slideItems: { name: string; file: string | null; kind: "image" | "entries"; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
+    const slideItems: { name: string; file: string | null; kind: "image" | "entries" | "teams"; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
     let i = 0;
     for (const a of slides.data ?? []) {
       i++;
-      if ((a.kind ?? "image") === "entries") {
+      if ((a.kind ?? "image") !== "image") {
         slideItems.push({
           name: a.name,
           file: null,
-          kind: "entries",
+          kind: a.kind as "entries" | "teams",
           content_type: "",
           set: setIdByUuid.get(a.slide_set_id) ?? null,
           duration_seconds: a.duration_seconds ?? null,
@@ -2578,7 +2580,7 @@ export const importTenantData = createServerFn({ method: "POST" })
       }
       const orderBySet = new Map<string, number>();
       for (const a of p.slides) {
-        const isEntries = a.kind === "entries";
+        const isEntries = a.kind === "entries" || a.kind === "teams";
         const file = isEntries || !a.file ? null : findFile(a.file);
         if (!isEntries && !file) {
           warnings.push(`Slide "${a.name}": image file "${a.file}" is missing in the archive`);
@@ -2610,7 +2612,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             name: a.name,
             path: "",
             content_type: "",
-            kind: "entries",
+            kind: a.kind as "entries" | "teams",
             sort_order: order,
             duration_seconds: a.duration_seconds ?? null,
           });

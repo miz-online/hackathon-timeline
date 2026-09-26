@@ -116,7 +116,7 @@ export const slideSetItem = z.object({
 export const slideItem = z.object({
   name: z.string().min(1).max(120),
   /** "entries" shows the timeline for this slide's duration; no file needed. */
-  kind: z.enum(["image", "entries"]).default("image"),
+  kind: z.enum(["image", "entries", "teams"]).default("image"),
   file: z.string().min(1).max(300).nullable().optional(),
   content_type: z.string().max(100).default("image/png"),
   /** id of an entry in slide_sets; null falls back to the first set */
@@ -367,7 +367,7 @@ export const TENANT_JSON_SCHEMA = {
             description: "Path of the image inside the export archive, e.g. images/slides/01-logo.png",
           },
           content_type: { type: "string" },
-          kind: { type: "string", enum: ["image", "entries"], description: "image = uploaded picture, entries = shows the timeline" },
+          kind: { type: "string", enum: ["image", "entries", "teams"], description: "image = uploaded picture, entries = shows the timeline, teams = 16:9 team plan" },
           set: {
             type: ["string", "null"],
             description: "id of an entry in slide_sets; null uses the first set",

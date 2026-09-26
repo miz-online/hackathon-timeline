@@ -10,7 +10,7 @@ type Slide = {
   url: string;
   content_type: string;
   duration_seconds?: number | null;
-  kind?: "image" | "entries";
+  kind?: "image" | "entries" | "teams";
 };
 
 function pad(n: number) {
@@ -32,6 +32,7 @@ export function SlidesTemplate({
   roomColor,
   overview = false,
   renderEntries,
+  renderTeams,
 }: {
   tenantName: string;
   roomName: string;
@@ -44,6 +45,7 @@ export function SlidesTemplate({
   roomColor?: string | null;
   overview?: boolean;
   renderEntries?: () => ReactNode;
+  renderTeams?: () => ReactNode;
 }) {
   const { t } = useI18n();
   const palette = derivePalette(roomColor || accentColor || DEFAULT_ACCENT);
@@ -75,7 +77,7 @@ export function SlidesTemplate({
   }, [signature, currentSeconds, index, count]);
 
   const current = slides.length ? slides[index % slides.length] : null;
-  const showEntries = current?.kind === "entries";
+  const showEntries = current?.kind === "entries" || current?.kind === "teams";
   const clock = `${pad(new Date(now).getHours())}:${pad(new Date(now).getMinutes())}`;
 
   return (
@@ -102,7 +104,7 @@ export function SlidesTemplate({
               transition={{ duration: 1.2, ease: "easeInOut" }}
               style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#fff" }}
             >
-              {renderEntries?.()}
+              {current.kind === "teams" ? renderTeams?.() : renderEntries?.()}
             </motion.div>
           ) : current ? (
             <motion.img

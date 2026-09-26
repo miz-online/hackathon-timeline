@@ -8,7 +8,7 @@ export type SnapshotSlide = {
   url: string;
   content_type: string;
   duration_seconds: number | null;
-  kind: "image" | "entries";
+  kind: "image" | "entries" | "teams";
 };
 
 export type SlideOverlay = {
@@ -163,7 +163,7 @@ export async function loadSlidesForTemplate(opts: {
     showClock: set.show_clock ?? true,
     showLogo: set.show_logo ?? true,
     slides: all.map((s) => ({
-      kind: (s.kind ?? "image") as "image" | "entries",
+      kind: (s.kind ?? "image") as "image" | "entries" | "teams",
       id: s.id,
       name: s.name,
       url: signed.get(s.id) ?? `/api/public/slide/${opts.tenantKey}/${s.id}`,

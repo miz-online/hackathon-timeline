@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images, CalendarClock } from "lucide-react";
+import { GripVertical, CheckCircle2, Clock, History, BellOff, Lock, LogOut, X, Upload, Download, Trash2, ChevronDown, Users, QrCode, Images, CalendarClock, LayoutGrid } from "lucide-react";
 import {
   listEntries,
   upsertEntry,
@@ -1444,13 +1444,13 @@ function SlideStrip({ tenantKey, setId }: { tenantKey: string; setId: string | n
   return (
     <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 pt-1">
       {slides.map((s) =>
-        s.kind === "entries" ? (
+        s.kind === "entries" || s.kind === "teams" ? (
           <div
             key={s.id}
             title={s.name}
             className="flex aspect-video w-28 shrink-0 items-center justify-center rounded border bg-muted/40 text-muted-foreground"
           >
-            <CalendarClock className="h-6 w-6" />
+            {s.kind === "teams" ? <LayoutGrid className="h-6 w-6" /> : <CalendarClock className="h-6 w-6" />}
           </div>
         ) : (
           <img
@@ -3344,6 +3344,19 @@ function SlideSetSlides({
                 <CalendarClock className="h-4 w-4 mr-2" />
                 {t("slides.addEntries")}
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await addEntriesFn({ data: { key: tenantKey, setId, name: t("slides.kind.teams"), kind: "teams" } });
+                    refresh();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <LayoutGrid className="h-4 w-4 mr-2" />
+                {t("slides.addTeams")}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -3434,9 +3447,9 @@ function SlideSetSlides({
               >
 
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
-              {a.kind === "entries" ? (
+              {a.kind === "entries" || a.kind === "teams" ? (
                 <div className="aspect-video w-28 shrink-0 rounded border bg-muted/40 flex items-center justify-center text-muted-foreground">
-                  <CalendarClock className="h-7 w-7" />
+                  {a.kind === "teams" ? <LayoutGrid className="h-7 w-7" /> : <CalendarClock className="h-7 w-7" />}
                 </div>
               ) : (
                 <img
@@ -3488,7 +3501,7 @@ function SlideSetSlides({
                   >
                     ↓
                   </Button>
-                  {a.kind !== "entries" && (
+                  {a.kind !== "entries" && a.kind !== "teams" && (
                     <Button size="sm" variant="outline" asChild>
                       <a href={`/api/public/slide/${tenantKey}/${a.id}`} download={a.name}>
                         {t("slides.download")}
