@@ -12,6 +12,7 @@ import {
   deleteRoom,
   getTenant,
   updateTenantSettings,
+  forceReloadDisplays,
   uploadTenantLogo,
   removeTenantLogo,
   deleteTenant,
@@ -2406,6 +2407,8 @@ function SettingsPanel({
   const [deleting, setDeleting] = useState(false);
   const updateFn = useServerFn(updateTenantSettings);
   const deleteFn = useServerFn(deleteTenant);
+  const reloadFn = useServerFn(forceReloadDisplays);
+  const [reloading, setReloading] = useState(false);
 
   const uploadLogoFn = useServerFn(uploadTenantLogo);
   const removeLogoFn = useServerFn(removeTenantLogo);
@@ -2487,6 +2490,28 @@ function SettingsPanel({
               <ColorField value={accent} onChange={setAccent} />
               <p className="text-xs text-muted-foreground">{t("settings.accentHint")}</p>
               <PalettePreview color={accent} />
+            </div>
+            <div className="space-y-1 border-t pt-4 mt-4">
+              <Label>{t("settings.reloadDisplays")}</Label>
+              <p className="text-xs text-muted-foreground">{t("settings.reloadDisplaysHint")}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={reloading}
+                onClick={async () => {
+                  setReloading(true);
+                  try {
+                    await reloadFn({ data: { key: tenantKey } });
+                    toast.success(t("settings.reloadDisplaysDone"));
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  } finally {
+                    setReloading(false);
+                  }
+                }}
+              >
+                {t("settings.reloadDisplays")}
+              </Button>
             </div>
             {saveButton}
           </Card>
