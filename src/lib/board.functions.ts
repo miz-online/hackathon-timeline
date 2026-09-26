@@ -294,6 +294,27 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Bumps a counter that tells every connected room display to reload its page once. */
+export const forceReloadDisplays = createServerFn({ method: "POST" })
+  .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const supabase = await getAdmin();
+    const { id } = await requireTenantAdmin(data.key);
+    const { data: row, error: readErr } = await supabase
+      .from("tenants")
+      .select("reload_counter")
+      .eq("id", id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    const next = (((row as { reload_counter?: number } | null)?.reload_counter ?? 0) + 1) % 1000000;
+    const { error } = await supabase
+      .from("tenants")
+      .update({ reload_counter: next } as never)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return { ok: true, reload_counter: next };
+  });
+
 export const updateTenantTemplate = createServerFn({ method: "POST" })
   .inputValidator((d: { key: string; template: string }) =>
     z.object({ key: z.string().min(1), template: z.string().min(1).max(80) }).parse(d),
@@ -1273,6 +1294,8 @@ export type RoomSnapshot = {
     practice_minutes: number;
     practice_room_scope: string;
     team_edit_locked?: boolean;
+    /** Increments when an admin forces all displays to reload their page. */
+    reload_counter?: number;
   };
   room: {
     id: string;

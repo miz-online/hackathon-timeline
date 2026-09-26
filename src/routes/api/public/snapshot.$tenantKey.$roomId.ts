@@ -18,13 +18,18 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
         const { tenantKey, roomId } = params;
         const supabaseAdmin = await getBackendAdmin();
 
-        const { data: tenant } = await supabaseAdmin
-          .from("tenants")
-          .select(
-            "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope",
-          )
-          .eq("key", tenantKey)
-          .maybeSingle();
+        const tenantCols =
+          "id, name, past_grace_minutes, template, logo_url, logo_height, accent_color, slide_seconds, focus_mode, focus_count, focus_minutes, focus_dim_opacity, practice_minutes, practice_room_scope";
+        const readTenant = (cols: string) =>
+          supabaseAdmin.from("tenants").select(cols).eq("key", tenantKey).maybeSingle() as unknown as Promise<{
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            data: any;
+            error: unknown;
+          }>;
+        const { data: tenant } = await withOptionalColumns(
+          () => readTenant(`${tenantCols}, reload_counter`),
+          () => readTenant(tenantCols),
+        );
         if (!tenant) return new Response("Not found", { status: 404 });
 
         const isOverview = roomId === "overview";
@@ -161,6 +166,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
               focus_dim_opacity: tenant.focus_dim_opacity ?? 35,
               practice_minutes: tenant.practice_minutes ?? 10,
               practice_room_scope: tenant.practice_room_scope ?? "all",
+              reload_counter: (tenant as { reload_counter?: number }).reload_counter ?? 0,
             },
             room: {
               id: room.id,

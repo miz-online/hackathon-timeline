@@ -144,6 +144,10 @@ const en: Dict = {
   "settings.template.zeitplan": "Entries",
   "settings.save": "Save settings",
   "settings.saved": "Settings saved",
+  "settings.reloadDisplays": "Reload all displays",
+  "settings.reloadDisplaysHint":
+    "Forces every room screen to reload its page once, so running displays pick up the latest app changes.",
+  "settings.reloadDisplaysDone": "Reload signal sent — displays refresh within seconds",
   "settings.keyTitle": "Tenant key",
   "settings.dangerTitle": "Delete tenant",
   "settings.dangerHint":
@@ -633,6 +637,10 @@ const de: Dict = {
   "settings.template.zeitplan": "Zeitplan",
   "settings.save": "Einstellungen speichern",
   "settings.saved": "Einstellungen gespeichert",
+  "settings.reloadDisplays": "Alle Bildschirme neu laden",
+  "settings.reloadDisplaysHint":
+    "Zwingt jeden Raumbildschirm, die Seite einmal neu zu laden, damit laufende Anzeigen die neuesten Änderungen der App übernehmen.",
+  "settings.reloadDisplaysDone": "Signal gesendet — Bildschirme laden in wenigen Sekunden neu",
   "settings.keyTitle": "Mandantenschlüssel",
   "settings.dangerTitle": "Mandant löschen",
   "settings.dangerHint":
