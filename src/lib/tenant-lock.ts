@@ -10,6 +10,15 @@
 export const TENANT_LOCKED_CODE = "TENANT_LOCKED";
 const EVENT = "tenant-locked";
 
+export class TenantLockedError extends Error {
+  readonly statusCode = 401;
+
+  constructor() {
+    super(TENANT_LOCKED_CODE);
+    this.name = "TenantLockedError";
+  }
+}
+
 export function isTenantLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
@@ -26,13 +35,13 @@ export function notifyTenantLocked(): void {
  * Treat that expected response as a UI state change rather than an uncaught
  * request error; all other failures still reach React Query normally.
  */
-export async function runTenantAdminQuery<T>(query: () => Promise<T>): Promise<T | undefined> {
+export async function runTenantAdminQuery<T>(query: () => Promise<T>): Promise<T | null> {
   try {
     return await query();
   } catch (error) {
     if (!isTenantLockedError(error)) throw error;
     notifyTenantLocked();
-    return undefined;
+    return null;
   }
 }
 

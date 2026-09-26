@@ -110,7 +110,10 @@ async function requireTenantAdmin(key: string): Promise<TenantRow> {
   const { pin_hash, ...rest } = await resolveTenantRaw(key);
   if (pin_hash) {
     const { isTenantUnlocked } = await import("@/lib/tenant-auth.server");
-    if (!(await isTenantUnlocked(rest.id))) throw new Error("TENANT_LOCKED");
+    if (!(await isTenantUnlocked(rest.id))) {
+      const { TenantLockedError } = await import("@/lib/tenant-lock");
+      throw new TenantLockedError();
+    }
   }
   return rest;
 }
