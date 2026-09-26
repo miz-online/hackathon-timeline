@@ -171,6 +171,7 @@ export const Route = createFileRoute("/api/public/snapshot/$tenantKey/$roomId")(
             },
             entries: visible,
             slides,
+            teams,
             slide_overlay: { show_room_name: showRoomName, show_clock: showClock, show_logo: showLogo },
             switch_at: switchAt,
 

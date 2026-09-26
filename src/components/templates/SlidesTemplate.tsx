@@ -10,7 +10,7 @@ type Slide = {
   url: string;
   content_type: string;
   duration_seconds?: number | null;
-  kind?: "image" | "entries";
+  kind?: "image" | "entries" | "teams";
 };
 
 function pad(n: number) {
