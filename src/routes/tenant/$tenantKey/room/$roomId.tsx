@@ -1,3 +1,5 @@
+import { TeamGrid } from "@/components/admin/TeamGridPrintSheet";
+import { DEFAULT_ACCENT } from "@/lib/colors";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -227,6 +229,18 @@ function RoomDisplay() {
     />
   );
 
+  const renderTeams = () => (
+    <div className="h-full w-full bg-background p-[clamp(0.75rem,2vw,2rem)] text-foreground">
+      <TeamGrid
+        teams={(snapshot.teams ?? []).map((tm) => ({
+          id: tm.id,
+          name: tm.name,
+          color: tm.color ?? snapshot.tenant.accent_color ?? DEFAULT_ACCENT,
+        }))}
+      />
+    </div>
+  );
+
   return (
     <div style={{ position: "relative", minHeight: "100vh", width: "100%" }}>
       <AnimatePresence initial={false} mode="sync">
@@ -251,6 +265,7 @@ function RoomDisplay() {
               accentColor={snapshot.tenant.accent_color}
               roomColor={snapshot.room.color}
               renderEntries={renderEntries}
+              renderTeams={renderTeams}
             />
           ) : (
             renderEntries()
