@@ -13,6 +13,60 @@ function getColumnCount(teamCount: number) {
   return Math.min(teamCount, Math.max(2, Math.ceil(Math.sqrt((teamCount * 16) / (9 * 2.6)))));
 }
 
+export type GridTeam = { id: string; name: string; color: string };
+
+/** Column-wise, numbered team grid. Fills its parent; used by print view and team slides. */
+export function TeamGrid({ teams }: { teams: GridTeam[] }) {
+  const { t } = useI18n();
+  const columnCount = getColumnCount(teams.length);
+  const rowsPerColumn = Math.ceil(teams.length / columnCount);
+  const columns = Array.from({ length: columnCount }, (_, columnIndex) =>
+    teams.slice(columnIndex * rowsPerColumn, (columnIndex + 1) * rowsPerColumn),
+  );
+  return (
+    <>
+  {teams.length === 0 ? (
+    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+      {t("teams.empty")}
+    </div>
+  ) : (
+    <div className="flex h-full">
+      {columns.map((column, columnIndex) => (
+        <div
+          key={columnIndex}
+          className="team-grid-column grid min-w-0 flex-1 gap-[clamp(0.25rem,0.65vw,0.75rem)] px-[clamp(0.4rem,0.9vw,1rem)] first:pl-0 last:pr-0"
+          style={{ gridTemplateRows: `repeat(${rowsPerColumn}, minmax(0, 1fr))` }}
+        >
+          {column.map((team, rowIndex) => {
+            const teamIndex = columnIndex * rowsPerColumn + rowIndex;
+            const p = derivePalette(team.color);
+            return (
+              <article
+                key={team.id}
+                className="team-grid-item grid min-h-0 grid-cols-[clamp(2.5rem,5vw,5.5rem)_minmax(0,1fr)] overflow-hidden rounded-[26px] bg-background"
+                style={{ border: `2px solid ${p.base}` }}
+              >
+                <div
+                  className="flex items-center justify-center text-[clamp(1rem,2.2vw,2.5rem)] font-semibold"
+                  style={{ backgroundColor: p.base, color: p.onBase }}
+                >
+                  {teamIndex + 1}
+                </div>
+                <h2 className="flex min-w-0 items-center break-words px-[clamp(0.6rem,1.3vw,1.5rem)] text-[clamp(0.8rem,1.55vw,1.75rem)] font-semibold leading-tight">
+                  {team.name}
+                </h2>
+              </article>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  )}
+      <style>{`.team-grid-column + .team-grid-column { border-left: 2px solid color-mix(in oklab, currentColor 60%, transparent); }`}</style>
+    </>
+  );
+}
+
 export function TeamGridPrintSheet({
   teams,
   rooms,
@@ -25,12 +79,6 @@ export function TeamGridPrintSheet({
   defaultColor: string;
 }) {
   const { t } = useI18n();
-  const columnCount = getColumnCount(teams.length);
-  const rowsPerColumn = Math.ceil(teams.length / columnCount);
-  const columns = Array.from({ length: columnCount }, (_, columnIndex) =>
-    teams.slice(columnIndex * rowsPerColumn, (columnIndex + 1) * rowsPerColumn),
-  );
-
   const colorOf = (team: PrintableTeam) => {
     const room = rooms.find((item) => item.id === team.room_id);
     const scheme = room?.color_scheme_id
@@ -52,48 +100,11 @@ export function TeamGridPrintSheet({
         className="team-grid-sheet aspect-video w-full max-w-[1600px] overflow-hidden border bg-card p-[clamp(0.75rem,2vw,2rem)] print:max-w-none"
         aria-label={t("teams.gridPrint.title")}
       >
-        {teams.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {t("teams.empty")}
-          </div>
-        ) : (
-          <div className="flex h-full">
-            {columns.map((column, columnIndex) => (
-              <div
-                key={columnIndex}
-                className="team-grid-column grid min-w-0 flex-1 gap-[clamp(0.25rem,0.65vw,0.75rem)] px-[clamp(0.4rem,0.9vw,1rem)] first:pl-0 last:pr-0"
-                style={{ gridTemplateRows: `repeat(${rowsPerColumn}, minmax(0, 1fr))` }}
-              >
-                {column.map((team, rowIndex) => {
-                  const teamIndex = columnIndex * rowsPerColumn + rowIndex;
-                  const p = derivePalette(colorOf(team));
-                  return (
-                    <article
-                      key={team.id}
-                      className="team-grid-item grid min-h-0 grid-cols-[clamp(2.5rem,5vw,5.5rem)_minmax(0,1fr)] overflow-hidden rounded-[26px] bg-background"
-                      style={{ border: `2px solid ${p.base}` }}
-                    >
-                      <div
-                        className="flex items-center justify-center text-[clamp(1rem,2.2vw,2.5rem)] font-semibold"
-                        style={{ backgroundColor: p.base, color: p.onBase }}
-                      >
-                        {teamIndex + 1}
-                      </div>
-                      <h2 className="flex min-w-0 items-center break-words px-[clamp(0.6rem,1.3vw,1.5rem)] text-[clamp(0.8rem,1.55vw,1.75rem)] font-semibold leading-tight">
-                        {team.name}
-                      </h2>
-                    </article>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
+        <TeamGrid teams={teams.map((team) => ({ id: team.id, name: team.name, color: colorOf(team) }))} />
       </section>
 
       <style>{`
         @page { size: A4 landscape; margin: 8mm; }
-        .team-grid-column + .team-grid-column { border-left: 2px solid color-mix(in oklab, currentColor 60%, transparent); }
         @media print {
           html, body { margin: 0 !important; background: transparent !important; }
           .team-grid-sheet {
