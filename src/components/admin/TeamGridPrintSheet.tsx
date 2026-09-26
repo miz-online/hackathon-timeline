@@ -2,6 +2,7 @@ import { Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
+import { derivePalette } from "@/lib/colors";
 import type { PrintableTeam } from "@/components/admin/TeamPrintSheet";
 
 type PrintableRoom = { id: string; color_scheme_id?: string | null };
