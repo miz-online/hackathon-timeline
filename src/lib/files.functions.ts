@@ -33,8 +33,9 @@ export const listTeamFiles = createServerFn({ method: "GET" })
     keyIn.extend({ teamId: z.string().uuid() }).parse(d),
   )
   .handler(async ({ data }): Promise<FileItem[]> => {
-    const { requireFileAdmin } = await import("@/lib/files.server");
-    const tenant = await requireFileAdmin(data.key);
+    const { fileAdminForRead } = await import("@/lib/files.server");
+    const tenant = await fileAdminForRead(data.key);
+    if (!tenant) return [];
     const db = await admin();
     const { data: list } = await db
       .from("team_files")
@@ -108,8 +109,9 @@ export const deleteTeamFile = createServerFn({ method: "POST" })
 export const listTenantFiles = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => keyIn.parse(d))
   .handler(async ({ data }): Promise<FileItem[]> => {
-    const { requireFileAdmin } = await import("@/lib/files.server");
-    const tenant = await requireFileAdmin(data.key);
+    const { fileAdminForRead } = await import("@/lib/files.server");
+    const tenant = await fileAdminForRead(data.key);
+    if (!tenant) return [];
     const db = await admin();
     const { data: list } = await db
       .from("tenant_files")
@@ -221,8 +223,9 @@ export type TeamFileRow = FileItem & { team_id: string; tag: string };
 export const listAllTeamFiles = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => keyIn.parse(d))
   .handler(async ({ data }): Promise<TeamFileRow[]> => {
-    const { requireFileAdmin } = await import("@/lib/files.server");
-    const tenant = await requireFileAdmin(data.key);
+    const { fileAdminForRead } = await import("@/lib/files.server");
+    const tenant = await fileAdminForRead(data.key);
+    if (!tenant) return [];
     const db = await admin();
     const [{ data: list }, { data: teams }] = await Promise.all([
       db
