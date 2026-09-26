@@ -15,6 +15,7 @@ import { Route as TrTokenRouteImport } from './routes/tr/$token'
 import { Route as TrTokenIndexRouteImport } from './routes/tr/$token.index'
 import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenantKey/index'
 import { Route as TrTokenCodeRouteImport } from './routes/tr/$token.$code'
+import { Route as TenantTenantKeyTeamPrintRouteImport } from './routes/tenant/$tenantKey/team-print'
 import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
 import { Route as ApiPublicWebhooksDispatchRouteImport } from './routes/api/public/webhooks-dispatch'
 import { Route as ApiPublicFilesZipRouteImport } from './routes/api/public/files-zip'
@@ -57,6 +58,12 @@ const TrTokenCodeRoute = TrTokenCodeRouteImport.update({
   path: '/$code',
   getParentRoute: () => TrTokenRoute,
 } as any)
+const TenantTenantKeyTeamPrintRoute =
+  TenantTenantKeyTeamPrintRouteImport.update({
+    id: '/tenant/$tenantKey/team-print',
+    path: '/tenant/$tenantKey/team-print',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TenantTenantKeyRoomsRoute = TenantTenantKeyRoomsRouteImport.update({
   id: '/tenant/$tenantKey/rooms',
   path: '/tenant/$tenantKey/rooms',
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/api/public/files-zip': typeof ApiPublicFilesZipRoute
   '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
+  '/tenant/$tenantKey/team-print': typeof TenantTenantKeyTeamPrintRoute
   '/tr/$token/$code': typeof TrTokenCodeRoute
   '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
   '/tr/$token/': typeof TrTokenIndexRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
   '/api/public/files-zip': typeof ApiPublicFilesZipRoute
   '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
+  '/tenant/$tenantKey/team-print': typeof TenantTenantKeyTeamPrintRoute
   '/tr/$token/$code': typeof TrTokenCodeRoute
   '/tenant/$tenantKey': typeof TenantTenantKeyIndexRoute
   '/tr/$token': typeof TrTokenIndexRoute
@@ -166,6 +175,7 @@ export interface FileRoutesById {
   '/api/public/files-zip': typeof ApiPublicFilesZipRoute
   '/api/public/webhooks-dispatch': typeof ApiPublicWebhooksDispatchRoute
   '/tenant/$tenantKey/rooms': typeof TenantTenantKeyRoomsRoute
+  '/tenant/$tenantKey/team-print': typeof TenantTenantKeyTeamPrintRoute
   '/tr/$token/$code': typeof TrTokenCodeRoute
   '/tenant/$tenantKey/': typeof TenantTenantKeyIndexRoute
   '/tr/$token/': typeof TrTokenIndexRoute
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/api/public/files-zip'
     | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
+    | '/tenant/$tenantKey/team-print'
     | '/tr/$token/$code'
     | '/tenant/$tenantKey/'
     | '/tr/$token/'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/api/public/files-zip'
     | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
+    | '/tenant/$tenantKey/team-print'
     | '/tr/$token/$code'
     | '/tenant/$tenantKey'
     | '/tr/$token'
@@ -224,6 +236,7 @@ export interface FileRouteTypes {
     | '/api/public/files-zip'
     | '/api/public/webhooks-dispatch'
     | '/tenant/$tenantKey/rooms'
+    | '/tenant/$tenantKey/team-print'
     | '/tr/$token/$code'
     | '/tenant/$tenantKey/'
     | '/tr/$token/'
@@ -244,6 +257,7 @@ export interface RootRouteChildren {
   ApiPublicFilesZipRoute: typeof ApiPublicFilesZipRoute
   ApiPublicWebhooksDispatchRoute: typeof ApiPublicWebhooksDispatchRoute
   TenantTenantKeyRoomsRoute: typeof TenantTenantKeyRoomsRoute
+  TenantTenantKeyTeamPrintRoute: typeof TenantTenantKeyTeamPrintRoute
   TenantTenantKeyIndexRoute: typeof TenantTenantKeyIndexRoute
   ApiPublicLogoTenantKeyRoute: typeof ApiPublicLogoTenantKeyRoute
   TenantTenantKeyRoomRoomIdRoute: typeof TenantTenantKeyRoomRoomIdRoute
@@ -296,6 +310,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/tr/$token/$code'
       preLoaderRoute: typeof TrTokenCodeRouteImport
       parentRoute: typeof TrTokenRoute
+    }
+    '/tenant/$tenantKey/team-print': {
+      id: '/tenant/$tenantKey/team-print'
+      path: '/tenant/$tenantKey/team-print'
+      fullPath: '/tenant/$tenantKey/team-print'
+      preLoaderRoute: typeof TenantTenantKeyTeamPrintRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/tenant/$tenantKey/rooms': {
       id: '/tenant/$tenantKey/rooms'
@@ -399,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFilesZipRoute: ApiPublicFilesZipRoute,
   ApiPublicWebhooksDispatchRoute: ApiPublicWebhooksDispatchRoute,
   TenantTenantKeyRoomsRoute: TenantTenantKeyRoomsRoute,
+  TenantTenantKeyTeamPrintRoute: TenantTenantKeyTeamPrintRoute,
   TenantTenantKeyIndexRoute: TenantTenantKeyIndexRoute,
   ApiPublicLogoTenantKeyRoute: ApiPublicLogoTenantKeyRoute,
   TenantTenantKeyRoomRoomIdRoute: TenantTenantKeyRoomRoomIdRoute,
