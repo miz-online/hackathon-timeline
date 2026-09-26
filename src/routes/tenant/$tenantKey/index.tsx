@@ -766,6 +766,7 @@ function EntriesPanel({
     queryFn: () => listTeams({ data: { key: tenantKey } }),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
+    retry: (count: number, error: unknown) => !isTenantLockedError(error) && count < 2,
   });
   const listSetsFn = useServerFn(listSlideSets);
   const slideSetsQ = useQuery({

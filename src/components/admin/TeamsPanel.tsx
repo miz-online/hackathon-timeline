@@ -1,3 +1,4 @@
+import { isTenantLockedError } from "@/lib/tenant-lock";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -100,6 +101,7 @@ export function TeamsPanel({
     queryFn: () => listFn({ data: { key: tenantKey } }),
     refetchInterval: busy ? false : 10_000,
     refetchOnWindowFocus: !busy,
+    retry: (count: number, error: unknown) => !isTenantLockedError(error) && count < 2,
   });
 
   const refresh = () => {
