@@ -1700,7 +1700,7 @@ export const listSlides = createServerFn({ method: "GET" })
     return all.map((s) => ({
       id: s.id,
       name: s.name,
-      kind: (s.kind ?? "image") as "image" | "entries",
+      kind: (s.kind ?? "image") as "image" | "entries" | "teams",
       content_type: s.content_type,
       sort_order: s.sort_order,
       duration_seconds: s.duration_seconds ?? null,
