@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowDown, ArrowUp, GripVertical, Link2, ParkingSquare, QrCode } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Link2, ParkingSquare, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 import { listTeams, upsertTeam, deleteTeam, reorderTeams } from "@/lib/board.functions";
@@ -38,6 +38,7 @@ type SchemeLike = { id: string; name: string; color: string };
 
 export function TeamsPanel({
   tenantKey,
+  tenantName,
   rooms,
   schemes,
   defaultColor,
@@ -46,6 +47,7 @@ export function TeamsPanel({
   onChange,
 }: {
   tenantKey: string;
+  tenantName: string;
   rooms: RoomLike[];
   schemes: SchemeLike[];
   defaultColor: string;
@@ -60,7 +62,7 @@ export function TeamsPanel({
   const deleteFn = useServerFn(deleteTeam);
   const reorderFn = useServerFn(reorderTeams);
 
-  const [mode, setMode] = useState<"form" | "json">("form");
+  const [mode, setMode] = useState<"form" | "json" | "print">("form");
   const [editing, setEditing] = useState<TeamRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [filesTeam, setFilesTeam] = useState<TeamRow | null>(null);
@@ -210,6 +212,13 @@ export function TeamsPanel({
             >
               {t("entries.mode.json")}
             </Button>
+            <Button
+              size="sm"
+              variant={mode === "print" ? "secondary" : "ghost"}
+              onClick={() => setMode("print")}
+            >
+              {t("teams.print.tab")}
+            </Button>
           </div>
           {mode === "form" ? (
             <Button
@@ -234,6 +243,79 @@ export function TeamsPanel({
             refresh();
           }}
         />
+      ) : null}
+
+      {mode === "print" ? (
+        <>
+          <div className="flex justify-end print:hidden">
+            <Button size="sm" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" />
+              {t("teams.print.action")}
+            </Button>
+          </div>
+          <section className="team-print-sheet border bg-card p-6 sm:p-8" aria-label={t("teams.print.title")}>
+            <header className="team-print-header mb-6 border-b pb-4">
+              <p className="text-sm text-muted-foreground">{tenantName}</p>
+              <h3 className="text-2xl font-semibold">{t("teams.print.title")}</h3>
+            </header>
+            {raw.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">{t("teams.empty")}</p>
+            ) : (
+              <div className="team-print-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {raw.map((team, idx) => {
+                  const roomName = rooms.find((room) => room.id === team.room_id)?.name;
+                  return (
+                    <article key={team.id} className="team-print-item grid grid-cols-[auto_minmax(0,1fr)] gap-3 border p-3">
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
+                        style={{ backgroundColor: colorOf(team) }}
+                      >
+                        {idx + 1}
+                      </div>
+                      <div className="min-w-0 space-y-2">
+                        <div>
+                          <h4 className="break-words text-base font-semibold leading-tight">{team.name}</h4>
+                          {roomName ? <p className="text-xs text-muted-foreground">{roomName}</p> : null}
+                        </div>
+                        {team.members ? (
+                          <div>
+                            <p className="text-[10px] font-medium uppercase text-muted-foreground">{t("teams.hover.members")}</p>
+                            <p className="break-words text-sm leading-snug">{team.members}</p>
+                          </div>
+                        ) : null}
+                        {team.project ? (
+                          <div>
+                            <p className="text-[10px] font-medium uppercase text-muted-foreground">{t("teams.hover.project")}</p>
+                            <p className="whitespace-pre-wrap break-words text-sm leading-snug">{team.project}</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+          <style>{`
+            @page { size: A4 portrait; margin: 12mm; }
+            @media print {
+              body * { visibility: hidden !important; }
+              .team-print-sheet, .team-print-sheet * { visibility: visible !important; }
+              .team-print-sheet {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                border: 0 !important;
+                padding: 0 !important;
+                background: transparent !important;
+                color: black !important;
+              }
+              .team-print-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 3mm !important; }
+              .team-print-item { break-inside: avoid; page-break-inside: avoid; border-color: #cbd5e1 !important; }
+              .team-print-header { border-color: #94a3b8 !important; }
+            }
+          `}</style>
+        </>
       ) : null}
 
       {mode === "form" ? (
