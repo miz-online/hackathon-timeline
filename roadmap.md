@@ -31,3 +31,4 @@
 - [x] 2. Teams nach gespeicherter Reihenfolge nummerieren
 - [x] 3. Zweispaltige A4-Druckausgabe mit Druckaktion
 - [x] 4. Druckansicht in einem eigenen Browser-Tab öffnen
+- [x] 5. Zweite 16:9-Rasteransicht mit automatischer Spaltenaufteilung
