@@ -311,8 +311,8 @@ export function TeamsPanel({
                 color: black !important;
               }
               .team-print-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 3mm !important; }
-              .team-print-item { break-inside: avoid; page-break-inside: avoid; border-color: #cbd5e1 !important; }
-              .team-print-header { border-color: #94a3b8 !important; }
+              .team-print-item { break-inside: avoid; page-break-inside: avoid; border-color: color-mix(in oklab, currentColor 25%, transparent) !important; }
+              .team-print-header { border-color: color-mix(in oklab, currentColor 40%, transparent) !important; }
             }
           `}</style>
         </>
