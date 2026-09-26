@@ -24,3 +24,9 @@
 - [x] 6. Update import/export format (v6, `slide_sets`/`slides`)
 - [x] 7. Implement per-image duration override and overlay rendering
 - [x] 8. Typecheck and verify preview
+
+# Teamplan-Druckansicht
+
+- [x] 1. Neuer Tab „Druckansicht“ im Teams-Bereich
+- [x] 2. Teams nach gespeicherter Reihenfolge nummerieren
+- [x] 3. Zweispaltige A4-Druckausgabe mit Druckaktion

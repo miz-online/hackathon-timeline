@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 export const Route = createFileRoute("/tenant/$tenantKey/rooms")({
+  head: () => ({
+    meta: [
+      { title: "Room displays — Room Board" },
+      { name: "description", content: "Choose a live room display or the organization overview." },
+      { property: "og:title", content: "Room displays — Room Board" },
+      { property: "og:description", content: "Choose a live room display or the organization overview." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: RoomPicker,
 });
 

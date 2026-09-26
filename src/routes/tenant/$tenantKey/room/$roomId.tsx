@@ -8,6 +8,16 @@ import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/tenant/$tenantKey/room/$roomId")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Live schedule — Room Board" },
+      { name: "description", content: "Live time entries and slides for a room display." },
+      { property: "og:title", content: "Live schedule — Room Board" },
+      { property: "og:description", content: "Live time entries and slides for a room display." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: RoomDisplay,
 });
 
