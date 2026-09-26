@@ -146,7 +146,10 @@ export async function requireFileAdmin(key: string): Promise<TenantFileConfig> {
   if (!row) throw new Error("Unknown tenant key");
   if (row.pin_hash) {
     const { isTenantUnlocked } = await import("@/lib/tenant-auth.server");
-    if (!(await isTenantUnlocked(row.id))) throw new Error("TENANT_LOCKED");
+    if (!(await isTenantUnlocked(row.id))) {
+      const { TenantLockedError } = await import("@/lib/tenant-lock");
+      throw new TenantLockedError();
+    }
   }
   return tenantFileConfig(row.id);
 }

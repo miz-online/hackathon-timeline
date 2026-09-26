@@ -10,6 +10,15 @@
 export const TENANT_LOCKED_CODE = "TENANT_LOCKED";
 const EVENT = "tenant-locked";
 
+export class TenantLockedError extends Error {
+  readonly statusCode = 401;
+
+  constructor() {
+    super(TENANT_LOCKED_CODE);
+    this.name = "TenantLockedError";
+  }
+}
+
 export function isTenantLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
