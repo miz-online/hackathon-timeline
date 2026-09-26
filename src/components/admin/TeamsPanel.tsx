@@ -195,7 +195,7 @@ export function TeamsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-medium">{t("teams.title")}</h2>
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border p-0.5">
@@ -221,6 +221,16 @@ export function TeamsPanel({
                 rel="noopener noreferrer"
               >
                 {t("teams.print.tab")}
+              </Link>
+            </Button>
+            <Button size="sm" variant="ghost" asChild>
+              <Link
+                to="/tenant/$tenantKey/team-grid-print"
+                params={{ tenantKey }}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("teams.gridPrint.tab")}
               </Link>
             </Button>
           </div>
