@@ -1983,15 +1983,15 @@ export const exportTenantData = createServerFn({ method: "GET" })
       }
     }
 
-    const slideItems: { name: string; file: string | null; kind: "image" | "entries"; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
+    const slideItems: { name: string; file: string | null; kind: "image" | "entries" | "teams"; content_type: string; set: string | null; duration_seconds: number | null }[] = [];
     let i = 0;
     for (const a of slides.data ?? []) {
       i++;
-      if ((a.kind ?? "image") === "entries") {
+      if ((a.kind ?? "image") !== "image") {
         slideItems.push({
           name: a.name,
           file: null,
-          kind: "entries",
+          kind: a.kind as "entries" | "teams",
           content_type: "",
           set: setIdByUuid.get(a.slide_set_id) ?? null,
           duration_seconds: a.duration_seconds ?? null,
@@ -2612,7 +2612,7 @@ export const importTenantData = createServerFn({ method: "POST" })
             name: a.name,
             path: "",
             content_type: "",
-            kind: "entries",
+            kind: a.kind as "entries" | "teams",
             sort_order: order,
             duration_seconds: a.duration_seconds ?? null,
           });
