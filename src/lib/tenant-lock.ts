@@ -21,6 +21,21 @@ export function notifyTenantLocked(): void {
   window.dispatchEvent(new Event(EVENT));
 }
 
+/**
+ * Admin list queries can be refreshed after the sliding PIN session expires.
+ * Treat that expected response as a UI state change rather than an uncaught
+ * request error; all other failures still reach React Query normally.
+ */
+export async function runTenantAdminQuery<T>(query: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await query();
+  } catch (error) {
+    if (!isTenantLockedError(error)) throw error;
+    notifyTenantLocked();
+    return undefined;
+  }
+}
+
 export function onTenantLocked(handler: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener(EVENT, handler);

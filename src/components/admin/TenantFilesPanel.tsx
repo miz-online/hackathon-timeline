@@ -10,6 +10,7 @@ import {
   renameTenantFile,
   uploadTenantFile,
 } from "@/lib/files.functions";
+import { runTenantAdminQuery } from "@/lib/tenant-lock";
 
 /** Organization wide downloads, offered read only to every team. */
 export function TenantFilesPanel({
@@ -30,7 +31,7 @@ export function TenantFilesPanel({
 
   const q = useQuery({
     queryKey: ["tenant-files", tenantKey],
-    queryFn: () => listFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey } })),
   });
 
   return (

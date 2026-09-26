@@ -9,6 +9,7 @@ import {
   listTeamFiles,
   uploadTeamFile,
 } from "@/lib/files.functions";
+import { runTenantAdminQuery } from "@/lib/tenant-lock";
 
 /** Files of a single team, managed by the organization. */
 export function TeamFilesPanel({
@@ -30,7 +31,7 @@ export function TeamFilesPanel({
 
   const q = useQuery({
     queryKey: ["team-files", tenantKey, teamId],
-    queryFn: () => listFn({ data: { key: tenantKey, teamId } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey, teamId } })),
   });
 
   return (

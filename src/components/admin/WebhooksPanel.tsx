@@ -21,6 +21,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RefIdField } from "@/routes/tenant/$tenantKey";
 import { CalendarClock } from "lucide-react";
+import { runTenantAdminQuery } from "@/lib/tenant-lock";
 
 
 type WebhookListItem = Awaited<ReturnType<typeof listWebhooks>>[number];
@@ -38,7 +39,7 @@ export function WebhooksPanel({
   const listFn = useServerFn(listWebhooks);
   const { data: webhooks } = useQuery({
     queryKey: ["webhooks", tenantKey],
-    queryFn: () => listFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey } })),
   });
 
   return (
@@ -62,12 +63,12 @@ export function WebhookConfigPanel({
   const listFn = useServerFn(listWebhooks);
   const { data: webhooks, refetch } = useQuery({
     queryKey: ["webhooks", tenantKey],
-    queryFn: () => listFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey } })),
   });
   const nextFn = useServerFn(getNextWebhookDispatch);
   const nextQ = useQuery({
     queryKey: ["webhooks-next", tenantKey],
-    queryFn: () => nextFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => nextFn({ data: { key: tenantKey } })),
     refetchInterval: 10_000,
   });
 

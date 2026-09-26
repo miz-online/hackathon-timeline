@@ -50,7 +50,7 @@ import {
 import { ImportExportPanel } from "@/components/admin/ImportExportPanel";
 import { WebhooksPanel, WebhookConfigPanel } from "@/components/admin/WebhooksPanel";
 import { slugify } from "@/lib/ref-id";
-import { isTenantLockedError, onTenantLocked, notifyTenantLocked } from "@/lib/tenant-lock";
+import { isTenantLockedError, onTenantLocked, notifyTenantLocked, runTenantAdminQuery } from "@/lib/tenant-lock";
 
 import defaultLogo from "@/assets/pit-hackathon-logo.png.asset.json";
 import { clearStoredTenantKey } from "@/lib/tenant-storage";
@@ -179,7 +179,7 @@ export function useTemplateOptions(tenantKey: string) {
   const listSetsFn = useServerFn(listSlideSets);
   const setsQ = useQuery({
     queryKey: ["slideSets", tenantKey],
-    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listSetsFn({ data: { key: tenantKey } })),
   });
   const sets = setsQ.data ?? [];
   return [
@@ -290,25 +290,25 @@ function AdminPage() {
 
   const tenantQ = useQuery({
     queryKey: ["tenant", tenantKey],
-    queryFn: () => getTenantFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => getTenantFn({ data: { key: tenantKey } })),
     enabled: allowed,
     ...live,
   });
   const entriesQ = useQuery({
     queryKey: ["entries", tenantKey],
-    queryFn: () => listEntriesFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listEntriesFn({ data: { key: tenantKey } })),
     enabled: allowed && !!tenantQ.data,
     ...live,
   });
   const roomsQ = useQuery({
     queryKey: ["rooms", tenantKey],
-    queryFn: () => listRoomsFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listRoomsFn({ data: { key: tenantKey } })),
     enabled: allowed && !!tenantQ.data,
     ...live,
   });
   const schemesQ = useQuery({
     queryKey: ["schemes", tenantKey],
-    queryFn: () => listSchemesFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listSchemesFn({ data: { key: tenantKey } })),
     enabled: allowed && !!tenantQ.data,
     ...live,
   });
@@ -763,7 +763,7 @@ function EntriesPanel({
   const [newKind, setNewKind] = useState<EntryKindValue>("entry");
   const teamsQ = useQuery({
     queryKey: ["teams", tenantKey],
-    queryFn: () => listTeams({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listTeams({ data: { key: tenantKey } })),
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
     retry: (count: number, error: unknown) => !isTenantLockedError(error) && count < 2,
@@ -771,7 +771,7 @@ function EntriesPanel({
   const listSetsFn = useServerFn(listSlideSets);
   const slideSetsQ = useQuery({
     queryKey: ["slideSets", tenantKey],
-    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listSetsFn({ data: { key: tenantKey } })),
   });
   const slideSets = slideSetsQ.data ?? [];
 
@@ -1434,7 +1434,7 @@ function SlideStrip({ tenantKey, setId }: { tenantKey: string; setId: string | n
   const listFn = useServerFn(listSlides);
   const q = useQuery({
     queryKey: ["slides", tenantKey, setId],
-    queryFn: () => listFn({ data: { key: tenantKey, setId: setId! } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey, setId: setId! } })),
     enabled: !!setId,
   });
   if (!setId) return <div className="text-xs italic text-muted-foreground">{t("entries.preview.noSet")}</div>;
@@ -3054,7 +3054,7 @@ function SlidesPanel({ tenantKey, onChange }: { tenantKey: string; onChange: () 
 
   const setsQ = useQuery({
     queryKey: ["slideSets", tenantKey],
-    queryFn: () => listSetsFn({ data: { key: tenantKey } }),
+    queryFn: () => runTenantAdminQuery(() => listSetsFn({ data: { key: tenantKey } })),
   });
   const sets: SlideSetRow[] = setsQ.data ?? [];
 
@@ -3271,7 +3271,7 @@ function SlideSetSlides({
 
   const adsQ = useQuery({
     queryKey: ["slides", tenantKey, setId],
-    queryFn: () => listFn({ data: { key: tenantKey, setId } }),
+    queryFn: () => runTenantAdminQuery(() => listFn({ data: { key: tenantKey, setId } })),
   });
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["slides", tenantKey, setId] });
