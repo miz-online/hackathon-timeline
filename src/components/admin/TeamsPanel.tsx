@@ -268,7 +268,7 @@ export function TeamsPanel({
         <TeamsJsonPanel
           tenantKey={tenantKey}
           onChange={() => {
-            setOrder(null);
+            discardLocal();
             setParked([]);
             refresh();
           }}
