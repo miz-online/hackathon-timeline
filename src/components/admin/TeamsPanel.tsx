@@ -83,6 +83,7 @@ export function TeamsPanel({
   };
   const [order, setOrder] = useState<string[] | null>(null);
   const [parked, setParked] = useState<string[]>([]);
+  const [pending, setPending] = useState(false);
 
   // Live updates (e.g. teams registering/editing themselves) — paused while the
   // user has unsaved local state: open dialog, JSON mode, drag or manual order.
@@ -117,7 +118,7 @@ export function TeamsPanel({
       : raw.filter((x) => !parked.includes(x.id));
   const teams = ordered.filter((x) => !parked.includes(x.id));
   const parkedTeams = parked.map((id) => byId.get(id)).filter((x): x is TeamRow => !!x);
-  const dirty = parked.length > 0 || (order !== null && parkedTeams.length > 0);
+  const dirty = parked.length > 0 || pending;
 
   const colorOf = (team: TeamRow) => {
     const room = rooms.find((r) => r.id === team.room_id);
@@ -127,10 +128,19 @@ export function TeamsPanel({
     return scheme?.color ?? defaultColor;
   };
 
+  const discardLocal = () => {
+    setParked([]);
+    setOrder(null);
+    setPending(false);
+  };
+
   const applyOrder = async (ids: string[]) => {
     setOrder(ids);
-    // While teams are parked the order is only local; it is written on save.
-    if (parked.length > 0) return;
+    // While a local edit is pending the order is only local; it is written on save.
+    if (parked.length > 0 || pending) {
+      setPending(true);
+      return;
+    }
     try {
       await reorderFn({ data: { key: tenantKey, ids } });
       refresh();
@@ -152,10 +162,11 @@ export function TeamsPanel({
   const dropAt = (fromId: string, insertIdx: number) => {
     const ids = teams.map((x) => x.id);
     if (parked.includes(fromId)) {
-      // unpark at the drop position
+      // unpark at the drop position; stays unsaved until "Save"
       setParked((p) => p.filter((x) => x !== fromId));
       ids.splice(Math.min(insertIdx, ids.length), 0, fromId);
       setOrder(ids);
+      setPending(true);
       return;
     }
     const from = ids.indexOf(fromId);
@@ -172,14 +183,14 @@ export function TeamsPanel({
     if (parked.includes(id)) return;
     setOrder(teams.filter((x) => x.id !== id).map((x) => x.id));
     setParked((p) => [...p, id]);
+    setPending(true);
   };
 
   const saveOrder = async () => {
     const ids = [...teams.map((x) => x.id), ...parked];
     try {
       await reorderFn({ data: { key: tenantKey, ids } });
-      setParked([]);
-      setOrder(null);
+      discardLocal();
       toast.success(t("teams.park.saved"));
       refresh();
     } catch (e) {
@@ -209,7 +220,12 @@ export function TeamsPanel({
             <Button
               size="sm"
               variant={mode === "json" ? "secondary" : "ghost"}
-              onClick={() => setMode("json")}
+              onClick={() => {
+                if (mode === "json") return;
+                if (dirty && !window.confirm(t("teams.park.discardConfirm"))) return;
+                discardLocal();
+                setMode("json");
+              }}
             >
               {t("entries.mode.json")}
             </Button>
@@ -252,7 +268,7 @@ export function TeamsPanel({
         <TeamsJsonPanel
           tenantKey={tenantKey}
           onChange={() => {
-            setOrder(null);
+            discardLocal();
             setParked([]);
             refresh();
           }}
@@ -336,10 +352,7 @@ export function TeamsPanel({
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => {
-                      setParked([]);
-                      setOrder(null);
-                    }}
+                    onClick={() => discardLocal()}
                   >
                     {t("teams.park.cancel")}
                   </Button>
