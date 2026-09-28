@@ -1580,7 +1580,7 @@ export const removeTenantLogo = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ---------- ad sets ----------
+// ---------- slide sets ----------
 
 export const listSlideSets = createServerFn({ method: "GET" })
   .inputValidator((d: { key: string }) => z.object({ key: z.string().min(1) }).parse(d))
@@ -1925,7 +1925,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ data: TenantData; files: ExportedFile[] }> => {
     const supabase = await getAdmin();
     const tenant = await requireTenantAdmin(data.key);
-    const [schemes, rooms, teams, entries, adSets, slides, webhooks] = await Promise.all([
+    const [schemes, rooms, teams, entries, slideSets, slides, webhooks] = await Promise.all([
       supabase
         .from("color_schemes")
         .select("id, ref_id, name, color")
@@ -1978,7 +1978,7 @@ export const exportTenantData = createServerFn({ method: "GET" })
     const webhookRows = webhooks.data ?? [];
     const webhookIds = refIdsFor(webhookRows);
     const webhookIdByUuid = new Map(webhookRows.map((w, i) => [w.id, webhookIds[i]]));
-    const setRows = adSets.data ?? [];
+    const setRows = slideSets.data ?? [];
     const setIds = refIdsFor(setRows);
     const setIdByUuid = new Map(setRows.map((s, i) => [s.id, setIds[i]]));
     /** Turns "slides:<uuid>" into "slides:<ref id>" so exports stay portable. */

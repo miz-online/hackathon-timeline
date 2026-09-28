@@ -2,7 +2,7 @@
 
 A web app for centrally managing time entries and displaying them on multiple
 configurable room screens. It supports live updates, team practice slots,
-ads rotation, webhook notifications, and self-registration.
+slide rotation, webhook notifications, and self-registration.
 
 The same codebase runs on Lovable Cloud or fully self-contained in Docker with
 SQLite storage.
@@ -10,7 +10,7 @@ SQLite storage.
 ## Functionality overview
 
 - **Tenants** — Organisations are separated by a generated tenant key. Each
-tenant has its own rooms, entries, teams, ads, color scheme, logo, and PIN-protected admin settings.
+tenant has its own rooms, entries, teams, slides, color scheme, logo, and PIN-protected admin settings.
 - **Rooms** — A room is both a display destination and a tag for entries. The
 special *Overview / Übersicht* room shows all entries at once.
 - **Entries** — Time-sorted schedule items with title, description, optional end
@@ -97,7 +97,7 @@ Everything lives under `/data` in the container (volume `timeline-data`):
 ```
 /data/app.db                      database
 /data/storage/tenant-logos/       logos
-/data/storage/tenant-ads/         ads
+/data/storage/tenant-ads/         slides (legacy directory name)
 /data/storage/entry-backgrounds/  entry background images
 /data/session-secret              generated cookie secret
 ```
@@ -108,7 +108,7 @@ new columns are added automatically on start.
 ## Moving data from the hosted version
 
 Use the built-in **Import/Export** tab: export the ZIP in the hosted app and
-import it here. Images, entries, teams, rooms, ads and settings come along;
+import it here. Images, entries, teams, rooms, slides and settings come along;
 webhook URLs are intentionally not exported and must be re-entered.
 
 ## Build without Docker
