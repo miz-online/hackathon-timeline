@@ -2,7 +2,7 @@
 
 - [x] 1. Adapter architecture (`src/lib/backend/`) with Cloud driver selection
 - [x] 2. Local SQLite driver covering all query shapes used by the app
-- [x] 3. Local file storage driver (logos, ads, entry backgrounds) + signed tokens
+- [x] 3. Local file storage driver (logos, slides, entry backgrounds) + signed tokens
 - [x] 4. Local event bus for SSE live updates
 - [x] 5. Local in-process webhook scheduler
 - [x] 6. Route all `supabaseAdmin` usage through the adapter
