@@ -61,9 +61,16 @@ async function nodeFs() {
   return { fs, path };
 }
 
-function safeJoin(pathMod: { join: (...p: string[]) => string; normalize: (p: string) => string }, ...parts: string[]) {
-  const joined = pathMod.normalize(pathMod.join(...parts));
-  if (joined.includes("..")) throw new Error("Invalid path");
+function safeJoin(
+  pathMod: { join: (...p: string[]) => string; normalize: (p: string) => string; sep: string },
+  root: string,
+  ...parts: string[]
+) {
+  // Reject anything that resolves outside the bucket root (e.g. "../x").
+  if (parts.some((p) => p.split(/[\\/]/).includes(".."))) throw new Error("Invalid path");
+  const base = pathMod.normalize(root);
+  const joined = pathMod.normalize(pathMod.join(base, ...parts));
+  if (joined !== base && !joined.startsWith(base + pathMod.sep)) throw new Error("Invalid path");
   return joined;
 }
 
