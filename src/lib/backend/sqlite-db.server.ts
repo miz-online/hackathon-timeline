@@ -61,11 +61,12 @@ function migrateSchema(instance: Db): void {
     instance.exec('alter table "tenants" rename column "ad_seconds" to "slide_seconds"');
   }
 
-  // Migrate template values
-  instance.exec("update tenants set template = 'slides' where template = 'ads'");
-  instance.exec("update tenants set template = 'slides:' || substr(template, 5) where template like 'ads:%'");
-  instance.exec("update rooms set template = 'slides' where template = 'ads'");
-  instance.exec("update rooms set template = 'slides:' || substr(template, 5) where template like 'ads:%'");
+  // Migrate template values (skipped on a fresh volume where tables don't exist yet)
+  for (const t of ["tenants", "rooms"]) {
+    if (!tableExists(instance, t)) continue;
+    instance.exec(`update ${t} set template = 'slides' where template = 'ads'`);
+    instance.exec(`update ${t} set template = 'slides:' || substr(template, 5) where template like 'ads:%'`);
+  }
 }
 
 /** Adds columns introduced after a volume was first created. */

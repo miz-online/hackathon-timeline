@@ -42,7 +42,7 @@ beforeEach(() => {
   unlocked.mockReset().mockResolvedValue(true);
   tables["tenants"] = [
     { id: "t1", key: "open", pin_hash: null, files_mode: null, max_upload_mb: null, team_quota_mb: 1, team_edit_locked: null },
-    { id: "t2", key: "pinned", pin_hash: "x", files_mode: "downloads", max_upload_mb: 5, team_quota_mb: 0, team_edit_locked: true },
+    { id: "t2", key: "pinned", pin_hash: "x", files_mode: "download", max_upload_mb: 5, team_quota_mb: 0, team_edit_locked: true },
   ];
 });
 
@@ -91,7 +91,7 @@ describe("admin access", () => {
     await expect(fileAdminForRead("nope")).rejects.toThrow();
   });
   it("unlocked PIN tenant passes", async () => {
-    expect((await requireFileAdmin("pinned")).filesMode).toBe("downloads");
+    expect((await requireFileAdmin("pinned")).filesMode).toBe("download");
   });
 });
 
