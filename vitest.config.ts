@@ -8,7 +8,7 @@ export default defineConfig({
     environment: "node",
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text", "text-summary", "html", "lcov", "cobertura"],
       reportsDirectory: "coverage",
       include: ["src/lib/**"],
       // Server-only modules with heavy env/DB side effects are not unit-testable;
