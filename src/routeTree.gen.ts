@@ -12,22 +12,22 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TenantIndexRouteImport } from './routes/tenant/index'
 import { Route as TrTokenRouteImport } from './routes/tr/$token'
-import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
-import { Route as ApiPublicFileDownloadRouteImport } from './routes/api/public/file-download'
-import { Route as ApiPublicFilesZipRouteImport } from './routes/api/public/files-zip'
-import { Route as ApiPublicWebhooksDispatchRouteImport } from './routes/api/public/webhooks-dispatch'
-import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenantKey/index'
-import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
-import { Route as TenantTenantKeyTeamGridPrintRouteImport } from './routes/tenant/$tenantKey/team-grid-print'
-import { Route as TenantTenantKeyTeamPrintRouteImport } from './routes/tenant/$tenantKey/team-print'
 import { Route as TrTokenIndexRouteImport } from './routes/tr/$token.index'
+import { Route as TenantTenantKeyIndexRouteImport } from './routes/tenant/$tenantKey/index'
 import { Route as TrTokenCodeRouteImport } from './routes/tr/$token.$code'
-import { Route as ApiPublicLogoTenantKeyRouteImport } from './routes/api/public/logo.$tenantKey'
+import { Route as TenantTenantKeyTeamPrintRouteImport } from './routes/tenant/$tenantKey/team-print'
+import { Route as TenantTenantKeyTeamGridPrintRouteImport } from './routes/tenant/$tenantKey/team-grid-print'
+import { Route as TenantTenantKeyRoomsRouteImport } from './routes/tenant/$tenantKey/rooms'
+import { Route as ApiPublicWebhooksDispatchRouteImport } from './routes/api/public/webhooks-dispatch'
+import { Route as ApiPublicFilesZipRouteImport } from './routes/api/public/files-zip'
+import { Route as ApiPublicFileDownloadRouteImport } from './routes/api/public/file-download'
+import { Route as ApiPublicFileRouteImport } from './routes/api/public/file'
 import { Route as TenantTenantKeyRoomRoomIdRouteImport } from './routes/tenant/$tenantKey/room/$roomId'
-import { Route as ApiPublicEntryBgTenantKeyEntryIdRouteImport } from './routes/api/public/entry-bg.$tenantKey.$entryId'
-import { Route as ApiPublicSlideTenantKeySlideIdRouteImport } from './routes/api/public/slide.$tenantKey.$slideId'
-import { Route as ApiPublicSnapshotTenantKeyRoomIdRouteImport } from './routes/api/public/snapshot.$tenantKey.$roomId'
+import { Route as ApiPublicLogoTenantKeyRouteImport } from './routes/api/public/logo.$tenantKey'
 import { Route as ApiPublicStreamTenantKeyRoomIdRouteImport } from './routes/api/public/stream.$tenantKey.$roomId'
+import { Route as ApiPublicSnapshotTenantKeyRoomIdRouteImport } from './routes/api/public/snapshot.$tenantKey.$roomId'
+import { Route as ApiPublicSlideTenantKeySlideIdRouteImport } from './routes/api/public/slide.$tenantKey.$slideId'
+import { Route as ApiPublicEntryBgTenantKeyEntryIdRouteImport } from './routes/api/public/entry-bg.$tenantKey.$entryId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -44,19 +44,36 @@ const TrTokenRoute = TrTokenRouteImport.update({
   path: '/tr/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicFileRoute = ApiPublicFileRouteImport.update({
-  id: '/api/public/file',
-  path: '/api/public/file',
+const TrTokenIndexRoute = TrTokenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TrTokenRoute,
+} as any)
+const TenantTenantKeyIndexRoute = TenantTenantKeyIndexRouteImport.update({
+  id: '/tenant/$tenantKey/',
+  path: '/tenant/$tenantKey/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicFileDownloadRoute = ApiPublicFileDownloadRouteImport.update({
-  id: '/api/public/file-download',
-  path: '/api/public/file-download',
-  getParentRoute: () => rootRouteImport,
+const TrTokenCodeRoute = TrTokenCodeRouteImport.update({
+  id: '/$code',
+  path: '/$code',
+  getParentRoute: () => TrTokenRoute,
 } as any)
-const ApiPublicFilesZipRoute = ApiPublicFilesZipRouteImport.update({
-  id: '/api/public/files-zip',
-  path: '/api/public/files-zip',
+const TenantTenantKeyTeamPrintRoute =
+  TenantTenantKeyTeamPrintRouteImport.update({
+    id: '/tenant/$tenantKey/team-print',
+    path: '/tenant/$tenantKey/team-print',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TenantTenantKeyTeamGridPrintRoute =
+  TenantTenantKeyTeamGridPrintRouteImport.update({
+    id: '/tenant/$tenantKey/team-grid-print',
+    path: '/tenant/$tenantKey/team-grid-print',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TenantTenantKeyRoomsRoute = TenantTenantKeyRoomsRouteImport.update({
+  id: '/tenant/$tenantKey/rooms',
+  path: '/tenant/$tenantKey/rooms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicWebhooksDispatchRoute =
@@ -65,41 +82,19 @@ const ApiPublicWebhooksDispatchRoute =
     path: '/api/public/webhooks-dispatch',
     getParentRoute: () => rootRouteImport,
   } as any)
-const TenantTenantKeyIndexRoute = TenantTenantKeyIndexRouteImport.update({
-  id: '/tenant/$tenantKey/',
-  path: '/tenant/$tenantKey/',
+const ApiPublicFilesZipRoute = ApiPublicFilesZipRouteImport.update({
+  id: '/api/public/files-zip',
+  path: '/api/public/files-zip',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TenantTenantKeyRoomsRoute = TenantTenantKeyRoomsRouteImport.update({
-  id: '/tenant/$tenantKey/rooms',
-  path: '/tenant/$tenantKey/rooms',
+const ApiPublicFileDownloadRoute = ApiPublicFileDownloadRouteImport.update({
+  id: '/api/public/file-download',
+  path: '/api/public/file-download',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TenantTenantKeyTeamGridPrintRoute =
-  TenantTenantKeyTeamGridPrintRouteImport.update({
-    id: '/tenant/$tenantKey/team-grid-print',
-    path: '/tenant/$tenantKey/team-grid-print',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const TenantTenantKeyTeamPrintRoute =
-  TenantTenantKeyTeamPrintRouteImport.update({
-    id: '/tenant/$tenantKey/team-print',
-    path: '/tenant/$tenantKey/team-print',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const TrTokenIndexRoute = TrTokenIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TrTokenRoute,
-} as any)
-const TrTokenCodeRoute = TrTokenCodeRouteImport.update({
-  id: '/$code',
-  path: '/$code',
-  getParentRoute: () => TrTokenRoute,
-} as any)
-const ApiPublicLogoTenantKeyRoute = ApiPublicLogoTenantKeyRouteImport.update({
-  id: '/api/public/logo/$tenantKey',
-  path: '/api/public/logo/$tenantKey',
+const ApiPublicFileRoute = ApiPublicFileRouteImport.update({
+  id: '/api/public/file',
+  path: '/api/public/file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TenantTenantKeyRoomRoomIdRoute =
@@ -108,16 +103,15 @@ const TenantTenantKeyRoomRoomIdRoute =
     path: '/tenant/$tenantKey/room/$roomId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicEntryBgTenantKeyEntryIdRoute =
-  ApiPublicEntryBgTenantKeyEntryIdRouteImport.update({
-    id: '/api/public/entry-bg/$tenantKey/$entryId',
-    path: '/api/public/entry-bg/$tenantKey/$entryId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicSlideTenantKeySlideIdRoute =
-  ApiPublicSlideTenantKeySlideIdRouteImport.update({
-    id: '/api/public/slide/$tenantKey/$slideId',
-    path: '/api/public/slide/$tenantKey/$slideId',
+const ApiPublicLogoTenantKeyRoute = ApiPublicLogoTenantKeyRouteImport.update({
+  id: '/api/public/logo/$tenantKey',
+  path: '/api/public/logo/$tenantKey',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicStreamTenantKeyRoomIdRoute =
+  ApiPublicStreamTenantKeyRoomIdRouteImport.update({
+    id: '/api/public/stream/$tenantKey/$roomId',
+    path: '/api/public/stream/$tenantKey/$roomId',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicSnapshotTenantKeyRoomIdRoute =
@@ -126,10 +120,16 @@ const ApiPublicSnapshotTenantKeyRoomIdRoute =
     path: '/api/public/snapshot/$tenantKey/$roomId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicStreamTenantKeyRoomIdRoute =
-  ApiPublicStreamTenantKeyRoomIdRouteImport.update({
-    id: '/api/public/stream/$tenantKey/$roomId',
-    path: '/api/public/stream/$tenantKey/$roomId',
+const ApiPublicSlideTenantKeySlideIdRoute =
+  ApiPublicSlideTenantKeySlideIdRouteImport.update({
+    id: '/api/public/slide/$tenantKey/$slideId',
+    path: '/api/public/slide/$tenantKey/$slideId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicEntryBgTenantKeyEntryIdRoute =
+  ApiPublicEntryBgTenantKeyEntryIdRouteImport.update({
+    id: '/api/public/entry-bg/$tenantKey/$entryId',
+    path: '/api/public/entry-bg/$tenantKey/$entryId',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -304,33 +304,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/file': {
-      id: '/api/public/file'
-      path: '/api/public/file'
-      fullPath: '/api/public/file'
-      preLoaderRoute: typeof ApiPublicFileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/file-download': {
-      id: '/api/public/file-download'
-      path: '/api/public/file-download'
-      fullPath: '/api/public/file-download'
-      preLoaderRoute: typeof ApiPublicFileDownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/files-zip': {
-      id: '/api/public/files-zip'
-      path: '/api/public/files-zip'
-      fullPath: '/api/public/files-zip'
-      preLoaderRoute: typeof ApiPublicFilesZipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/webhooks-dispatch': {
-      id: '/api/public/webhooks-dispatch'
-      path: '/api/public/webhooks-dispatch'
-      fullPath: '/api/public/webhooks-dispatch'
-      preLoaderRoute: typeof ApiPublicWebhooksDispatchRouteImport
-      parentRoute: typeof rootRouteImport
+    '/tr/$token/': {
+      id: '/tr/$token/'
+      path: '/'
+      fullPath: '/tr/$token/'
+      preLoaderRoute: typeof TrTokenIndexRouteImport
+      parentRoute: typeof TrTokenRoute
     }
     '/tenant/$tenantKey/': {
       id: '/tenant/$tenantKey/'
@@ -339,11 +318,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantKeyIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tenant/$tenantKey/rooms': {
-      id: '/tenant/$tenantKey/rooms'
-      path: '/tenant/$tenantKey/rooms'
-      fullPath: '/tenant/$tenantKey/rooms'
-      preLoaderRoute: typeof TenantTenantKeyRoomsRouteImport
+    '/tr/$token/$code': {
+      id: '/tr/$token/$code'
+      path: '/$code'
+      fullPath: '/tr/$token/$code'
+      preLoaderRoute: typeof TrTokenCodeRouteImport
+      parentRoute: typeof TrTokenRoute
+    }
+    '/tenant/$tenantKey/team-print': {
+      id: '/tenant/$tenantKey/team-print'
+      path: '/tenant/$tenantKey/team-print'
+      fullPath: '/tenant/$tenantKey/team-print'
+      preLoaderRoute: typeof TenantTenantKeyTeamPrintRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tenant/$tenantKey/team-grid-print': {
@@ -353,32 +339,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantKeyTeamGridPrintRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tenant/$tenantKey/team-print': {
-      id: '/tenant/$tenantKey/team-print'
-      path: '/tenant/$tenantKey/team-print'
-      fullPath: '/tenant/$tenantKey/team-print'
-      preLoaderRoute: typeof TenantTenantKeyTeamPrintRouteImport
+    '/tenant/$tenantKey/rooms': {
+      id: '/tenant/$tenantKey/rooms'
+      path: '/tenant/$tenantKey/rooms'
+      fullPath: '/tenant/$tenantKey/rooms'
+      preLoaderRoute: typeof TenantTenantKeyRoomsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tr/$token/': {
-      id: '/tr/$token/'
-      path: '/'
-      fullPath: '/tr/$token/'
-      preLoaderRoute: typeof TrTokenIndexRouteImport
-      parentRoute: typeof TrTokenRoute
+    '/api/public/webhooks-dispatch': {
+      id: '/api/public/webhooks-dispatch'
+      path: '/api/public/webhooks-dispatch'
+      fullPath: '/api/public/webhooks-dispatch'
+      preLoaderRoute: typeof ApiPublicWebhooksDispatchRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/tr/$token/$code': {
-      id: '/tr/$token/$code'
-      path: '/$code'
-      fullPath: '/tr/$token/$code'
-      preLoaderRoute: typeof TrTokenCodeRouteImport
-      parentRoute: typeof TrTokenRoute
+    '/api/public/files-zip': {
+      id: '/api/public/files-zip'
+      path: '/api/public/files-zip'
+      fullPath: '/api/public/files-zip'
+      preLoaderRoute: typeof ApiPublicFilesZipRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/api/public/logo/$tenantKey': {
-      id: '/api/public/logo/$tenantKey'
-      path: '/api/public/logo/$tenantKey'
-      fullPath: '/api/public/logo/$tenantKey'
-      preLoaderRoute: typeof ApiPublicLogoTenantKeyRouteImport
+    '/api/public/file-download': {
+      id: '/api/public/file-download'
+      path: '/api/public/file-download'
+      fullPath: '/api/public/file-download'
+      preLoaderRoute: typeof ApiPublicFileDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/file': {
+      id: '/api/public/file'
+      path: '/api/public/file'
+      fullPath: '/api/public/file'
+      preLoaderRoute: typeof ApiPublicFileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tenant/$tenantKey/room/$roomId': {
@@ -388,18 +381,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantKeyRoomRoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/entry-bg/$tenantKey/$entryId': {
-      id: '/api/public/entry-bg/$tenantKey/$entryId'
-      path: '/api/public/entry-bg/$tenantKey/$entryId'
-      fullPath: '/api/public/entry-bg/$tenantKey/$entryId'
-      preLoaderRoute: typeof ApiPublicEntryBgTenantKeyEntryIdRouteImport
+    '/api/public/logo/$tenantKey': {
+      id: '/api/public/logo/$tenantKey'
+      path: '/api/public/logo/$tenantKey'
+      fullPath: '/api/public/logo/$tenantKey'
+      preLoaderRoute: typeof ApiPublicLogoTenantKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/slide/$tenantKey/$slideId': {
-      id: '/api/public/slide/$tenantKey/$slideId'
-      path: '/api/public/slide/$tenantKey/$slideId'
-      fullPath: '/api/public/slide/$tenantKey/$slideId'
-      preLoaderRoute: typeof ApiPublicSlideTenantKeySlideIdRouteImport
+    '/api/public/stream/$tenantKey/$roomId': {
+      id: '/api/public/stream/$tenantKey/$roomId'
+      path: '/api/public/stream/$tenantKey/$roomId'
+      fullPath: '/api/public/stream/$tenantKey/$roomId'
+      preLoaderRoute: typeof ApiPublicStreamTenantKeyRoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/snapshot/$tenantKey/$roomId': {
@@ -409,11 +402,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSnapshotTenantKeyRoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/stream/$tenantKey/$roomId': {
-      id: '/api/public/stream/$tenantKey/$roomId'
-      path: '/api/public/stream/$tenantKey/$roomId'
-      fullPath: '/api/public/stream/$tenantKey/$roomId'
-      preLoaderRoute: typeof ApiPublicStreamTenantKeyRoomIdRouteImport
+    '/api/public/slide/$tenantKey/$slideId': {
+      id: '/api/public/slide/$tenantKey/$slideId'
+      path: '/api/public/slide/$tenantKey/$slideId'
+      fullPath: '/api/public/slide/$tenantKey/$slideId'
+      preLoaderRoute: typeof ApiPublicSlideTenantKeySlideIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/entry-bg/$tenantKey/$entryId': {
+      id: '/api/public/entry-bg/$tenantKey/$entryId'
+      path: '/api/public/entry-bg/$tenantKey/$entryId'
+      fullPath: '/api/public/entry-bg/$tenantKey/$entryId'
+      preLoaderRoute: typeof ApiPublicEntryBgTenantKeyEntryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
