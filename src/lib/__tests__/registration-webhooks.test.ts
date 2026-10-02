@@ -84,7 +84,7 @@ describe("sendWebhook", () => {
   });
 
   it("posts JSON without image and multipart with image", async () => {
-    const f = vi.fn().mockResolvedValue(new Response("", { status: 204 }));
+    const f = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", f);
     expect(await sendWebhook("u", "discord", { title: "x", description: "" })).toEqual({ ok: true });
     expect(f.mock.calls[0][1].headers["Content-Type"]).toBe("application/json");
