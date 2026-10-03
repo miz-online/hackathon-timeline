@@ -10,13 +10,18 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "text-summary", "html", "lcov", "cobertura"],
       reportsDirectory: "coverage",
-      include: ["src/lib/**"],
-      // Server-only modules with heavy env/DB side effects are not unit-testable;
-      // exclude them so coverage reflects what the tests actually measure.
+      include: ["src/lib/**", "src/routes/api/**"],
+      // Only thin wrappers around external systems (driver selection, raw DB
+      // handle, image codec, client auth plumbing, pure type contracts) and
+      // the translation table are excluded; all app logic counts.
       exclude: [
         "src/lib/**/__tests__/**",
-        "src/lib/**/*.{functions,server}.{ts,tsx}",
         "src/lib/i18n.tsx",
+        "src/lib/backend/admin.server.ts",
+        "src/lib/backend/sqlite-db.server.ts",
+        "src/lib/backend/auth-attach.ts",
+        "src/lib/image-grey.server.ts",
+        "src/lib/storage/provider.server.ts",
       ],
     },
   },
