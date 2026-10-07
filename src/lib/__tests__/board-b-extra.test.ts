@@ -75,8 +75,8 @@ describe("getRoomSnapshot", () => {
     const snap = await call(fns.getRoomSnapshot, { key, roomId: room.id });
     expect(snap.room.name).toBe("Main");
     expect(snap.room.color).toBe("#FF0000");
-    expect(snap.teams.map((t) => t.name)).toEqual(["Alpha"]);
-    expect(snap.teams[0].color).toBe("#FF0000");
+    expect((snap.teams ?? []).map((t) => t.name)).toEqual(["Alpha"]);
+    expect(snap.teams![0].color).toBe("#FF0000");
     expect(snap.entries.some((e) => e.title === "Entry1")).toBe(true);
   });
 });

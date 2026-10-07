@@ -48,13 +48,6 @@ describe("exportTenantData extra branches", () => {
     const team = await call(fns.upsertTeam, { key, team: { name: "Alpha" } });
     const set = await call(fns.upsertSlideSet, { key, set: { name: "Set" } });
     await call(fns.uploadSlide, { key, setId: set.id, filename: "a.png", contentType: "image/png", dataBase64: imgB64 });
-    // Remove the underlying storage object so export treats the slide file as missing.
-    const { getBackendAdmin } = await import("@/lib/backend/admin.server");
-    const admin = (await getBackendAdmin()) as {
-      from: (t: string) => { select: (c: string) => { eq: (c: string, v: string) => Promise<{ data: { path: string }[] | null }> } };
-      storage: { from: (b: string) => { remove: (p: string[]) => Promise<unknown> } };
-    };
-    const { data: slides } = await admin.from("slides").select("path").eq("tenant_id", key ? "" : "");
     // Fallback: query directly using listSlides to get the path, then remove from storage.
     const list = await call(fns.listSlides, { key, setId: set.id });
     expect(list.length).toBe(1);
@@ -67,7 +60,7 @@ describe("exportTenantData extra branches", () => {
       sections: ["tenant_files", "team_files"],
       data: {
         tenant_files: [{ name: "g.pdf", file: genFile.path, content_type: "application/pdf" }],
-        team_files: [{ team: team.id, name: "t.pdf", file: teamFile.path, content_type: "application/pdf" }],
+        team_files: [{ team: "alpha", name: "t.pdf", file: teamFile.path, content_type: "application/pdf" }],
       },
       files: [genFile, teamFile],
     });
@@ -75,7 +68,7 @@ describe("exportTenantData extra branches", () => {
     const exported = await call(fns.exportTenantData, { key });
     expect(exported.data.team_files?.length).toBe(1);
     expect(exported.data.tenant_files?.length).toBe(1);
-    void slides;
+    void team;
   });
 });
 
@@ -166,7 +159,7 @@ describe("importTenantData extra branches", () => {
           },
         ],
         tenant_files: [{ name: "g.pdf", file: "files/g.pdf", content_type: "application/pdf" }],
-        team_files: [{ team: team.id, name: "t.pdf", file: "files/t.pdf", content_type: "application/pdf" }],
+        team_files: [{ team: "alpha", name: "t.pdf", file: "files/t.pdf", content_type: "application/pdf" }],
       },
       files: [
         bgFile,
