@@ -7,7 +7,7 @@ const update = vi.fn(async (next: Record<string, unknown>) => {
 const clear = vi.fn(async () => {
   sessionData.data = {};
 });
-const useSession = vi.fn(async () => ({ data: sessionData.data, update, clear }));
+const useSession = vi.fn(async (..._a: unknown[]) => ({ data: sessionData.data, update, clear }));
 
 vi.mock("@tanstack/react-start/server", () => ({ useSession: (...a: unknown[]) => useSession(...a) }));
 
@@ -40,7 +40,7 @@ describe("tenant-auth.server session plumbing", () => {
     await mod.markTenantUnlocked("t2");
     const [cfg1] = useSession.mock.calls[0]!;
     const [cfg2] = useSession.mock.calls[1]!;
-    expect((cfg1 as { password: string }).password).toBe((cfg2 as { password: string }).password);
+    expect((cfg1 as unknown as { password: string }).password).toBe((cfg2 as unknown as { password: string }).password);
   });
 
   it("marks a tenant unlocked, adds only once, and isTenantUnlocked reflects it", async () => {
