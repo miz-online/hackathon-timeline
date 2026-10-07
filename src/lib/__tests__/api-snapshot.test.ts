@@ -69,6 +69,82 @@ const GET = (Route as any).server.handlers.GET;
 const req = () => new Request("http://x/api/public/snapshot/acme/r1");
 
 describe("snapshot route", () => {
+  it("falls back when the reload_counter column is missing (optional-columns retry)", async () => {
+    let tenantCall = 0;
+    let roomCall = 0;
+    admin = {
+      from: (table: string) => {
+        if (table === "tenants") {
+          tenantCall++;
+          if (tenantCall === 1) return chain({ data: null, error: { message: "column reload_counter does not exist" } });
+          return chain({ data: tenantRow, error: null });
+        }
+        if (table === "rooms") {
+          roomCall++;
+          if (roomCall === 1) return chain({ data: { id: "r1", name: "Hall", color_scheme_id: null, template: null }, error: null });
+          return chain({ data: [], error: null });
+        }
+        if (table === "entries") return chain({ data: [], error: null });
+        if (table === "color_schemes") return chain({ data: [], error: null });
+        if (table === "teams") return chain({ data: [], error: null });
+        return chain({ data: null, error: null });
+      },
+    };
+    const res = await GET({ params: { tenantKey: "acme", roomId: "r1" }, request: req() });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.tenant.reload_counter).toBe(0);
+  });
+
+  it("sorts multiple visible entries by time", async () => {
+    admin = makeAdmin({
+      tenant: tenantRow,
+      room: { id: "r1", name: "Hall", color_scheme_id: null, template: null },
+      entries: [
+        {
+          id: "later",
+          kind: "entry",
+          time: new Date(Date.now() + 120_000).toISOString(),
+          end_time: null,
+          title: "Later",
+          description: "",
+          tags: [],
+          color_scheme_id: null,
+          slide_set_id: null,
+          background_path: null,
+          background_align: null,
+          background_height: null,
+          background_opacity: null,
+          background_margin: null,
+          background_tint: null,
+        },
+        {
+          id: "sooner",
+          kind: "entry",
+          time: new Date(Date.now() + 30_000).toISOString(),
+          end_time: null,
+          title: "Sooner",
+          description: "",
+          tags: [],
+          color_scheme_id: null,
+          slide_set_id: null,
+          background_path: null,
+          background_align: null,
+          background_height: null,
+          background_opacity: null,
+          background_margin: null,
+          background_tint: null,
+        },
+      ],
+      schemes: [],
+      teams: [],
+      rooms: [],
+    });
+    const res = await GET({ params: { tenantKey: "acme", roomId: "r1" }, request: req() });
+    const body = await res.json();
+    expect(body.entries.map((e: { id: string }) => e.id)).toEqual(["sooner", "later"]);
+  });
+
   it("404 when tenant missing", async () => {
     admin = makeAdmin({ tenant: null });
     const res = await GET({ params: { tenantKey: "acme", roomId: "r1" }, request: req() });

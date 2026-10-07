@@ -221,3 +221,47 @@ describe("loadSlidesForTemplate", () => {
     expect(out.slides).toEqual([]);
   });
 });
+
+describe("slides.server additional gaps", () => {
+  it("keeps the earliest-starting active entry on overlap instead of replacing it", () => {
+    const now = new Date("2026-01-01T12:00:00Z").getTime();
+    const entries = [
+      { kind: "slides", time: "2026-01-01T11:00:00Z", end_time: "2026-01-01T13:00:00Z", tags: [], slide_set_id: "first" },
+      { kind: "slides", time: "2026-01-01T10:00:00Z", end_time: "2026-01-01T13:00:00Z", tags: [], slide_set_id: "earlier" },
+    ];
+    const out = resolveAutoTemplate({ template: AUTO_TEMPLATE, entries, roomName: "Room A", isOverview: true, now });
+    expect(out.template).toBe("slides:first");
+  });
+
+  function localChain(result: unknown) {
+    const q: any = {
+      select: vi.fn(() => q),
+      eq: vi.fn(() => q),
+      order: vi.fn(() => q),
+      limit: vi.fn(() => q),
+      then: (resolve: any) => Promise.resolve(result).then(resolve),
+    };
+    return q;
+  }
+
+  it("uses explicit non-null booleans and kinds as-is", async () => {
+    const setsQuery = localChain({ data: [{ id: "set1", slide_seconds: 9, show_room_name: true, show_clock: false, show_logo: true }] });
+    const slidesQuery = localChain({
+      data: [{ id: "sl1", name: "One", content_type: "image/png", path: "p1", duration_seconds: 4, kind: "image" }],
+    });
+    adminMock.from.mockReturnValueOnce(setsQuery).mockReturnValueOnce(slidesQuery);
+    adminMock.storage.from.mockReturnValue({
+      createSignedUrls: vi.fn(async () => ({ data: [{ signedUrl: "https://signed/one" }] })),
+    });
+    const out = await loadSlidesForTemplate({ tenantId: "t1", tenantKey: "key1", template: "slides", fallbackSeconds: 7 });
+    expect(out.showClock).toBe(false);
+    expect(out.slides[0]).toEqual({
+      kind: "image",
+      id: "sl1",
+      name: "One",
+      url: "https://signed/one",
+      content_type: "image/png",
+      duration_seconds: 4,
+    });
+  });
+});
