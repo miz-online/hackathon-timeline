@@ -347,3 +347,124 @@ describe("team files (self service)", () => {
     ).rejects.toThrow("File not found");
   });
 });
+
+/** Wraps the real local admin client, forcing an error for a given table + operation mode. */
+function faultyFrom(real: Record<string, unknown>, table: string, mode: "select" | "insert" | "update" | "delete", message: string) {
+  const realFn = (real as { from: (t: string) => unknown }).from;
+  return {
+    ...real,
+    from(t: string) {
+      if (t !== table) return realFn(t);
+      const calls: { name: string; args: unknown[] }[] = [];
+      const proxy = new Proxy(
+        {},
+        {
+          get(_t, prop: string) {
+            if (prop === "then") {
+              return (resolve: (v: unknown) => void, reject: (e: unknown) => void) => {
+                const found = calls.map((c) => c.name).find((n) => ["insert", "update", "delete"].includes(n));
+                const actualMode = found ?? "select";
+                if (actualMode === mode) {
+                  resolve({ data: null, error: { message } });
+                  return;
+                }
+                let q = realFn(table) as Record<string, (...a: unknown[]) => unknown>;
+                for (const c of calls) q = q[c.name](...c.args) as typeof q;
+                Promise.resolve(q).then(resolve, reject);
+              };
+            }
+            return (...args: unknown[]) => {
+              calls.push({ name: prop, args });
+              return proxy;
+            };
+          },
+        },
+      );
+      return proxy;
+    },
+  };
+}
+
+describe("resolveToken edge cases", () => {
+  it("skips a register entry with no token and falls through to a matching one", async () => {
+    await insertRow("entries", {
+      tenant_id: tenantId,
+      kind: "register",
+      register_token: null,
+      title: "No Token",
+      time: new Date().toISOString(),
+    });
+    const res = await call(fns.getRegistration, { token: BASE_TOKEN });
+    expect(res).toMatchObject({ found: true, title: "Hackathon" });
+  });
+
+  it("returns found:false when the matching entry's tenant row is missing", async () => {
+    await insertRow("entries", {
+      tenant_id: crypto.randomUUID(),
+      kind: "register",
+      register_token: "ORPHANTOKEN2",
+      title: "Orphan",
+      time: new Date().toISOString(),
+    });
+    expect(await call(fns.getRegistration, { token: "ORPHANTOKEN2" })).toEqual({ found: false });
+  });
+});
+
+describe("DB error propagation", () => {
+  it("surfaces an error from submitRegistration's insert", async () => {
+    const real = db as Record<string, unknown>;
+    db = faultyFrom(real, "teams", "insert", "insert boom");
+    await expect(call(fns.submitRegistration, { token: BASE_TOKEN, name: "X" })).rejects.toThrow("insert boom");
+    db = real;
+  });
+
+  it("surfaces an error from updateRegisteredTeam's update", async () => {
+    const real = db as Record<string, unknown>;
+    const { code } = await call(fns.submitRegistration, { token: BASE_TOKEN, name: "Team" });
+    db = faultyFrom(real, "teams", "update", "update boom");
+    await expect(
+      call(fns.updateRegisteredTeam, { token: BASE_TOKEN, code, name: "New" }),
+    ).rejects.toThrow("update boom");
+    db = real;
+  });
+
+  it("surfaces an error from uploadFileForTeam's insert", async () => {
+    const real = db as Record<string, unknown>;
+    const { code } = await call(fns.submitRegistration, { token: BASE_TOKEN, name: "Team" });
+    db = faultyFrom(real, "team_files", "insert", "insert boom");
+    await expect(
+      call(fns.uploadFileForTeam, { token: BASE_TOKEN, code, filename: "a.txt", dataBase64: "aGk=" }),
+    ).rejects.toThrow("insert boom");
+    db = real;
+  });
+
+  it("falls back to an empty array when listing own/shared files errors out", async () => {
+    const real = db as Record<string, unknown>;
+    const { code } = await call(fns.submitRegistration, { token: BASE_TOKEN, name: "Team" });
+    db = faultyFrom(real, "team_files", "select", "select boom");
+    await expect(call(fns.listFilesForTeam, { token: BASE_TOKEN, code })).resolves.toMatchObject({
+      own: [],
+    });
+    db = real;
+  });
+
+  it("falls back to an empty array when listing shared files errors out", async () => {
+    const real = db as Record<string, unknown>;
+    const { code } = await call(fns.submitRegistration, { token: BASE_TOKEN, name: "Team" });
+    db = faultyFrom(real, "tenant_files", "select", "select boom");
+    await expect(call(fns.listFilesForTeam, { token: BASE_TOKEN, code })).resolves.toMatchObject({
+      shared: [],
+    });
+    db = real;
+  });
+
+  it("lists only shared files in download-only mode, without querying team_files", async () => {
+    const real = db as Record<string, unknown>;
+    await (db as Admin).from("tenants").update({ files_mode: "download" } as never).eq("key", tenantKey);
+    const { code } = await call(fns.submitRegistration, { token: BASE_TOKEN, name: "Team" });
+    const res = await call(fns.listFilesForTeam, { token: BASE_TOKEN, code });
+    expect(res).toMatchObject({ mode: "download", own: [] });
+    await (db as Admin).from("tenants").update({ files_mode: "full" } as never).eq("key", tenantKey);
+    db = real;
+  });
+});
