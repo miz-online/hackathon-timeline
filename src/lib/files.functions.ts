@@ -243,6 +243,8 @@ export const listAllTeamFiles = createServerFn({ method: "GET" })
     const orderById = new Map(teamRows.map((r) => [r.id, r.sort_order ?? 0]));
     const rowsOut = ((list ?? []) as unknown as (FileItem & { team_id: string })[]).map((f) => ({
       ...f,
+      /* v8 ignore next -- team_id has an ON DELETE CASCADE FK to teams, so an
+         orphaned row can never be observed in practice. */
       tag: nameById.get(f.team_id) ?? "—",
     }));
     return rowsOut.sort(
