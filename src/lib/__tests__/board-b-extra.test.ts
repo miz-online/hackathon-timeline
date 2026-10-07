@@ -89,7 +89,7 @@ describe("color scheme / slide set unknown-tenant branches", () => {
     await expect(call(fns.removeTenantLogo, { key: "nope" })).rejects.toThrow();
     await expect(call(fns.upsertSlideSet, { key: "nope", set: { name: "S" } })).rejects.toThrow();
     await expect(call(fns.deleteSlideSet, { key: "nope", id: "00000000-0000-0000-0000-000000000000" })).rejects.toThrow();
-    await expect(call(fns.listSlides, { key: "nope", setId: "00000000-0000-0000-0000-000000000000" })).resolves.toEqual([]);
+    await expect(call(fns.listSlides, { key: "nope", setId: "00000000-0000-0000-0000-000000000000" })).rejects.toThrow();
     await expect(call(fns.reorderSlides, { key: "nope", ids: ["00000000-0000-0000-0000-000000000000"] })).rejects.toThrow();
     await expect(call(fns.uploadSlide, { key: "nope", setId: "00000000-0000-0000-0000-000000000000", ...png() })).rejects.toThrow();
     await expect(call(fns.addEntriesSlide, { key: "nope", setId: "00000000-0000-0000-0000-000000000000", name: "x" })).rejects.toThrow();

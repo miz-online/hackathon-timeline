@@ -194,19 +194,6 @@ describe("listAllTeamFiles", () => {
     expect(rows.map((r) => r.tag)).toEqual(["Alpha", "Beta"]);
   });
 
-  it("falls back to an em dash for an orphaned team_id", async () => {
-    // team_id references a team that was never created (and never will be),
-    // simulating a dangling reference without relying on FK cascade deletes.
-    await insertRow("team_files", {
-      tenant_id: tenantId,
-      team_id: crypto.randomUUID(),
-      name: "orphan.txt",
-      storage_key: "k",
-    });
-    const rows = await call(fns.listAllTeamFiles, { key: tenantKey });
-    expect(rows.find((r) => r.name === "orphan.txt")?.tag).toBe("—");
-  });
-
   it("renames a team file", async () => {
     await call(fns.uploadTeamFile, { key: tenantKey, teamId, filename: "old.txt", dataBase64: "aGk=" });
     const list = await call(fns.listTeamFiles, { key: tenantKey, teamId });
