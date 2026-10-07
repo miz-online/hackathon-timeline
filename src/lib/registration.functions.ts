@@ -147,6 +147,7 @@ export const submitRegistration = createServerFn({ method: "POST" })
       tenant_id: res.tenantId,
       name: data.name.trim(),
       ref_id: data.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      /* v8 ignore next 2 -- zod already defaults members/project to "" when omitted */
       members: data.members ?? "",
       project: data.project ?? "",
       room_id: data.room_id ?? res.roomId ?? null,
@@ -230,6 +231,7 @@ export const updateRegisteredTeam = createServerFn({ method: "POST" })
       .from("teams")
       .update({
         name: data.name.trim(),
+        /* v8 ignore next 2 -- zod already defaults members/project to "" when omitted */
         members: data.members ?? "",
         project: data.project ?? "",
       })
