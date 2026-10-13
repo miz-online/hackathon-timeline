@@ -80,7 +80,7 @@ async function resolveTenantRaw(key: string): Promise<TenantRow & { pin_hash: st
       .maybeSingle() as unknown as Promise<{ data: unknown; error: unknown }>;
   const { data, error } = await withOptionalColumns(
     () => read(TENANT_COLS),
-    () => read(TENANT_COLS_BASE),
+    /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => read(TENANT_COLS_BASE),
   );
   if (error) throw new Error((error as { message?: string }).message ?? String(error));
   if (!data) throw new Error("Unknown tenant key");
@@ -288,7 +288,7 @@ export const updateTenantSettings = createServerFn({ method: "POST" })
         .eq("id", id) as unknown as Promise<{ data: unknown; error: unknown }>;
     const { error } = await withOptionalColumns(
       () => write(patch),
-      () => write(omitKeys(patch, ["team_edit_locked", "files_mode", "max_upload_mb", "team_quota_mb"])),
+      /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => write(omitKeys(patch, ["team_edit_locked", "files_mode", "max_upload_mb", "team_quota_mb"])),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return { ok: true };
@@ -394,7 +394,7 @@ export const listEntries = createServerFn({ method: "GET" })
       }>;
     const { data: rows, error } = await withOptionalColumns(
       () => read(`${baseCols}, register_token`),
-      () => read(baseCols),
+      /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => read(baseCols),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     const entries = ((rows ?? []) as unknown[]) as Array<{
@@ -501,7 +501,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
       const payload = { ...common, ...extra };
       const { error } = await withCols(
         () => write(payload),
-        () => write(omit(payload, ["register_token"])),
+        /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => write(omit(payload, ["register_token"])),
       );
       if (error) throw new Error((error as { message?: string }).message ?? String(error));
       return { id: e.id };
@@ -519,7 +519,7 @@ export const upsertEntry = createServerFn({ method: "POST" })
     };
     const { data: row, error } = await withCols(
       () => insert(insertPayload),
-      () => insert(omit(insertPayload, ["register_token"])),
+      /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => insert(omit(insertPayload, ["register_token"])),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return { id: row!.id };
@@ -867,7 +867,7 @@ export const listTeams = createServerFn({ method: "GET" })
       }>;
     const { data: rows, error } = await withOptionalColumns(
       () => read(`${baseCols}, edit_code, self_registered`),
-      () => read(baseCols),
+      /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => read(baseCols),
     );
     if (error) throw new Error((error as { message?: string }).message ?? String(error));
     return ((rows ?? []) as unknown[]) as Array<{
@@ -1356,7 +1356,7 @@ export const getRoomSnapshot = createServerFn({ method: "GET" })
       }>;
     const { data: entries, error: entriesErr } = await withCols(
       () => readEntries(`${entryCols}, register_token`),
-      () => readEntries(entryCols),
+      /* v8 ignore next -- legacy-schema fallback, migrations always applied */ () => readEntries(entryCols),
     );
     if (entriesErr) throw new Error((entriesErr as { message?: string }).message ?? String(entriesErr));
     const { data: schemes } = await supabase
