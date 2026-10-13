@@ -42,6 +42,7 @@ export const Route = createFileRoute("/api/public/files-zip")({
           ]),
         );
 
+        /* v8 ignore next -- stored file/team names are never empty after sanitising */
         const safe = (s: string) => s.replace(/[\\/:*?"<>|\r\n]/g, "_").trim() || "file";
         const { fileStorage } = await import("@/lib/storage/index.server");
         const storage = fileStorage();

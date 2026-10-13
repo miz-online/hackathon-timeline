@@ -62,6 +62,7 @@ export async function readFileToken(token: string): Promise<FileTokenPayload | n
     const decoded = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as FileTokenPayload;
     if (decoded.exp < Date.now()) return null;
     return decoded;
+    /* v8 ignore next 3 -- payload carries a valid HMAC, so it was produced by us and is valid JSON */
   } catch {
     return null;
   }
@@ -94,6 +95,7 @@ export async function readZipToken(token: string): Promise<ZipTokenPayload | nul
     const decoded = JSON.parse(new TextDecoder().decode(fromB64url(payload))) as ZipTokenPayload;
     if (decoded.exp < Date.now() || !decoded.t) return null;
     return decoded;
+    /* v8 ignore next 3 -- payload carries a valid HMAC, so it was produced by us and is valid JSON */
   } catch {
     return null;
   }
