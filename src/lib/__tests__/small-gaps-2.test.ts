@@ -16,7 +16,7 @@ describe("sendWebhook image without content type", () => {
     const fetchMock = vi.fn(async (_u: string, init: RequestInit) => {
       const file = (init.body as FormData).get("files[0]") as Blob;
       expect(file.type).toBe("image/png");
-      return new Response("", { status: 204 });
+      return new Response(null, { status: 204 });
     });
     vi.stubGlobal("fetch", fetchMock);
     const res = await sendWebhook("https://discord.test/x", "discord", {
