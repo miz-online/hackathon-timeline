@@ -3,16 +3,20 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-const subs: ((e: { table: string; tenantId: string | null }) => void)[] = [];
-const unsub = vi.fn();
-const mockEvents = () => ({
+const { subs, unsub, rpc } = vi.hoisted(() => ({
+  subs: [] as ((e: { table: string; tenantId: string | null }) => void)[],
+  unsub: vi.fn(),
+  rpc: vi.fn(async (n: string) => ({ data: n, error: null })),
+}));
+vi.mock("@/lib/backend/events.server", () => ({
   publishChange: () => {},
   subscribeChanges: (l: (e: { table: string; tenantId: string | null }) => void) => (subs.push(l), unsub),
-});
-vi.mock("@/lib/backend/events.server", mockEvents);
-vi.mock("../backend/events.server", mockEvents);
+}));
+vi.mock("../backend/events.server", () => ({
+  publishChange: () => {},
+  subscribeChanges: (l: (e: { table: string; tenantId: string | null }) => void) => (subs.push(l), unsub),
+}));
 vi.mock("../backend/local-storage.server", () => ({ localStorageApi: () => ({}) }));
-const rpc = vi.fn(async (n: string) => ({ data: n, error: null }));
 vi.mock("../backend/local-scheduler.server", () => ({ runLocalRpc: (n: string) => rpc(n) }));
 
 type Client = ReturnType<typeof import("@/lib/backend/sqlite-client.server").createLocalClient>;
